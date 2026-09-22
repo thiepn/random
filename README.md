@@ -19,6 +19,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Linear Session Templates with previous-result handoff, persistent Template Sessions, step locking, dependency invalidation, and Rerun From Here
 - Fullscreen Party mode with persistent Party Sessions, Fast/Standard/Dramatic reveals, configurable countdowns, Host Lock, Wake Lock, pass-the-phone private reveals, TV/projector layouts, and an optional sanitized audience window
 - Safe declarative Custom Builder with user-created Wheels, Pickers, Dice, Deck draws, weighted tables, Number generators, bounded compound generators, drafts, Test Mode, validation, import/export, and My Creations
+- Decision Studio workflow graphs with runtime/fixed Input nodes, saved-Preset Randomizer nodes, True/False Branch nodes, terminal Outcomes, automatic or step execution, resumable workflow sessions, and bounded acyclic automation
 - History and favorites
 - Offline service worker + web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -50,6 +51,7 @@ Then open `http://localhost:8080`.
 - `src/party-model.js` — Party Session progression, pace/countdown options, privacy rules, and sanitized audience-state construction
 - `src/custom-experience-model.js` — safe Custom Experience schema, allowlisted primitives, appearance/input rules, validation, import/export, and custom tool identities
 - `src/custom-engine.js` — bounded execution of approved Custom Experience primitives using the same Random Core, Dice engine, and Number engine
+- `src/workflow-model.js` — Decision Studio graph schema, validation, branching conditions, workflow sessions, and bounded execution-state transitions
 - `src/storage.js` — IndexedDB persistence
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
@@ -70,7 +72,11 @@ Presentation is deliberately downstream of correctness: a Run is committed befor
 
 ## Presets and multi-step Sessions
 
-IndexedDB schema v4 adds `ruleSets`, `sessionTemplates`, and `templateSessions`. Presets may bind to the latest live Pool/View, freeze a copied input snapshot, or request fresh input. Session Templates are deliberately linear: steps may use a Preset input or the output of an earlier step, but branching/loops remain reserved for Decision Studio. Completing a Template step is committed atomically with the Run that produced it.
+IndexedDB schema v4 adds `ruleSets`, `sessionTemplates`, and `templateSessions`. Presets may bind to the latest live Pool/View, freeze a copied input snapshot, or request fresh input. Session Templates remain deliberately linear: steps may use a Preset input or the output of an earlier step. Branching belongs to Decision Studio; workflow graph cycles are intentionally rejected so automatic execution always terminates. Completing a Template step is committed atomically with the Run that produced it.
+
+## Decision Studio workflows
+
+IndexedDB schema v7 adds `workflows` and `workflowSessions`. Workflow definitions are revisioned separately from their runtime sessions. Randomizer nodes reference saved Presets and execute through the same tool engine and immutable Run transaction path as normal play, so secure/seeded randomness, Pool bindings, constraints, fairness metadata, and History remain consistent. Each committed Run records its `workflowSessionId` and `workflowNodeId`, and the workflow session advances atomically with that Run. Auto mode is bounded by a per-workflow step limit and the validator rejects graph cycles; Step mode advances exactly one graph node per action.
 
 ## Party mode and audience privacy
 
