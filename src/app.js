@@ -9454,9 +9454,11 @@ async function runTool(id) {
     if (skipPresentation(id)) return;
   }
 
-  primeAudio(
-    normalizeExperienceSettings(state.settings).presentation.sound
-  );
+  if (!ts.workflowSilent) {
+    primeAudio(
+      normalizeExperienceSettings(state.settings).presentation.sound
+    );
+  }
 
   if (ts.replayRunId) {
     ts.error = "Replay is view-only. Use Rerun to create a new result.";
@@ -9508,6 +9510,13 @@ async function runTool(id) {
         ? partySessionById(state.activePartySessionId)
         : null;
     let expectedPartySessionRevision = partySession?.revision ?? null;
+    let workflowSession = ts.workflowSessionId
+      ? workflowSessionById(ts.workflowSessionId)
+      : null;
+    let workflow = workflowSession
+      ? workflowById(workflowSession.workflowId)
+      : null;
+    let expectedWorkflowSessionRevision = workflowSession?.revision ?? null;
 
     if (partySession && partySession.toolId !== id) {
       throw new Error("Party Session tool no longer matches this Stage.");
@@ -9521,6 +9530,20 @@ async function runTool(id) {
       )
     ) {
       throw new Error("This Session Template step is no longer active.");
+    }
+
+    if (workflowSession) {
+      const workflowNode = workflow?.nodes?.find(
+        (candidate) => candidate.id === ts.workflowNodeId
+      );
+      if (
+        !workflow
+        || workflowSession.status !== "active"
+        || workflowSession.currentNodeId !== ts.workflowNodeId
+        || workflowNode?.type !== "tool"
+      ) {
+        throw new Error("This Decision Studio workflow node is no longer active.");
+      }
     }
 
     if (isStatefulTool(id)) {
@@ -9576,6 +9599,8 @@ async function runTool(id) {
       templateSessionId: templateSession?.id || null,
       templateStepId: ts.templateStepId || null,
       partySessionId: partySession?.id || null,
+      workflowSessionId: workflowSession?.id || null,
+      workflowNodeId: ts.workflowNodeId || null,
       setupFingerprint: fingerprint,
       inputSnapshot,
       configSnapshot,
@@ -9591,6 +9616,7 @@ async function runTool(id) {
     let nextSession = null;
     let nextTemplateSession = null;
     let nextPartySession = null;
+    let nextWorkflowSession = null;
     let event = null;
 
     if (session) {
@@ -9620,16 +9646,31 @@ async function runTool(id) {
       nextPartySession = appendPartyRun(partySession, run.id);
     }
 
+    if (workflowSession) {
+      nextWorkflowSession = recordWorkflowNode(
+        workflowSession,
+        workflow,
+        ts.workflowNodeId,
+        {
+          runId: run.id,
+          resultItems: resultToItems(id, result),
+          summary
+        }
+      );
+    }
+
     await commitRunAndSession({
       run,
       session: nextSession,
       event,
       templateSession: nextTemplateSession,
       partySession: nextPartySession,
+      workflowSession: nextWorkflowSession,
       settingsRecord: prepared.settingsRecord,
       expectedSessionRevision,
       expectedTemplateSessionRevision,
-      expectedPartySessionRevision
+      expectedPartySessionRevision,
+      expectedWorkflowSessionRevision
     });
 
     if (prepared.nextSettings) state.settings = prepared.nextSettings;
@@ -9642,8 +9683,10 @@ async function runTool(id) {
     if (nextSession) replaceSession(nextSession);
     if (nextTemplateSession) replaceTemplateSession(nextTemplateSession);
     if (nextPartySession) replacePartySession(nextPartySession);
+    if (nextWorkflowSession) replaceWorkflowSession(nextWorkflowSession);
 
     const committedTemplateStepIndex = Number(ts.templateStepIndex);
+    const committedWorkflowNodeId = ts.workflowNodeId;
 
     ts = restoreToolSnapshot(id, afterState, {
       sessionId: nextSession?.id || null
@@ -9656,7 +9699,19 @@ async function runTool(id) {
       state.activeTemplateSessionId = nextTemplateSession.id;
     }
 
-    const plan = beginPresentation(id, ts, result);
+    if (nextWorkflowSession) {
+      ts.workflowSessionId = nextWorkflowSession.id;
+      ts.workflowNodeId = committedWorkflowNodeId;
+      ts.workflowSilent = true;
+      state.activeWorkflowSessionId = nextWorkflowSession.id;
+    }
+
+    const plan = beginPresentation(
+      id,
+      ts,
+      result,
+      { silent: Boolean(nextWorkflowSession) }
+    );
 
     if (nextPartySession) {
       broadcastPartyAudience({
