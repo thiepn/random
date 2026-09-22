@@ -137,6 +137,10 @@ function ensureToolState(toolId) {
 
       numberMin: 1,
       numberMax: 100,
+      numberMode: "integer",
+      numberPrecision: 2,
+      numberCount: 1,
+      numberUnique: false,
 
       teamCount: 2,
       groupCount: 3,
@@ -1005,6 +1009,10 @@ function renderRuleStrip(tool, ts) {
     if (/!/.test(expression)) rules.push("Explode");
     if (expression === "2d20kh1") rules.unshift("Advantage");
     if (expression === "2d20kl1") rules.unshift("Disadvantage");
+  } else if (tool.id === "number") {
+    if (ts.numberMode === "decimal") rules.push(ts.numberPrecision + " decimals");
+    if (ts.numberCount > 1) rules.push(ts.numberCount + " values");
+    if (ts.numberUnique && ts.numberCount > 1) rules.push("Unique");
   }
 
   if (!rules.length) return null;
@@ -1264,6 +1272,32 @@ function buildStage(tool, ts) {
               text: result.values.join(" + ") + " on D" + result.sides
             })
           : null
+      );
+    }
+  } else if (tool.id === "number") {
+    if (result?.displayValues?.length > 1) {
+      wrap.append(
+        node("div", { class: "stage-label", text: "Random numbers" }),
+        node("div", {
+          class: "stage-result",
+          text: result.count + " VALUES",
+          style: { fontSize: "clamp(36px,9vw,58px)" }
+        }),
+        resultList(result.displayValues)
+      );
+    } else {
+      wrap.append(
+        node("div", { class: "stage-label", text: "Random number" }),
+        node("div", {
+          class: "stage-result",
+          text: result?.displayValues?.[0] || "GENERATE"
+        }),
+        node("div", {
+          class: "stage-sub",
+          text: ts.numberMode === "decimal"
+            ? "Uniform " + ts.numberPrecision + "-decimal grid"
+            : "Uniform integer"
+        })
       );
     }
   } else if (tool.id === "wheel") {
@@ -1840,7 +1874,22 @@ function genericFairnessDescription(tool, ts) {
       }
       return ["Uniform dice", "Every face on each D" + ts.diceSides + " has equal probability."];
     case "number":
-      return ["Uniform integer", "Every whole number in the configured inclusive range has equal probability."];
+      if (ts.numberMode === "decimal") {
+        return [
+          "Uniform decimal grid",
+          "Values are selected uniformly from the inclusive fixed-precision grid at " + ts.numberPrecision + " decimal places."
+            + (ts.numberUnique && ts.numberCount > 1
+              ? " Multiple draws are sampled without replacement."
+              : "")
+        ];
+      }
+      return [
+        ts.numberUnique && ts.numberCount > 1 ? "Uniform unique integers" : "Uniform integer",
+        "Every whole number in the configured inclusive range has equal probability."
+          + (ts.numberUnique && ts.numberCount > 1
+            ? " Multiple draws are sampled without replacement."
+            : "")
+      ];
     case "shuffle":
       return ["Uniform shuffle", "Uses Fisher–Yates over the current entries."];
     case "teams":
@@ -1965,6 +2014,60 @@ function fairnessPanel(tool, ts) {
   }
 
   return panel;
+}
+
+function numberModeControl(tool, ts) {
+  return node("div", {
+    class: "segmented number-mode",
+    "aria-label": "Number mode"
+  }, [
+    node("button", {
+      class: ts.numberMode === "integer" ? "active" : "",
+      type: "button",
+      onClick: () => {
+        ts.numberMode = "integer";
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, "Integer"),
+    node("button", {
+      class: ts.numberMode === "decimal" ? "active" : "",
+      type: "button",
+      onClick: () => {
+        ts.numberMode = "decimal";
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, "Decimal")
+  ]);
+}
+
+function numberPresetRow(tool, ts) {
+  const presets = [
+    { label: "1–10", mode: "integer", min: 1, max: 10, count: 1 },
+    { label: "1–100", mode: "integer", min: 1, max: 100, count: 1 },
+    { label: "3 unique", mode: "integer", min: 1, max: 100, count: 3, unique: true },
+    { label: "0.00–1.00", mode: "decimal", min: 0, max: 1, count: 1, precision: 2 }
+  ];
+
+  return node("div", { class: "dice-presets number-presets" },
+    presets.map((preset) =>
+      node("button", {
+        class: "dice-preset",
+        type: "button",
+        onClick: () => {
+          ts.numberMode = preset.mode;
+          ts.numberMin = preset.min;
+          ts.numberMax = preset.max;
+          ts.numberCount = preset.count;
+          ts.numberUnique = Boolean(preset.unique);
+          if (preset.precision) ts.numberPrecision = preset.precision;
+          invalidateTool(tool.id, ts);
+          render();
+        }
+      }, preset.label)
+    )
+  );
 }
 
 function configSetter(toolId, ts, key, value, rerender = false) {
@@ -2095,6 +2198,8 @@ function buildControls(tool, ts) {
     const recent = diceHistoryPanel(ts);
     if (recent) controls.append(recent);
   } else if (tool.id === "number") {
+    controls.append(numberModeControl(tool, ts));
+
     grid.append(
       numberControl(
         "Minimum", "number-min", ts.numberMin, -1000000, 1000000,
@@ -2103,9 +2208,40 @@ function buildControls(tool, ts) {
       numberControl(
         "Maximum", "number-max", ts.numberMax, -1000000, 1000000,
         (value) => configSetter(tool.id, ts, "numberMax", value)
+      ),
+      numberControl(
+        "How many", "number-count", ts.numberCount, 1, 100,
+        (value) => configSetter(tool.id, ts, "numberCount", value)
       )
     );
+
+    if (ts.numberMode === "decimal") {
+      grid.append(numberControl(
+        "Decimal places", "number-precision", ts.numberPrecision, 1, 6,
+        (value) => configSetter(tool.id, ts, "numberPrecision", value)
+      ));
+    }
+
     controls.append(grid);
+
+    if (ts.numberCount > 1) {
+      const unique = node("input", {
+        type: "checkbox",
+        checked: ts.numberUnique,
+        "aria-label": "Require unique generated numbers"
+      });
+      unique.addEventListener("change", () => {
+        ts.numberUnique = unique.checked;
+        invalidateTool(tool.id, ts);
+        render();
+      });
+      controls.append(node("label", { class: "number-unique-toggle" }, [
+        unique,
+        node("span", { text: "No duplicate values" })
+      ]));
+    }
+
+    controls.append(numberPresetRow(tool, ts));
   } else if (tool.id === "chance") {
     grid.append(numberControl(
       "Success chance %", "chance", ts.chance, 0, 100,
