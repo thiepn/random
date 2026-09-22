@@ -239,7 +239,7 @@ export function inferRuleSetScope(rules = [], sourcePoolId = null) {
     POOL_SPECIFIC_RULE_TYPES.has(rule?.type)
   );
 
-  return poolSpecific || sourcePoolId ? "pool" : "portable";
+  return poolSpecific ? "pool" : "portable";
 }
 
 export function createRuleSet({
