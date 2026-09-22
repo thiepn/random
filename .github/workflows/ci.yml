@@ -26,6 +26,8 @@ jobs:
           node --check src/random-core.js
           node --check src/tool-engine.js
           node --check src/selection-model.js
+          node --check src/dice-engine.js
+          node --check src/number-engine.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -39,6 +41,12 @@ jobs:
 
       - name: Selection model certification
         run: node tests/selection-model.mjs
+
+      - name: Dice expression certification
+        run: node tests/dice-engine.mjs
+
+      - name: Number engine certification
+        run: node tests/number-engine.mjs
 
       - name: Guard decision randomness and unsafe execution
         run: |
