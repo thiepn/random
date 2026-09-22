@@ -364,6 +364,12 @@ export function resultToItems(toolId, result) {
     );
   }
 
+  if (Array.isArray(result.items)) {
+    return result.items.map(String);
+  }
+  if (result.output != null) {
+    return resultToItems(toolId, result.output);
+  }
   if (Array.isArray(result.values)) {
     return result.values.map(String);
   }
