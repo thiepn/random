@@ -91,6 +91,22 @@ import {
   BUILTIN_SESSION_TEMPLATES
 } from "./session-template-model.js";
 import {
+  normalizeWorkflow,
+  createWorkflow,
+  updateWorkflow,
+  createWorkflowNode,
+  createWorkflowEdge,
+  validateWorkflow,
+  createWorkflowSession,
+  provideWorkflowInput,
+  recordWorkflowNode,
+  evaluateBranchCondition,
+  pauseWorkflowSession,
+  resumeWorkflowSession,
+  failWorkflowSession,
+  abandonWorkflowSession
+} from "./workflow-model.js";
+import {
   createPartySession,
   updatePartyOptions,
   appendPartyRun,
@@ -138,6 +154,12 @@ const state = {
   partySessions: [],
   activePartySessionId: null,
   customExperiences: [],
+  workflows: [],
+  workflowSessions: [],
+  activeWorkflowSessionId: null,
+  workflowEditor: null,
+  workflowInputText: "",
+  workflowBusy: false,
   creationFilter: "all",
   builder: null,
   partyCountdown: null,
@@ -393,6 +415,9 @@ function ensureToolState(toolId) {
       templateSessionId: null,
       templateStepIndex: null,
       templateStepId: null,
+      workflowSessionId: null,
+      workflowNodeId: null,
+      workflowSilent: false,
       activeSessionId: null,
       replayRunId: null
     };
@@ -510,7 +535,7 @@ function skipPresentation(toolId) {
   return true;
 }
 
-function beginPresentation(toolId, ts, result) {
+function beginPresentation(toolId, ts, result, { silent = false } = {}) {
   clearPresentationTimers(toolId);
 
   const settings = normalizeExperienceSettings(state.settings);
@@ -525,6 +550,13 @@ function beginPresentation(toolId, ts, result) {
   ) {
     effectiveSettings.presentation.mode =
       partyPresentationMode(party.options.pace);
+  }
+
+  if (silent) {
+    effectiveSettings.presentation.mode = "instant";
+    effectiveSettings.presentation.effects = "low";
+    effectiveSettings.presentation.sound = false;
+    effectiveSettings.presentation.haptics = "off";
   }
 
   const customExperience = customExperienceFromToolId(toolId);
@@ -573,17 +605,20 @@ function beginPresentation(toolId, ts, result) {
   };
   ts.animating = plan.duration > 0;
 
-  primeAudio(settings.presentation.sound);
-  playPresentationCue(plan.cue, {
-    enabled: settings.presentation.sound,
-    mode: plan.mode
-  });
-  playHaptic(plan.haptic, settings.presentation.haptics);
+  if (!silent) {
+    primeAudio(settings.presentation.sound);
+    playPresentationCue(plan.cue, {
+      enabled: settings.presentation.sound,
+      mode: plan.mode
+    });
+    playHaptic(plan.haptic, settings.presentation.haptics);
+  }
 
   if (
     toolId === "wheel"
     && plan.tickMs > 0
     && settings.presentation.sound
+    && !silent
   ) {
     const tick = setInterval(() => {
       playWheelTick({
@@ -647,6 +682,8 @@ async function loadData() {
     templateSessions,
     partySessions,
     customExperiences,
+    workflows,
+    workflowSessions,
     historyEntries,
     runs,
     sessions,
@@ -662,6 +699,8 @@ async function loadData() {
     getAll("templateSessions"),
     getAll("partySessions"),
     getAll("customExperiences"),
+    getAll("workflows"),
+    getAll("workflowSessions"),
     getAll("history"),
     getAll("runs"),
     getAll("sessions"),
@@ -686,6 +725,12 @@ async function loadData() {
     (a, b) => b.updatedAt - a.updatedAt
   );
   state.customExperiences = customExperiences.sort(
+    (a, b) => b.updatedAt - a.updatedAt
+  );
+  state.workflows = workflows
+    .map(normalizeWorkflow)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  state.workflowSessions = workflowSessions.sort(
     (a, b) => b.updatedAt - a.updatedAt
   );
   state.history = historyEntries
@@ -716,6 +761,9 @@ function snapshotToolState(toolId, toolState) {
   delete snapshot.templateSessionId;
   delete snapshot.templateStepIndex;
   delete snapshot.templateStepId;
+  delete snapshot.workflowSessionId;
+  delete snapshot.workflowNodeId;
+  delete snapshot.workflowSilent;
   delete snapshot.activeSessionId;
   delete snapshot.replayRunId;
   return snapshot;
@@ -874,6 +922,28 @@ function sessionTemplateById(id) {
 
 function templateSessionById(id) {
   return state.templateSessions.find((session) => session.id === id) || null;
+}
+
+function workflowById(id) {
+  return state.workflows.find((workflow) => workflow.id === id) || null;
+}
+
+function workflowSessionById(id) {
+  return state.workflowSessions.find((session) => session.id === id) || null;
+}
+
+function replaceWorkflow(next) {
+  state.workflows = [
+    next,
+    ...state.workflows.filter((workflow) => workflow.id !== next.id)
+  ].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function replaceWorkflowSession(next) {
+  state.workflowSessions = [
+    next,
+    ...state.workflowSessions.filter((session) => session.id !== next.id)
+  ].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 function replaceTemplateSession(next) {
