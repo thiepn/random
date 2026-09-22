@@ -159,6 +159,15 @@ export function pairs(items, rng) {
   return result;
 }
 
+export function derangement(items, rng, maxAttempts = 1000) {
+  if (items.length < 2) throw new RangeError("A derangement needs at least two items.");
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const candidate = shuffle(items, rng);
+    if (candidate.every((item, index) => item !== items[index])) return candidate;
+  }
+  throw new Error("Could not create a valid derangement within the search limit.");
+}
+
 export function createRng(settings = {}) {
   return settings.mode === "seeded"
     ? new SeededRandom(settings.seed || "randomizer")
