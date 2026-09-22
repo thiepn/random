@@ -375,14 +375,24 @@ function compare(value, condition) {
 
 function conditionMatchesEveryFace(sides, condition) {
   if (!condition) return false;
-  for (let face = 1; face <= Math.min(sides, 10000); face += 1) {
-    if (!compare(face, condition)) return false;
+  const threshold = condition.threshold;
+
+  switch (condition.comparator) {
+    case "=":
+      return sides === 1 && threshold === 1;
+    case "!=":
+      return threshold < 1 || threshold > sides;
+    case "<":
+      return sides < threshold;
+    case "<=":
+      return sides <= threshold;
+    case ">":
+      return 1 > threshold;
+    case ">=":
+      return 1 >= threshold;
+    default:
+      return false;
   }
-
-  if (sides <= 10000) return true;
-
-  const probes = [1, 2, Math.floor(sides / 2), sides - 1, sides];
-  return probes.every((value) => compare(value, condition));
 }
 
 function validateModifiers(node, position) {
