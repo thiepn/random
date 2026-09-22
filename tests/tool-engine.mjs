@@ -232,7 +232,7 @@ function run(tool, config = {}, seed = tool) {
     })),
     rules: [
       createRule("apart", { itemIds: ["i0", "i1"] }),
-      createRule("fixed", { itemId: "i2", targetId: "i3" })
+      createRule("fixed", { itemId: "i2", targetId: "i0" })
     ]
   }, "constrained-santa");
   const map = new Map(
@@ -240,7 +240,7 @@ function run(tool, config = {}, seed = tool) {
   );
   assert.notEqual(map.get("A"), "B");
   assert.notEqual(map.get("B"), "A");
-  assert.equal(map.get("C"), "D");
+  assert.equal(map.get("C"), "A");
 }
 
 {
