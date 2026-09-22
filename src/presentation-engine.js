@@ -149,7 +149,7 @@ export function presentationPlan({
   }
 
   if (toolId === "elimination" && result?.winner) {
-    celebration = true;
+    celebration = !reducedMotion;
     if (!reducedMotion && normalized.mode === "showtime") {
       duration = Math.max(duration, 2200);
       particles = effects === "high" ? 22 : 0;
@@ -157,11 +157,19 @@ export function presentationPlan({
   }
 
   if (
-    normalized.mode === "showtime"
+    !reducedMotion
+    && normalized.mode === "showtime"
     && ["teams", "groups", "tournament", "ladder"].includes(toolId)
   ) {
     celebration = true;
     particles = effects === "high" ? 18 : particles;
+  }
+
+  if (reducedMotion) {
+    particles = 0;
+    celebration = false;
+    kind = "fade";
+    duration = normalized.mode === "instant" ? 0 : 180;
   }
 
   const staggerMs = normalized.mode === "instant"
