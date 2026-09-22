@@ -1,11 +1,12 @@
 const DB_NAME = "randomizer-arcade";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORES = [
   "pools",
   "poolViews",
   "ruleSets",
   "sessionTemplates",
   "templateSessions",
+  "partySessions",
   "history",
   "runs",
   "sessions",
@@ -130,15 +131,18 @@ export async function commitRunAndSession({
   session = null,
   event = null,
   templateSession = null,
+  partySession = null,
   settingsRecord = null,
   expectedSessionRevision = null,
-  expectedTemplateSessionRevision = null
+  expectedTemplateSessionRevision = null,
+  expectedPartySessionRevision = null
 }) {
   const db = await openDb();
   const storeNames = ["runs"];
   if (session) storeNames.push("sessions");
   if (event) storeNames.push("sessionEvents");
   if (templateSession) storeNames.push("templateSessions");
+  if (partySession) storeNames.push("partySessions");
   if (settingsRecord) storeNames.push("settings");
 
   return new Promise((resolve, reject) => {
@@ -149,14 +153,18 @@ export async function commitRunAndSession({
     const templateStore = templateSession
       ? tx.objectStore("templateSessions")
       : null;
+    const partyStore = partySession
+      ? tx.objectStore("partySessions")
+      : null;
     const settingsStore = settingsRecord ? tx.objectStore("settings") : null;
 
     let explicitError = null;
     let sessionReady = !session;
     let templateReady = !templateSession;
+    let partyReady = !partySession;
 
     const writeAll = () => {
-      if (!sessionReady || !templateReady || explicitError) return;
+      if (!sessionReady || !templateReady || !partyReady || explicitError) return;
 
       const existingRun = runStore.get(run.id);
       existingRun.onerror = () => {
@@ -175,6 +183,7 @@ export async function commitRunAndSession({
         if (session) sessionStore.put(session);
         if (event) eventStore.add(event);
         if (templateSession) templateStore.put(templateSession);
+        if (partySession) partyStore.put(partySession);
         if (settingsRecord) settingsStore.put(settingsRecord);
       };
     };
@@ -233,7 +242,34 @@ export async function commitRunAndSession({
       };
     }
 
-    if (!session && !templateSession) {
+    if (partySession) {
+      const readParty = partyStore.get(partySession.id);
+      readParty.onerror = () => {
+        explicitError = readParty.error;
+        tx.abort();
+      };
+      readParty.onsuccess = () => {
+        const current = readParty.result || null;
+        const actualRevision = current?.revision ?? null;
+
+        if (
+          expectedPartySessionRevision != null
+          && actualRevision !== expectedPartySessionRevision
+        ) {
+          explicitError = revisionConflict(
+            expectedPartySessionRevision,
+            actualRevision
+          );
+          tx.abort();
+          return;
+        }
+
+        partyReady = true;
+        writeAll();
+      };
+    }
+
+    if (!session && !templateSession && !partySession) {
       writeAll();
     }
 
@@ -242,6 +278,7 @@ export async function commitRunAndSession({
       session,
       event,
       templateSession,
+      partySession,
       settingsRecord
     });
     tx.onerror = () => reject(explicitError || tx.error);
