@@ -5,8 +5,11 @@ import {
   partition,
   pairs,
   derangement,
+  weightedIndex,
+  weightedSample,
   randomHexColor
 } from "./random-core.js";
+import { normalizeSelection } from "./selection-model.js";
 
 const MAX_UINT32_RANGE = 0x100000000;
 
@@ -49,6 +52,44 @@ function requireRange(min, max, label) {
       "RANGE_TOO_LARGE"
     );
   }
+}
+
+function selectionModel(items, config) {
+  try {
+    return normalizeSelection(items, config.selectionEntries || []);
+  } catch (error) {
+    throw new ToolValidationError(
+      error?.message || "Selection rules are invalid.",
+      error?.code || "INVALID_SELECTION_CONFIG"
+    );
+  }
+}
+
+function selectionFairness(model, {
+  operation,
+  allowRepeats = null,
+  probabilityMeaning = "single-draw"
+} = {}) {
+  return {
+    kind: "selection",
+    operation,
+    mode: model.customWeights ? "weighted" : "uniform",
+    candidateCount: model.entries.length,
+    eligibleCount: model.eligibleCount,
+    excludedCount: model.excludedCount,
+    zeroWeightCount: model.zeroWeightCount,
+    uniformAmongEligible: model.uniformAmongEligible,
+    allowRepeats,
+    probabilityMeaning,
+    probabilities: model.entries.map((entry) => ({
+      index: entry.index,
+      label: entry.label,
+      weight: entry.weight,
+      excluded: entry.excluded,
+      eligible: entry.eligible,
+      probability: entry.probability
+    }))
+  };
 }
 
 export function makeStandardDeck() {
@@ -135,25 +176,129 @@ export function executeTool(toolId, config, rng) {
 
     case "wheel": {
       requireItems(items, 2, "Wheel entries");
-      const selectedIndex = rng.int(0, items.length - 1);
+      const model = selectionModel(items, config);
+      if (model.eligibleCount < 2) {
+        throw new ToolValidationError(
+          "Wheel needs at least two eligible entries with weight above zero.",
+          "NOT_ENOUGH_ELIGIBLE_ITEMS"
+        );
+      }
+
+      let selectedEntry;
+      if (!model.customWeights) {
+        selectedEntry = pick(model.eligibleEntries, rng);
+      } else {
+        const selectedPosition = weightedIndex(
+          model.eligibleEntries.map((entry) => entry.effectiveWeight),
+          rng
+        );
+        selectedEntry = model.eligibleEntries[selectedPosition];
+      }
+
+      const fairness = selectionFairness(model, {
+        operation: "wheel",
+        probabilityMeaning: "single-draw"
+      });
+
       return {
-        result: items[selectedIndex],
-        summary: items[selectedIndex],
-        detail: { entries: items.length, selectedIndex }
+        result: selectedEntry.label,
+        summary: selectedEntry.label,
+        detail: {
+          entries: items.length,
+          selectedIndex: selectedEntry.index,
+          fairness
+        },
+        fairness
       };
     }
 
     case "picker": {
       requireItems(items, 1);
-      const result = pick(items, rng);
-      return { result, summary: result };
+      const model = selectionModel(items, config);
+      if (model.eligibleCount < 1) {
+        throw new ToolValidationError(
+          "Pick One needs at least one eligible entry with weight above zero.",
+          "NO_ELIGIBLE_ITEMS"
+        );
+      }
+
+      let selectedEntry;
+      if (!model.customWeights) {
+        selectedEntry = pick(model.eligibleEntries, rng);
+      } else {
+        const selectedPosition = weightedIndex(
+          model.eligibleEntries.map((entry) => entry.effectiveWeight),
+          rng
+        );
+        selectedEntry = model.eligibleEntries[selectedPosition];
+      }
+
+      const fairness = selectionFairness(model, {
+        operation: "picker",
+        probabilityMeaning: "single-draw"
+      });
+
+      return {
+        result: selectedEntry.label,
+        summary: selectedEntry.label,
+        detail: { selectedIndex: selectedEntry.index, fairness },
+        fairness
+      };
     }
 
     case "sampler": {
       requireItems(items, 1);
-      const count = requireInteger(config.sampleCount, "Winner count", 1, items.length);
-      const result = sample(items, count, rng);
-      return { result, summary: result.join(", "), detail: { selected: result } };
+      const model = selectionModel(items, config);
+      if (model.eligibleCount < 1) {
+        throw new ToolValidationError(
+          "Pick Several needs at least one eligible entry with weight above zero.",
+          "NO_ELIGIBLE_ITEMS"
+        );
+      }
+
+      const allowRepeats = Boolean(config.allowRepeats);
+      const maxCount = allowRepeats ? 100 : model.eligibleCount;
+      const count = requireInteger(config.sampleCount, "Winner count", 1, maxCount);
+
+      let selectedEntries;
+      if (!model.customWeights) {
+        if (allowRepeats) {
+          selectedEntries = Array.from(
+            { length: count },
+            () => pick(model.eligibleEntries, rng)
+          );
+        } else {
+          selectedEntries = sample(model.eligibleEntries, count, rng);
+        }
+      } else {
+        selectedEntries = weightedSample(
+          model.eligibleEntries,
+          model.eligibleEntries.map((entry) => entry.effectiveWeight),
+          count,
+          rng,
+          { replacement: allowRepeats }
+        ).map((draw) => draw.item);
+      }
+
+      const result = selectedEntries.map((entry) => entry.label);
+      const fairness = selectionFairness(model, {
+        operation: "sampler",
+        allowRepeats,
+        probabilityMeaning: allowRepeats
+          ? "each-draw"
+          : "first-draw-then-renormalized"
+      });
+
+      return {
+        result,
+        summary: result.join(", "),
+        detail: {
+          selected: result,
+          selectedIndices: selectedEntries.map((entry) => entry.index),
+          fairness
+        },
+        fairness
+      };
     }
 
     case "shuffle": {
