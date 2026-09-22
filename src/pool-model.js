@@ -364,7 +364,10 @@ export function importRowsToPoolItems(parsed, {
   const labelIndex = preferredLabel >= 0 ? preferredLabel : (inferredLabel >= 0 ? inferredLabel : 0);
   const weightIndex = indexOf(weightColumn || "weight");
   const activeIndex = indexOf(activeColumn || "active");
-  const tagsIndex = indexOf(tagsColumn || "tags");
+  const explicitTags = indexOf(tagsColumn);
+  const tagsIndex = explicitTags >= 0
+    ? explicitTags
+    : Math.max(indexOf("tags"), indexOf("tag"));
 
   return parsed.rows.map((row) => {
     const label = String(row[labelIndex] ?? "").trim();
