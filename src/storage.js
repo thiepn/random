@@ -1,5 +1,5 @@
 const DB_NAME = "randomizer-arcade";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const STORES = [
   "pools",
   "poolViews",
@@ -7,6 +7,7 @@ const STORES = [
   "sessionTemplates",
   "templateSessions",
   "partySessions",
+  "customExperiences",
   "history",
   "runs",
   "sessions",
