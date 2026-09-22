@@ -121,6 +121,43 @@ function makeBranchingWorkflow() {
 }
 
 {
+  const first = createWorkflowNode("input", {
+    name: "First prompt",
+    config: { mode: "prompt" }
+  });
+  const second = createWorkflowNode("input", {
+    name: "Second prompt",
+    config: { mode: "prompt" }
+  });
+  const output = createWorkflowNode("output", { name: "Done" });
+  const workflow = createWorkflow({
+    name: "Two prompts",
+    nodes: [first, second, output],
+    edges: [
+      createWorkflowEdge(first.id, second.id),
+      createWorkflowEdge(second.id, output.id)
+    ],
+    startNodeId: first.id
+  });
+
+  let session = createWorkflowSession(workflow);
+  session = provideWorkflowInput(session, ["First value"], first.id);
+  session = recordWorkflowNode(session, workflow, first.id, {
+    resultItems: ["First value"],
+    summary: "First value"
+  });
+  assert.equal(session.currentNodeId, second.id);
+  assert.equal(session.nodeInputs[second.id], undefined);
+
+  session = provideWorkflowInput(session, ["Second value"], second.id);
+  session = recordWorkflowNode(session, workflow, second.id, {
+    resultItems: ["Second value"],
+    summary: "Second value"
+  });
+  assert.deepEqual(session.lastOutputItems, ["Second value"]);
+}
+
+{
   const workflow = makeBranchingWorkflow();
   let session = createWorkflowSession(workflow);
   assert.equal(session.status, "paused");
