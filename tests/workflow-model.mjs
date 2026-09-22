@@ -71,6 +71,15 @@ function makeBranchingWorkflow() {
 
 {
   const workflow = makeBranchingWorkflow();
+  const session = createWorkflowSession(workflow);
+  const originalName = workflow.name;
+  workflow.name = "Edited after start";
+  assert.equal(session.workflowSnapshot.name, originalName);
+  assert.equal(session.workflowRevision, session.workflowSnapshot.revision);
+}
+
+{
+  const workflow = makeBranchingWorkflow();
   const updated = updateWorkflow(workflow, {
     automation: { mode: "step", maxSteps: 8 }
   });
