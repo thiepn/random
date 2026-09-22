@@ -381,7 +381,9 @@ export function executeCustomExperience(definition, runtime = {}, rng) {
         experience.primitive,
         experience.config,
         runtime,
-        rng
+        rng,
+        null,
+        experience.rules
       ),
       customExperienceId: experience.id,
       customRevision: experience.revision
