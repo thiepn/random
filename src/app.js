@@ -4696,7 +4696,11 @@ function renderHistory() {
         type: "button",
         onClick: () => resumeStoredSession(session)
       }, session.status === "active" ? "Resume" : "Open"));
-    } else if (latest.origin !== "legacy" && latest.afterState) {
+    } else if (
+      latest.origin !== "legacy"
+      && latest.afterState
+      && resolveTool(latest.toolId)
+    ) {
       actions.append(
         node("button", {
           class: "small-action",
@@ -7303,6 +7307,11 @@ function replayStoredRun(run) {
     return;
   }
 
+  if (!resolveTool(run.toolId)) {
+    announce("The tool definition for this historical Run is no longer available.");
+    return;
+  }
+
   state.view = "tool";
   state.toolId = run.toolId;
   state.modal = null;
@@ -7332,6 +7341,11 @@ async function rerunStoredRun(run) {
     history.replaceState({}, "", location.pathname);
     render();
     await runStudio();
+    return;
+  }
+
+  if (!resolveTool(run.toolId)) {
+    announce("The tool definition for this historical Run is no longer available.");
     return;
   }
 
@@ -10321,7 +10335,11 @@ function renderRunDetailModal(modal, config) {
 
   const actions = node("div", { class: "modal-actions" });
 
-  if (run.origin !== "legacy" && run.afterState) {
+  if (
+    run.origin !== "legacy"
+    && run.afterState
+    && (run.toolId === "studio" || resolveTool(run.toolId))
+  ) {
     actions.append(node("button", {
       class: "secondary",
       type: "button",
@@ -10329,7 +10347,11 @@ function renderRunDetailModal(modal, config) {
     }, "Replay"));
   }
 
-  if (run.origin !== "legacy" && run.beforeState) {
+  if (
+    run.origin !== "legacy"
+    && run.beforeState
+    && (run.toolId === "studio" || resolveTool(run.toolId))
+  ) {
     actions.append(node("button", {
       class: "primary",
       type: "button",
