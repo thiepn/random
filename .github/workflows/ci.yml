@@ -27,7 +27,7 @@ jobs:
           node --check src/tool-engine.js
           node --check src/storage.js
           node --check src/registry.js
-          node --check src/app-v2.js
+          node --check src/app.js
           node --check sw.js
 
       - name: Random Core certification
