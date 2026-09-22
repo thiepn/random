@@ -36,6 +36,8 @@ jobs:
           node --check src/preset-model.js
           node --check src/session-template-model.js
           node --check src/party-model.js
+          node --check src/custom-experience-model.js
+          node --check src/custom-engine.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -83,13 +85,19 @@ jobs:
       - name: Party privacy and progression certification
         run: node tests/party-model.mjs
 
+      - name: Custom Experience model certification
+        run: node tests/custom-experience-model.mjs
+
+      - name: Custom Experience engine certification
+        run: node tests/custom-engine.mjs
+
       - name: Guard decision randomness and unsafe execution
         run: |
           if grep -R "Math\.random" --include="*.js" src sw.js; then
             echo "Math.random is forbidden in production JavaScript."
             exit 1
           fi
-          if grep -R -E "eval\(|new Function\(|document\.write\(" --include="*.js" src sw.js; then
-            echo "Unsafe dynamic execution is forbidden."
+          if grep -R -E "eval\(|new Function\(|document\.write\(|\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\(" --include="*.js" src sw.js; then
+            echo "Unsafe dynamic execution or HTML injection is forbidden."
             exit 1
           fi
