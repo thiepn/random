@@ -221,6 +221,13 @@ export function validateRules({
     }
 
     if (rule.type === "balanceField") {
+      if (rule.strength === "hard") {
+        errors.push({
+          code: "BALANCE_IS_SOFT_ONLY",
+          ruleId: rule.id,
+          message: "Numeric balancing is a preference, not a required rule."
+        });
+      }
       const fieldId = String(rule.params.fieldId || "");
       if (!fieldsById.has(fieldId)) {
         errors.push({
