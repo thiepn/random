@@ -1361,7 +1361,26 @@ function constraintValidation(tool, ts) {
 function renderRuleStrip(tool, ts) {
   let rules = [];
 
-  if (selectionTools.has(tool.id)) {
+  if (
+    constraintTools.has(tool.id)
+    && (ts.rules || []).some((rule) => rule.enabled !== false)
+  ) {
+    const activeRules = ts.rules.filter((rule) => rule.enabled !== false);
+    const required = activeRules.filter((rule) => rule.strength !== "soft").length;
+    const preferred = activeRules.filter((rule) => rule.strength === "soft").length;
+    panel.querySelector(".fairness-body").append(
+      node("div", { class: "fairness-method" }, [
+        node("strong", { text: "Constrained randomization" }),
+        node("p", {
+          text:
+            "The solver searches randomly among configurations that satisfy required rules, then uses preferences to rank valid candidates. "
+            + "This is not guaranteed to be uniform over every mathematically valid arrangement. "
+            + required + " required and " + preferred + " preferred rules are active. "
+            + "Search effort: " + (ts.solverEffort || "automatic") + "."
+        })
+      ])
+    );
+  } else if (selectionTools.has(tool.id)) {
     const model = currentSelectionModel(tool.id, ts);
     if (!model) return null;
     rules = selectionRuleSummary(model, {
@@ -2352,6 +2371,215 @@ function selectionRulesControl(tool, ts) {
   }
 
   section.append(table);
+  return section;
+}
+
+function ruleTypeLabel(type) {
+  return ({
+    together: "Keep together",
+    apart: "Keep apart",
+    fixed: "Fixed placement",
+    capacity: "Capacity",
+    requiredTag: "Required tag",
+    maxTag: "Maximum tag",
+    balanceField: "Balance numeric field",
+    historyAvoid: "Avoid recent pairings"
+  })[type] || type;
+}
+
+function openAddRuleModal(tool, ts) {
+  const { context } = constraintValidation(tool, ts);
+  const types = ruleTypesForTool(tool.id);
+  const firstType = types[0] || "apart";
+
+  state.modal = {
+    type: "add-rule",
+    toolId: tool.id,
+    ruleType: firstType,
+    strength: ["balanceField", "historyAvoid"].includes(firstType)
+      ? "soft"
+      : "hard",
+    priority: 10,
+    itemA: context.items[0]?.id || "",
+    itemB: context.items[1]?.id || context.items[0]?.id || "",
+    targetId: context.targets[0]?.id || "",
+    tag: "",
+    count: 1,
+    max: Math.max(1, context.targets[0]?.capacity || 2),
+    fieldId: context.fields.find((field) => field.type === "number")?.id || "",
+    depth: 5,
+    error: null
+  };
+  render();
+}
+
+function constraintRulesControl(tool, ts) {
+  const { context, validation } = constraintValidation(tool, ts);
+  const active = (ts.rules || []).filter((rule) => rule.enabled !== false);
+  const required = active.filter((rule) => rule.strength !== "soft").length;
+  const preferred = active.filter((rule) => rule.strength === "soft").length;
+
+  const section = node("section", { class: "constraint-rules" });
+  section.append(node("button", {
+    class: "selection-rules-toggle",
+    type: "button",
+    "aria-expanded": String(Boolean(ts.rulesOpen)),
+    onClick: () => {
+      ts.rulesOpen = !ts.rulesOpen;
+      render();
+    }
+  }, [
+    node("span", { text: "Rules & balance" }),
+    node("span", {
+      class: "selection-rule-summary",
+      text: active.length
+        ? [
+            required ? required + " required" : null,
+            preferred ? preferred + " prefer" : null,
+            (ts.solverEffort || "automatic")
+          ].filter(Boolean).join(" • ")
+        : "No constraints"
+    }),
+    node("span", {
+      class: "selection-chevron",
+      text: ts.rulesOpen ? "−" : "+"
+    })
+  ]));
+
+  if (!ts.rulesOpen) return section;
+
+  const effort = node("select", {
+    class: "field solver-effort-select",
+    "aria-label": "Solver effort"
+  }, [
+    node("option", { value: "fast", text: "Fast" }),
+    node("option", { value: "automatic", text: "Automatic" }),
+    node("option", { value: "thorough", text: "Thorough" })
+  ]);
+  effort.value = ts.solverEffort || "automatic";
+  effort.addEventListener("change", () => {
+    ts.solverEffort = effort.value;
+    invalidateTool(tool.id, ts);
+  });
+
+  section.append(node("div", { class: "constraint-toolbar" }, [
+    node("div", { class: "constraint-effort" }, [
+      node("span", { text: "Search effort" }),
+      effort
+    ]),
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => openAddRuleModal(tool, ts)
+    }, "+ Add rule"),
+    ts.rules.length
+      ? node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            ts.rules = [];
+            invalidateTool(tool.id, ts);
+            render();
+          }
+        }, "Clear")
+      : null
+  ]));
+
+  if (validation.errors.length) {
+    section.append(node("div", { class: "constraint-validation is-error" }, [
+      node("strong", { text: "Rules cannot run yet" }),
+      ...validation.errors.slice(0, 6).map((error) =>
+        node("span", { text: error.message })
+      )
+    ]));
+  }
+
+  if (validation.warnings.length) {
+    section.append(node("div", { class: "constraint-validation is-warning" }, [
+      node("strong", { text: "Warnings" }),
+      ...validation.warnings.slice(0, 4).map((warning) =>
+        node("span", { text: warning.message })
+      )
+    ]));
+  }
+
+  if (!ts.rules.length) {
+    section.append(node("div", { class: "constraint-empty" }, [
+      node("strong", { text: "No rules yet" }),
+      node("span", {
+        text: context.fields.some((field) => field.type === "number")
+          ? "Add hard constraints or soft preferences. Numeric Pool fields can also be balanced."
+          : "Add together/apart/fixed/capacity rules. Pool tags and numeric fields unlock metadata rules."
+      })
+    ]));
+    return section;
+  }
+
+  const list = node("div", { class: "constraint-rule-list" });
+
+  for (const rule of ts.rules) {
+    const enabled = node("input", {
+      type: "checkbox",
+      checked: rule.enabled !== false,
+      "aria-label": "Enable " + ruleTypeLabel(rule.type)
+    });
+    enabled.addEventListener("change", () => {
+      rule.enabled = enabled.checked;
+      invalidateTool(tool.id, ts);
+      render();
+    });
+
+    const strength = node("select", {
+      class: "constraint-strength",
+      "aria-label": "Rule strength"
+    }, [
+      node("option", { value: "hard", text: "Required" }),
+      node("option", { value: "soft", text: "Prefer" })
+    ]);
+    strength.value = rule.strength === "soft" ? "soft" : "hard";
+    strength.addEventListener("change", () => {
+      rule.strength = strength.value;
+      invalidateTool(tool.id, ts);
+      render();
+    });
+
+    const ruleErrors = validation.errors.filter((error) => error.ruleId === rule.id);
+
+    list.append(node("article", {
+      class:
+        "constraint-rule-card"
+        + (rule.enabled === false ? " is-disabled" : "")
+        + (ruleErrors.length ? " is-invalid" : "")
+    }, [
+      node("label", { class: "constraint-rule-enabled" }, [enabled]),
+      node("div", { class: "constraint-rule-copy" }, [
+        node("strong", { text: summarizeRule(rule, context) }),
+        node("span", {
+          text:
+            ruleTypeLabel(rule.type)
+            + " · "
+            + ruleStrengthLabel(rule)
+            + (rule.strength === "soft" ? " · priority " + rule.priority : "")
+        }),
+        ...ruleErrors.map((error) =>
+          node("small", { class: "rule-error-copy", text: error.message })
+        )
+      ]),
+      strength,
+      node("button", {
+        class: "small-action",
+        type: "button",
+        "aria-label": "Remove rule",
+        onClick: () => {
+          ts.rules = ts.rules.filter((candidate) => candidate.id !== rule.id);
+          invalidateTool(tool.id, ts);
+          render();
+        }
+      }, "×")
+    ]));
+  }
+
+  section.append(list);
   return section;
 }
 
