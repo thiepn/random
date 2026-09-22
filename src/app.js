@@ -3339,7 +3339,8 @@ function renderPoolEditorModal(modal, editor) {
     });
 
     table.append(node("div", {
-      class: "pool-editor-row" + (!item.active ? " is-inactive" : "")
+      class: "pool-editor-row" + (!item.active ? " is-inactive" : ""),
+      style: { "--pool-field-count": String(draft.fields.length) }
     }, [
       node("label", { class: "pool-select-cell" }, [selectItem]),
       node("label", { class: "pool-active-cell" }, [
@@ -3885,6 +3886,21 @@ function renderModal() {
         }
       }, "Done")
     ]));
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "pool-editor"
+  ) {
+    renderPoolEditorModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "pool-import"
+  ) {
+    renderPoolImportModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "save-tool-pool"
+  ) {
+    renderSaveToolPoolModal(modal, state.modal);
   } else if (state.modal === "pool") {
     modal.append(
       node("h2", { text: "New Pool" }),
