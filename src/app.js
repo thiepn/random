@@ -167,6 +167,7 @@ function ensureToolState(toolId) {
       sampleCount: 3,
       selectionEntries: [],
       workingSet: null,
+      workingSetDirty: false,
       allowRepeats: false,
       selectionOpen: false,
       fairnessOpen: false,
@@ -1824,26 +1825,66 @@ function selectControl(label, options, value, onChange) {
 
 function listControls(tool, ts) {
   const wrap = node("div");
+
+  const sourceOptions = [
+    node("option", { value: "", text: "Temporary list / current run" })
+  ];
+
+  for (const pool of state.pools.filter((item) => !item.archived)) {
+    sourceOptions.push(node("option", {
+      value: "pool:" + pool.id,
+      text: pool.name + " · " + poolStats(pool).active + " active"
+    }));
+
+    for (const view of poolViewsFor(pool.id)) {
+      sourceOptions.push(node("option", {
+        value: "view:" + view.id,
+        text: "↳ " + view.name + " · View"
+      }));
+    }
+  }
+
   const poolSelect = node("select", {
     class: "field",
-    "aria-label": "Use saved Pool"
-  }, [
-    node("option", { value: "", text: "Current list" }),
-    ...state.pools.map((pool) =>
-      node("option", {
-        value: pool.id,
-        text: pool.name + " · " + pool.items.length
-      })
-    )
-  ]);
+    "aria-label": "Input source"
+  }, sourceOptions);
+
+  if (ts.workingSet?.source?.viewId) {
+    poolSelect.value = "view:" + ts.workingSet.source.viewId;
+  } else if (ts.workingSet?.source?.poolId) {
+    poolSelect.value = "pool:" + ts.workingSet.source.poolId;
+  }
 
   poolSelect.addEventListener("change", () => {
-    const pool = state.pools.find((item) => item.id === poolSelect.value);
-    if (!pool) return;
-    ts.listText = pool.items.map((item) => item.label).join("\n");
-    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
-    invalidateTool(tool.id, ts);
-    render();
+    const value = poolSelect.value;
+
+    if (!value) {
+      ts.workingSet = null;
+      ts.workingSetDirty = true;
+      render();
+      return;
+    }
+
+    if (value.startsWith("pool:")) {
+      const pool = poolById(value.slice(5));
+      if (!pool) return;
+      applyWorkingSetToTool(tool.id, ts, createWorkingSet(pool));
+      ts.workingSetDirty = false;
+      render();
+      return;
+    }
+
+    if (value.startsWith("view:")) {
+      const view = state.poolViews.find((candidate) => candidate.id === value.slice(5));
+      const pool = view ? poolById(view.poolId) : null;
+      if (!pool || !view) return;
+      const workingSet = workingSetFromView(pool, view);
+      workingSet.source.viewId = view.id;
+      workingSet.source.viewName = view.name;
+      applyWorkingSetToTool(tool.id, ts, workingSet);
+      ts.workingSetDirty = false;
+      render();
+    }
   });
 
   const textarea = node("textarea", {
@@ -1854,31 +1895,108 @@ function listControls(tool, ts) {
   textarea.value = ts.listText;
   textarea.addEventListener("input", () => {
     ts.listText = textarea.value;
+    ts.workingSetDirty = Boolean(ts.workingSet);
     if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
     invalidateTool(tool.id, ts);
   });
   textarea.addEventListener("change", render);
 
-  wrap.append(
-    node("div", {
-      class: "control",
-      style: { marginBottom: "10px" }
-    }, [
-      node("label", { text: "Source" }),
-      poolSelect
-    ]),
-    node("div", {
-      class: "control",
-      style: { marginBottom: "12px" }
-    }, [
-      node("label", { text: "Entries" }),
-      textarea
-    ])
-  );
+  const sourceControl = node("div", {
+    class: "control",
+    style: { marginBottom: "10px" }
+  }, [
+    node("label", { text: "Source" }),
+    poolSelect
+  ]);
 
+  if (ts.workingSet?.source) {
+    const source = ts.workingSet.source;
+    const latestPool = poolById(source.poolId);
+    const stale = latestPool && latestPool.revision !== source.revision;
+
+    sourceControl.append(node("div", {
+      class: "working-set-source" + (ts.workingSetDirty ? " is-dirty" : "")
+    }, [
+      node("div", { class: "working-set-copy" }, [
+        node("strong", {
+          text: source.viewName
+            ? source.name + " / " + source.viewName
+            : source.name
+        }),
+        node("span", {
+          text:
+            "Copied from revision " + source.revision
+            + (ts.workingSetDirty ? " · edited for this run" : "")
+            + (stale ? " · source updated" : "")
+        })
+      ]),
+      node("div", { class: "working-set-actions" }, [
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => openPoolEditor(source.poolId)
+        }, "Edit source"),
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            const pool = poolById(source.poolId);
+            if (!pool) return;
+            if (source.viewId) {
+              const view = state.poolViews.find((item) => item.id === source.viewId);
+              if (!view) return;
+              const workingSet = workingSetFromView(pool, view);
+              workingSet.source.viewId = view.id;
+              workingSet.source.viewName = view.name;
+              applyWorkingSetToTool(tool.id, ts, workingSet);
+            } else {
+              applyWorkingSetToTool(tool.id, ts, createWorkingSet(pool));
+            }
+            ts.workingSetDirty = false;
+            render();
+          }
+        }, "Refresh"),
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            ts.workingSet = null;
+            ts.workingSetDirty = true;
+            render();
+          }
+        }, "Detach")
+      ])
+    ]));
+  }
+
+  const runControl = node("div", {
+    class: "control",
+    style: { marginBottom: "12px" }
+  }, [
+    node("div", { class: "control-label-row" }, [
+      node("label", { text: "Entries — this run" }),
+      node("button", {
+        class: "text-action",
+        type: "button",
+        onClick: () => {
+          state.modal = {
+            type: "save-tool-pool",
+            toolId: tool.id,
+            name: "",
+            kind: tool.id === "teams" || tool.id === "groups" || tool.id === "pairs"
+              ? "people"
+              : "choices"
+          };
+          render();
+        }
+      }, "Save as Pool")
+    ]),
+    textarea
+  ]);
+
+  wrap.append(sourceControl, runControl);
   return wrap;
 }
-
 function updateSelectionEntry(ts, key, patch) {
   const entry = (ts.selectionEntries || []).find((candidate) => candidate.key === key);
   if (!entry) return;
