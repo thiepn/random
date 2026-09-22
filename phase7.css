@@ -417,3 +417,52 @@
   }
   .fx-particles{display:none}
 }
+
+.ladder-path-layer{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none
+}
+.ladder-path-segment{
+  position:absolute;
+  display:block;
+  border-radius:999px;
+  background:var(--path-color,var(--cyan));
+  box-shadow:0 0 8px color-mix(in srgb,var(--path-color,var(--cyan)) 55%,transparent);
+  opacity:.32
+}
+.ladder-path-segment.is-vertical{
+  width:3px;
+  transform:translateX(-1.5px)
+}
+.ladder-path-segment.is-horizontal{
+  height:3px;
+  transform:translateY(-1.5px)
+}
+.tool-stage.reveal-ladder.is-presenting .ladder-path-segment.is-vertical{
+  transform-origin:center top;
+  transform:translateX(-1.5px) scaleY(0);
+  animation:pathDrawVertical 170ms ease-out both;
+  animation-delay:
+    calc(var(--present-duration) * .12 + var(--path-step,0) * 28ms)
+}
+.tool-stage.reveal-ladder.is-presenting .ladder-path-segment.is-horizontal{
+  transform-origin:left center;
+  transform:translateY(-1.5px) scaleX(0);
+  animation:pathDrawHorizontal 170ms ease-out both;
+  animation-delay:
+    calc(var(--present-duration) * .12 + var(--path-step,0) * 28ms)
+}
+@keyframes pathDrawVertical{
+  0%{opacity:0;transform:translateX(-1.5px) scaleY(0)}
+  100%{opacity:.72;transform:translateX(-1.5px) scaleY(1)}
+}
+@keyframes pathDrawHorizontal{
+  0%{opacity:0;transform:translateY(-1.5px) scaleX(0)}
+  100%{opacity:.72;transform:translateY(-1.5px) scaleX(1)}
+}
+.tool-stage.is-reduced-reveal .ladder-path-segment{
+  animation-name:reducedReveal!important;
+  transform:none!important
+}
