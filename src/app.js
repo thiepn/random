@@ -395,6 +395,12 @@ function setupSnapshot(toolId, toolState) {
   snapshot.result = null;
   snapshot.lastSolverDiagnostics = null;
   snapshot.lastConstraintScore = null;
+  snapshot.wheelRotation = 0;
+  snapshot.previousWheelRotation = 0;
+  snapshot.diceHistory = [];
+  snapshot.ladder = null;
+  snapshot.secretAssignments = null;
+  snapshot.secretReveal = null;
 
   if (toolId === "cards") {
     snapshot.deck = null;
@@ -3263,7 +3269,7 @@ async function endActiveSession(toolId, status = "abandoned", resetTool = false)
   const ts = ensureToolState(toolId);
   const current = sessionById(ts.activeSessionId);
 
-  if (current) {
+  if (current && !(status === "completed" && current.status === "completed")) {
     try {
       const next = status === "completed"
         ? completeSession(current)
