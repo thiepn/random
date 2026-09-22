@@ -98,6 +98,28 @@ function entriesFor(config, runtime, overrideItems = null, rules = {}) {
   return applyInputRules(entries, rules);
 }
 
+export function prepareCustomListEntries(
+  definition,
+  runtime = {},
+  overrideItems = null
+) {
+  const experience = normalizeCustomExperience(definition);
+
+  if (!["pick", "sample", "shuffle"].includes(experience.primitive)) {
+    if (experience.primitive === "table") {
+      return applyInputRules(experience.config.rows, experience.rules);
+    }
+    return [];
+  }
+
+  return entriesFor(
+    experience.config,
+    runtime,
+    overrideItems,
+    experience.rules
+  );
+}
+
 function requireEntries(entries, count = 1) {
   if (!Array.isArray(entries) || entries.length < count) {
     throw new CustomExecutionError(
