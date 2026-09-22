@@ -1183,7 +1183,7 @@ function diceExpressionEditor(tool, ts) {
       node("div", { text: "r<2, r=1 — reroll while condition matches" }),
       node("div", { text: "! — explode on the maximum face" }),
       node("div", { text: "!>=5 — explode on a custom condition" }),
-      node("div", { text: "+ − × ÷ and parentheses — arithmetic composition" })
+      node("div", { text: "+ - * / and parentheses — arithmetic composition" })
     ]));
   }
 
