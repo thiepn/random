@@ -125,6 +125,20 @@ const palette = [
 ];
 
 const selectionTools = new Set(["wheel", "picker", "sampler"]);
+const listInputTools = new Set([
+  "wheel",
+  "picker",
+  "sampler",
+  "shuffle",
+  "teams",
+  "groups",
+  "pairs",
+  "assignment",
+  "elimination",
+  "ladder",
+  "secret-santa",
+  "tournament"
+]);
 const constraintTools = new Set([
   "teams",
   "groups",
@@ -4351,6 +4365,59 @@ async function toggleHistoryPin(key) {
   render();
 }
 
+function templateContextBar(tool, ts) {
+  if (!ts.templateSessionId) return null;
+
+  const session = templateSessionById(ts.templateSessionId);
+  const template = session ? sessionTemplateById(session.templateId) : null;
+  const index = Number(ts.templateStepIndex);
+  const definition = template?.steps?.[index];
+
+  if (!session || !template || !definition) return null;
+
+  const nextIndex = session.currentIndex < session.steps.length
+    ? session.currentIndex
+    : null;
+
+  return node("section", { class: "session-bar template-context-bar" }, [
+    node("div", { class: "session-bar-copy" }, [
+      node("strong", {
+        text:
+          template.name
+          + " · Step "
+          + (index + 1)
+          + " of "
+          + template.steps.length
+      }),
+      node("span", {
+        text:
+          definition.name
+          + (
+            session.status === "completed"
+              ? " · Session complete"
+              : session.steps[index]?.status === "complete"
+                ? " · Step complete"
+                : ""
+          )
+      })
+    ]),
+    node("div", { class: "session-bar-actions" }, [
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => openTemplateSession(session.id)
+      }, "Back to Session"),
+      nextIndex != null && nextIndex !== index
+        ? node("button", {
+            class: "secondary",
+            type: "button",
+            onClick: () => openTemplateStep(session, nextIndex)
+          }, "Next Step")
+        : null
+    ])
+  ]);
+}
+
 function sessionControlBar(tool, ts) {
   if (ts.replayRunId) {
     const run = runById(ts.replayRunId);
@@ -4476,18 +4543,15 @@ function buildControls(tool, ts) {
   const controls = node("div", { class: "controls" });
   const grid = node("div", { class: "control-grid" });
 
+  const templateBar = templateContextBar(tool, ts);
+  if (templateBar) controls.append(templateBar);
+
   const sessionBar = sessionControlBar(tool, ts);
   if (sessionBar) controls.append(sessionBar);
 
   if (ts.error) controls.append(toolError(ts.error));
 
-  const listTools = new Set([
-    "wheel", "picker", "sampler", "shuffle",
-    "teams", "groups", "pairs", "assignment",
-    "elimination", "ladder", "secret-santa", "tournament"
-  ]);
-
-  if (listTools.has(tool.id)) {
+  if (listInputTools.has(tool.id)) {
     controls.append(listControls(tool, ts));
 
     if (tool.id === "teams") {
@@ -4705,6 +4769,36 @@ function buildControls(tool, ts) {
 
   controls.append(presentationModeControl());
 
+  controls.append(node("div", { class: "saved-setup-toolbar" }, [
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        state.modal = {
+          type: "save-preset",
+          toolId: tool.id,
+          name: "",
+          description: "",
+          bindingMode:
+            ts.workingSet?.source?.poolId
+              ? "live-source"
+              : listInputTools.has(tool.id)
+                ? "frozen"
+                : "none",
+          favorite: false,
+          error: null
+        };
+        render();
+      }
+    }, ts.activePresetId ? "Save as New Preset" : "Save Preset"),
+    ts.activePresetId
+      ? node("span", {
+          class: "active-preset-chip",
+          text: "Preset · " + (presetById(ts.activePresetId)?.name || "Loaded")
+        })
+      : null
+  ]));
+
   const actions = node("div", { class: "button-row" });
   const primary = node("button", {
     class: "primary action-button",
@@ -4766,11 +4860,26 @@ function buildControls(tool, ts) {
   }
 
   if (ts.result) {
-    actions.append(node("button", {
-      class: "secondary",
-      type: "button",
-      onClick: shareCurrentResult
-    }, "Share"));
+    actions.append(
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: shareCurrentResult
+      }, "Share"),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => {
+          state.modal = {
+            type: "use-result",
+            sourceToolId: tool.id,
+            result: cloneData(ts.result),
+            error: null
+          };
+          render();
+        }
+      }, "Use Result In…")
+    );
   }
 
   controls.append(actions);
