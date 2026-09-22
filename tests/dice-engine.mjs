@@ -35,6 +35,19 @@ import {
 }
 
 {
+  const golden = rollDiceExpression(
+    "2d20kh1+3",
+    new SeededRandom("dice-golden-v1")
+  );
+  assert.deepEqual(
+    golden.diceGroups[0].dice.map((die) => die.total),
+    [10, 7]
+  );
+  assert.equal(golden.total, 13);
+  assert.equal(golden.canonical, "(2d20kh1 + 3)");
+}
+
+{
   const result = rollDiceExpression(
     "2d6+1d4+3",
     new SeededRandom("multi-term")
