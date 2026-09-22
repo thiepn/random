@@ -3310,9 +3310,71 @@ function actionLabel(id, ts) {
   return labels[id] || "RANDOMIZE";
 }
 
+function deriveAfterState(id, beforeState, output, result) {
+  const after = cloneData(beforeState);
+
+  if (output.statePatch) Object.assign(after, cloneData(output.statePatch));
+  after.result = cloneData(result);
+  after.error = null;
+
+  if (output.fairness?.kind === "constrained") {
+    after.lastSolverDiagnostics = cloneData(output.detail?.solver || null);
+    after.lastConstraintScore = output.detail?.score ?? null;
+  }
+
+  if (id === "dice") {
+    const label = result.mode === "expression"
+      ? result.expression
+      : after.diceCount + "d" + after.diceSides;
+    after.diceHistory = [
+      {
+        label,
+        total: result.total,
+        mode: result.mode,
+        timestamp: Date.now()
+      },
+      ...(after.diceHistory || [])
+    ].slice(0, 10);
+  }
+
+  if (id === "ladder") {
+    after.ladder = cloneData(output.detail?.ladder || null);
+  }
+
+  return snapshotToolState(id, after);
+}
+
+async function abandonSessionForSetupChange(toolId, toolState, fingerprint) {
+  if (!toolState.activeSessionId) return null;
+
+  const current = sessionById(toolState.activeSessionId);
+  if (!current || current.status !== "active") {
+    toolState.activeSessionId = null;
+    return null;
+  }
+
+  if (current.setupFingerprint === fingerprint) return current;
+
+  const next = abandonSession(current);
+  const event = createSessionEvent(current.id, "setup_changed", {
+    fromFingerprint: current.setupFingerprint,
+    toFingerprint: fingerprint
+  });
+
+  await commitSessionMutation({
+    session: next,
+    event,
+    expectedRevision: current.revision
+  });
+
+  replaceSession(next);
+  toolState.activeSessionId = null;
+  return null;
+}
+
 async function runTool(id) {
   const tool = getTool(id);
-  const ts = ensureToolState(id);
+  let ts = ensureToolState(id);
 
   if (ts.animating) {
     ts.animating = false;
@@ -3322,9 +3384,14 @@ async function runTool(id) {
     return;
   }
 
-  if (id === "elimination" && ts.result?.winner) {
-    invalidateTool(id, ts, true);
+  if (ts.replayRunId) {
+    ts.error = "Replay is view-only. Use Rerun to create a new result.";
     render();
+    return;
+  }
+
+  if (id === "elimination" && ts.result?.winner) {
+    await endActiveSession(id, "completed", true);
     return;
   }
 
@@ -3335,6 +3402,10 @@ async function runTool(id) {
   }
 
   const prepared = prepareRandomSource();
+  const beforeState = snapshotToolState(id, ts);
+  const inputSnapshot = runInputSnapshot(id, ts);
+  const configSnapshot = runConfigSnapshot(id, ts);
+  const fingerprint = fingerprintSetup(id, inputSnapshot, configSnapshot);
 
   const config = {
     ...ts,
@@ -3351,6 +3422,27 @@ async function runTool(id) {
   }
 
   try {
+    let session = null;
+    let expectedSessionRevision = null;
+
+    if (isStatefulTool(id)) {
+      session = await abandonSessionForSetupChange(id, ts, fingerprint);
+
+      if (!session) {
+        session = createSession({
+          toolId: id,
+          toolName: tool.name,
+          icon: tool.icon,
+          initialState: beforeState,
+          setupFingerprint: fingerprint,
+          inputSnapshot,
+          configSnapshot
+        });
+      } else {
+        expectedSessionRevision = session.revision;
+      }
+    }
+
     const output = executeTool(id, config, prepared.source);
     let result = output.result;
     let summary = output.summary;
@@ -3365,35 +3457,62 @@ async function runTool(id) {
       summary = localized;
     }
 
-    await record(tool, summary, output.detail || null);
-    await prepared.commit();
+    const afterState = deriveAfterState(id, beforeState, output, result);
 
-    if (output.statePatch) Object.assign(ts, output.statePatch);
-    ts.result = result;
+    const run = createRun({
+      toolId: id,
+      toolName: tool.name,
+      icon: tool.icon,
+      sessionId: session?.id || null,
+      setupFingerprint: fingerprint,
+      inputSnapshot,
+      configSnapshot,
+      beforeState,
+      afterState,
+      result,
+      summary,
+      detail: output.detail || null,
+      fairness: output.fairness || null,
+      randomContext: prepared.context
+    });
 
-    if (output.fairness?.kind === "constrained") {
-      ts.lastSolverDiagnostics = output.detail?.solver || null;
-      ts.lastConstraintScore = output.detail?.score ?? null;
+    let nextSession = null;
+    let event = null;
+
+    if (session) {
+      nextSession = appendRunToSession(session, run);
+
+      if (isSessionCompleteForTool(id, afterState)) {
+        nextSession = completeSession(nextSession);
+      }
+
+      event = createSessionEvent(session.id, "run_committed", {
+        runId: run.id,
+        cursor: nextSession.cursor,
+        status: nextSession.status
+      });
     }
 
-    if (id === "dice") {
-      const label = result.mode === "expression"
-        ? result.expression
-        : ts.diceCount + "d" + ts.diceSides;
-      ts.diceHistory = [
-        {
-          label,
-          total: result.total,
-          mode: result.mode,
-          timestamp: Date.now()
-        },
-        ...(ts.diceHistory || [])
-      ].slice(0, 10);
-    }
+    await commitRunAndSession({
+      run,
+      session: nextSession,
+      event,
+      settingsRecord: prepared.settingsRecord,
+      expectedSessionRevision
+    });
 
-    if (id === "ladder") {
-      ts.ladder = output.detail?.ladder || null;
-    }
+    if (prepared.nextSettings) state.settings = prepared.nextSettings;
+
+    state.runs = [
+      run,
+      ...state.runs.filter((candidate) => candidate.id !== run.id)
+    ].sort((a, b) => b.timestamp - a.timestamp);
+
+    if (nextSession) replaceSession(nextSession);
+
+    ts = restoreToolSnapshot(id, afterState, {
+      sessionId: nextSession?.id || null
+    });
 
     let animationDuration = 0;
 
@@ -3402,7 +3521,7 @@ async function runTool(id) {
       const model = normalizeSelection(config.items, config.selectionEntries || []);
       const segment = wheelSegmentForIndex(model, index);
       const desired = (360 - segment.center) % 360;
-      const previous = ts.wheelRotation || 0;
+      const previous = beforeState.wheelRotation || 0;
       const current = ((previous % 360) + 360) % 360;
       const delta = (desired - current + 360) % 360;
       const target = previous + 1080 + delta;
@@ -3428,12 +3547,12 @@ async function runTool(id) {
 
     announce(tool.name + " result: " + summary);
   } catch (error) {
+    ts = ensureToolState(id);
     ts.error = error?.message || "This randomizer could not run.";
     render();
     announce("Error: " + ts.error);
   }
 }
-
 function finishAnimation(id) {
   const ts = ensureToolState(id);
   if (!ts.animating) return;
