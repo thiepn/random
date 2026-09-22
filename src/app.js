@@ -988,21 +988,222 @@ function stageLabel(id) {
 }
 
 function renderRuleStrip(tool, ts) {
-  if (!selectionTools.has(tool.id)) return null;
-  const model = currentSelectionModel(tool.id, ts);
-  if (!model) return null;
-  const rules = selectionRuleSummary(model, {
-    allowRepeats: ts.allowRepeats,
-    multi: tool.id === "sampler"
-  });
+  let rules = [];
+
+  if (selectionTools.has(tool.id)) {
+    const model = currentSelectionModel(tool.id, ts);
+    if (!model) return null;
+    rules = selectionRuleSummary(model, {
+      allowRepeats: ts.allowRepeats,
+      multi: tool.id === "sampler"
+    });
+  } else if (tool.id === "dice" && ts.diceMode === "expression") {
+    const expression = String(ts.diceExpression || "").replace(/\s+/g, "").toLowerCase();
+    rules.push("Expression");
+    if (/(kh|kl|dh|dl)\d+/.test(expression)) rules.push("Keep/drop");
+    if (/r(?:<=|>=|!=|=|<|>)?\d+/.test(expression)) rules.push("Reroll");
+    if (/!/.test(expression)) rules.push("Explode");
+    if (expression === "2d20kh1") rules.unshift("Advantage");
+    if (expression === "2d20kl1") rules.unshift("Disadvantage");
+  }
+
   if (!rules.length) return null;
 
   return node("div", {
     class: "tool-rule-strip",
-    "aria-label": "Active selection rules"
+    "aria-label": "Active rules"
   }, rules.map((rule) =>
     node("span", { class: "rule-chip", text: rule })
   ));
+}
+
+function dieTrace(die) {
+  const parts = die.chain.map((part) => {
+    if (part.attempts.length <= 1) return String(part.value);
+    return part.attempts.join("→");
+  });
+  const text = parts.join(" + ");
+  return die.chain.length > 1 ? text + " = " + die.total : text;
+}
+
+function diceExpressionBreakdown(result) {
+  return node("div", {
+    class: "dice-expression-groups",
+    "aria-label": "Dice roll breakdown"
+  }, result.diceGroups.map((group) =>
+    node("section", { class: "dice-group-card" }, [
+      node("div", { class: "dice-group-head" }, [
+        node("strong", { text: group.notation }),
+        node("span", { text: "Subtotal " + group.value })
+      ]),
+      node("div", { class: "dice-traces" },
+        group.dice.map((die) =>
+          node("span", {
+            class: "dice-trace" + (die.kept ? "" : " is-dropped"),
+            title: die.kept ? "Kept die" : "Dropped die",
+            text: dieTrace(die)
+          })
+        )
+      )
+    ])
+  ));
+}
+
+function diceModeControl(tool, ts) {
+  return node("div", {
+    class: "segmented dice-mode",
+    "aria-label": "Dice mode"
+  }, [
+    node("button", {
+      class: ts.diceMode === "quick" ? "active" : "",
+      type: "button",
+      onClick: () => {
+        ts.diceMode = "quick";
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, "Quick"),
+    node("button", {
+      class: ts.diceMode === "expression" ? "active" : "",
+      type: "button",
+      onClick: () => {
+        ts.diceMode = "expression";
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, "Expression")
+  ]);
+}
+
+function dicePresetRow(tool, ts, presets) {
+  return node("div", {
+    class: "dice-presets",
+    "aria-label": "Dice presets"
+  }, presets.map((preset) =>
+    node("button", {
+      class: "dice-preset",
+      type: "button",
+      onClick: () => {
+        if (preset.expression) {
+          ts.diceMode = "expression";
+          ts.diceExpression = preset.expression;
+        } else {
+          ts.diceMode = "quick";
+          ts.diceCount = preset.count;
+          ts.diceSides = preset.sides;
+        }
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, preset.label)
+  ));
+}
+
+function diceExpressionEditor(tool, ts) {
+  const wrap = node("div", { class: "dice-expression-editor" });
+  const input = node("input", {
+    class: "field dice-expression-input",
+    type: "text",
+    value: ts.diceExpression,
+    spellcheck: "false",
+    autocapitalize: "off",
+    autocomplete: "off",
+    "aria-label": "Dice expression",
+    placeholder: "e.g. 4d6kh3+2"
+  });
+
+  input.addEventListener("input", () => {
+    ts.diceExpression = input.value;
+    invalidateTool(tool.id, ts);
+  });
+  input.addEventListener("change", render);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      ts.diceExpression = input.value;
+      runTool(tool.id);
+    }
+  });
+
+  wrap.append(node("div", { class: "control" }, [
+    node("label", { text: "Expression" }),
+    input
+  ]));
+
+  const presets = [
+    { label: "D20", expression: "1d20" },
+    { label: "2D6", expression: "2d6" },
+    { label: "D100", expression: "1d100" },
+    { label: "Advantage", expression: "2d20kh1" },
+    { label: "Disadvantage", expression: "2d20kl1" },
+    { label: "4D6 keep 3", expression: "4d6kh3" },
+    { label: "Exploding D6", expression: "1d6!" },
+    { label: "Reroll 1s", expression: "4d6r=1" }
+  ];
+  wrap.append(dicePresetRow(tool, ts, presets));
+
+  try {
+    const description = describeDiceExpression(ts.diceExpression);
+    wrap.append(node("div", { class: "dice-expression-preview" }, [
+      node("strong", { text: description.canonical }),
+      ...description.groups.map((group) =>
+        node("span", { text: group })
+      )
+    ]));
+  } catch (error) {
+    wrap.append(node("div", {
+      class: "dice-expression-preview is-invalid",
+      text: error?.message || "Expression is incomplete."
+    }));
+  }
+
+  wrap.append(node("button", {
+    class: "dice-help-toggle",
+    type: "button",
+    "aria-expanded": String(Boolean(ts.diceHelpOpen)),
+    onClick: () => {
+      ts.diceHelpOpen = !ts.diceHelpOpen;
+      render();
+    }
+  }, ts.diceHelpOpen ? "Hide notation help" : "Notation help"));
+
+  if (ts.diceHelpOpen) {
+    wrap.append(node("div", { class: "dice-help" }, [
+      node("div", { text: "NdS — roll N dice with S sides" }),
+      node("div", { text: "kh / kl — keep highest / lowest" }),
+      node("div", { text: "dh / dl — drop highest / lowest" }),
+      node("div", { text: "r<2, r=1 — reroll while condition matches" }),
+      node("div", { text: "! — explode on the maximum face" }),
+      node("div", { text: "!>=5 — explode on a custom condition" }),
+      node("div", { text: "+ − × ÷ and parentheses — arithmetic composition" })
+    ]));
+  }
+
+  return wrap;
+}
+
+function diceHistoryPanel(ts) {
+  if (!ts.diceHistory?.length) return null;
+
+  return node("section", { class: "dice-history" }, [
+    node("div", { class: "dice-history-head" }, [
+      node("strong", { text: "Recent rolls" }),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => {
+          ts.diceHistory = [];
+          render();
+        }
+      }, "Clear")
+    ]),
+    ...ts.diceHistory.map((entry) =>
+      node("div", { class: "dice-history-row" }, [
+        node("span", { text: entry.label }),
+        node("strong", { text: String(entry.total) })
+      ])
+    )
+  ]);
 }
 
 function buildStage(tool, ts) {
@@ -1022,29 +1223,49 @@ function buildStage(tool, ts) {
       node("div", { class: "stage-result", text: result || "READY" })
     );
   } else if (tool.id === "dice") {
-    const values = result?.values
-      || Array.from({ length: ts.diceCount }, () => "•");
-    wrap.append(
-      node("div", {
-        class: "dice-row " + (ts.animating ? "rolling" : "")
-      }, values.map((value) =>
-        node("div", { class: "die", text: String(value) })
-      )),
-      node("div", {
-        class: "stage-label",
-        text: result ? "Total" : "Dice ready"
-      }),
-      node("div", {
-        class: "stage-result",
-        text: result ? String(result.total) : "ROLL"
-      }),
-      result
-        ? node("div", {
-            class: "stage-sub",
-            text: result.values.join(" + ") + " on D" + result.sides
-          })
-        : null
-    );
+    if (ts.diceMode === "expression") {
+      wrap.append(
+        node("div", {
+          class: "stage-label",
+          text: result ? result.expression : "Dice expression"
+        }),
+        node("div", {
+          class: "stage-result",
+          text: result ? String(result.total) : "ROLL"
+        }),
+        node("div", {
+          class: "stage-sub dice-expression-source",
+          text: result ? result.canonical : ts.diceExpression
+        }),
+        result?.diceGroups?.length
+          ? diceExpressionBreakdown(result)
+          : null
+      );
+    } else {
+      const values = result?.values
+        || Array.from({ length: ts.diceCount }, () => "•");
+      wrap.append(
+        node("div", {
+          class: "dice-row " + (ts.animating ? "rolling" : "")
+        }, values.map((value) =>
+          node("div", { class: "die", text: String(value) })
+        )),
+        node("div", {
+          class: "stage-label",
+          text: result ? "Total" : "Dice ready"
+        }),
+        node("div", {
+          class: "stage-result",
+          text: result ? String(result.total) : "ROLL"
+        }),
+        result
+          ? node("div", {
+              class: "stage-sub",
+              text: result.values.join(" + ") + " on D" + result.sides
+            })
+          : null
+      );
+    }
   } else if (tool.id === "wheel") {
     const model = currentSelectionModel("wheel", ts);
     const wheel = node("div", {
@@ -1611,6 +1832,12 @@ function genericFairnessDescription(tool, ts) {
     case "coin":
       return ["Uniform binary choice", "Heads and Tails each have a 50% chance."];
     case "dice":
+      if (ts.diceMode === "expression") {
+        return [
+          "Dice expression",
+          "Every physical die roll is uniform over its faces. Rerolls and explosions create additional uniform rolls; keep/drop and arithmetic are deterministic post-processing. The final total is therefore not generally uniform."
+        ];
+      }
       return ["Uniform dice", "Every face on each D" + ts.diceSides + " has equal probability."];
     case "number":
       return ["Uniform integer", "Every whole number in the configured inclusive range has equal probability."];
@@ -1838,20 +2065,35 @@ function buildControls(tool, ts) {
       ]));
     }
   } else if (tool.id === "dice") {
-    grid.append(
-      stepperControl("Dice", ts.diceCount, 1, 8, (value) => {
-        configSetter(tool.id, ts, "diceCount", value, true);
-      }),
-      selectControl(
-        "Sides",
-        ["2", "4", "6", "8", "10", "12", "20", "37", "100"],
-        String(ts.diceSides),
-        (value) => {
-          configSetter(tool.id, ts, "diceSides", Number(value), true);
-        }
-      )
-    );
-    controls.append(grid);
+    controls.append(diceModeControl(tool, ts));
+
+    if (ts.diceMode === "expression") {
+      controls.append(diceExpressionEditor(tool, ts));
+    } else {
+      grid.append(
+        stepperControl("Dice", ts.diceCount, 1, 8, (value) => {
+          configSetter(tool.id, ts, "diceCount", value, true);
+        }),
+        selectControl(
+          "Sides",
+          ["2", "4", "6", "8", "10", "12", "20", "37", "100"],
+          String(ts.diceSides),
+          (value) => {
+            configSetter(tool.id, ts, "diceSides", Number(value), true);
+          }
+        )
+      );
+      controls.append(grid);
+      controls.append(dicePresetRow(tool, ts, [
+        { label: "D6", count: 1, sides: 6 },
+        { label: "D20", count: 1, sides: 20 },
+        { label: "2D6", count: 2, sides: 6 },
+        { label: "D100", count: 1, sides: 100 }
+      ]));
+    }
+
+    const recent = diceHistoryPanel(ts);
+    if (recent) controls.append(recent);
   } else if (tool.id === "number") {
     grid.append(
       numberControl(
@@ -2062,6 +2304,21 @@ async function runTool(id) {
     if (output.statePatch) Object.assign(ts, output.statePatch);
     ts.result = result;
 
+    if (id === "dice") {
+      const label = result.mode === "expression"
+        ? result.expression
+        : ts.diceCount + "d" + ts.diceSides;
+      ts.diceHistory = [
+        {
+          label,
+          total: result.total,
+          mode: result.mode,
+          timestamp: Date.now()
+        },
+        ...(ts.diceHistory || [])
+      ].slice(0, 10);
+    }
+
     if (id === "ladder") {
       ts.ladder = output.detail?.ladder || null;
     }
@@ -2153,6 +2410,9 @@ async function shareCurrentResult() {
 
 function summarizeResult(id, result) {
   if (id === "dice") {
+    if (result.mode === "expression") {
+      return result.expression + " = " + result.total;
+    }
     return result.values.join(" + ") + " = " + result.total;
   }
 
