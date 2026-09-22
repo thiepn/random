@@ -790,6 +790,16 @@ function activePartySession() {
   return partySessionById(state.activePartySessionId);
 }
 
+function latestActivePartyForTool(toolId) {
+  return state.partySessions
+    .filter(
+      (party) =>
+        party.toolId === toolId
+        && party.status === "active"
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0] || null;
+}
+
 function closeAudienceChannel() {
   if (audienceChannel) {
     try {
@@ -973,9 +983,14 @@ async function endPartyMode() {
     const next = completePartySession(party);
     await putWithRevision("partySessions", next, party.revision);
     replacePartySession(next);
+    broadcastPartyAudience({
+      party: next,
+      run: latestPartyRun(next),
+      stage: "ended"
+    });
   }
 
-  closeAudienceChannel();
+  window.setTimeout(closeAudienceChannel, 80);
   await releasePartyWakeLock();
   await exitPartyFullscreen();
 
@@ -992,6 +1007,12 @@ async function endPartyMode() {
 async function openAudienceWindow(party = activePartySession()) {
   if (!party) return;
 
+  const popup = window.open("about:blank", "_blank");
+  if (!popup) {
+    announce("Audience window was blocked by the browser.");
+    return;
+  }
+
   let current = party;
   if (!current.options.audienceEnabled) {
     current = await persistPartyOptions(current, {
@@ -1007,10 +1028,7 @@ async function openAudienceWindow(party = activePartySession()) {
     + "?audience="
     + encodeURIComponent(current.id);
 
-  const popup = window.open(url, "_blank");
-  if (!popup) {
-    announce("Audience window was blocked by the browser.");
-  }
+  popup.location.href = url;
 }
 
 function presetConfigSnapshot(toolId, toolState) {
@@ -1345,6 +1363,25 @@ function partyHostLockButton(party) {
     });
   }
 
+  button.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.repeat || hostUnlockTimer) return;
+    event.preventDefault();
+    button.classList.add("is-holding");
+    hostUnlockTimer = setTimeout(async () => {
+      hostUnlockTimer = null;
+      button.classList.remove("is-holding");
+      await updateActivePartyOptions({ hostLocked: false });
+      announce("Host controls unlocked.");
+    }, 900);
+  });
+
+  button.addEventListener("keyup", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    button.classList.remove("is-holding");
+    clearUnlock();
+  });
+
   return button;
 }
 
@@ -1451,7 +1488,11 @@ function renderParty() {
         node("span", {
           text:
             "Round "
-            + party.round
+            + (
+              ts.result && state.partyCountdown == null
+                ? Math.max(1, party.runIds.length)
+                : party.round
+            )
             + " · "
             + party.options.pace
         })
@@ -5739,11 +5780,17 @@ function buildControls(tool, ts) {
           text: "Preset · " + (presetById(ts.activePresetId)?.name || "Loaded")
         })
       : null,
-    node("button", {
-      class: "small-action party-launch-button",
-      type: "button",
-      onClick: () => startPartyMode(tool.id)
-    }, "Party Mode")
+    (() => {
+      const activeParty = latestActivePartyForTool(tool.id);
+      return node("button", {
+        class: "small-action party-launch-button",
+        type: "button",
+        onClick: () => {
+          if (activeParty) openPartySession(activeParty.id);
+          else startPartyMode(tool.id);
+        }
+      }, activeParty ? "Resume Party" : "Party Mode");
+    })()
   ]));
 
   const actions = node("div", { class: "button-row" });
