@@ -588,12 +588,45 @@ function buildStage(tool, ts) {
       node("div", { class: "stage-label", text: "HEX Color" }),
       node("div", { class: "stage-result", text: color })
     );
+  } else if (tool.id === "sampler" && Array.isArray(result)) {
+    wrap.append(node("div", { class: "stage-label", text: "Selected" }), resultList(result));
   } else if (tool.id === "shuffle" && Array.isArray(result)) {
     wrap.append(node("div", { class: "stage-label", text: "Random order" }), resultList(result), node("div", { class: "stage-sub", text: result.length + " items" }));
   } else if (tool.id === "teams" && Array.isArray(result)) {
-    wrap.append(node("div", { class: "stage-label", text: "Random teams" }), teamsResult(result));
+    wrap.append(node("div", { class: "stage-label", text: "Random teams" }), teamsResult(result, "Team"));
+  } else if (tool.id === "groups" && Array.isArray(result)) {
+    wrap.append(node("div", { class: "stage-label", text: "Random groups" }), teamsResult(result, "Group"));
   } else if (tool.id === "pairs" && Array.isArray(result)) {
     wrap.append(node("div", { class: "stage-label", text: "Random pairs" }), resultList(result.map((pair) => pair.join("  ↔  "))));
+  } else if (tool.id === "assignment" && Array.isArray(result)) {
+    wrap.append(node("div", { class: "stage-label", text: "Assignments" }), resultList(result.map((item) => item.source + "  →  " + item.target)));
+  } else if (tool.id === "ladder" && Array.isArray(result)) {
+    wrap.append(node("div", { class: "stage-label", text: "Ladder mapping" }), resultList(result.map((item) => item.source + "  →  " + item.target)));
+  } else if (tool.id === "tournament" && Array.isArray(result)) {
+    wrap.append(node("div", { class: "stage-label", text: "Tournament draw" }), resultList(result.map((match) => match.length === 2 ? match[0] + "  VS  " + match[1] : match[0] + "  —  BYE")));
+  } else if (tool.id === "elimination") {
+    const remaining = ts.eliminationRemaining || parseList(ts.listText);
+    wrap.append(
+      node("div", { class: "stage-label", text: result?.winner ? "Winner" : "Elimination" }),
+      node("div", { class: "stage-result", text: result?.winner || result?.eliminated || "READY", style: { fontSize: String(result?.winner || result?.eliminated || "READY").length > 18 ? "42px" : "" } }),
+      node("div", { class: "stage-sub", text: result?.winner ? "Last entrant standing" : (result?.sub || remaining.length + " entrants ready") })
+    );
+    if (remaining.length && remaining.length <= 20) wrap.append(resultList(remaining));
+  } else if (tool.id === "secret-santa") {
+    if (ts.secretAssignments && ts.secretReveal != null) {
+      const assignment = ts.secretAssignments[ts.secretReveal];
+      wrap.append(
+        node("div", { class: "stage-label", text: assignment.source + " gives to" }),
+        node("div", { class: "stage-result", text: assignment.target }),
+        node("div", { class: "stage-sub", text: "Hide this result before passing the device." })
+      );
+    } else {
+      wrap.append(
+        node("div", { class: "stage-label", text: "Private assignment" }),
+        node("div", { class: "stage-result", text: ts.secretAssignments ? "READY" : "GENERATE", style: { fontSize: "clamp(42px,12vw,72px)" } }),
+        node("div", { class: "stage-sub", text: ts.secretAssignments ? ts.secretAssignments.length + " private matches generated" : "Nobody can draw themselves." })
+      );
+    }
   } else if (tool.id === "lottery" && Array.isArray(result)) {
     wrap.append(node("div", { class: "stage-label", text: "Draw" }), node("div", { class: "stage-result", text: result.join(" · "), style: { fontSize: "clamp(34px,10vw,62px)" } }));
   } else {
@@ -618,10 +651,10 @@ function resultList(items) {
   ));
 }
 
-function teamsResult(groups) {
+function teamsResult(groups, prefix = "Team") {
   return node("div", { class: "teams-grid" }, groups.map((group, index) =>
     node("div", { class: "team-card", style: { "--accent": palette[index % palette.length] } }, [
-      node("strong", { text: "Team " + (index + 1) }),
+      node("strong", { text: prefix + " " + (index + 1) }),
       ...group.map((person) => node("div", { class: "team-member", text: person }))
     ])
   ));
@@ -634,7 +667,10 @@ function readyLabel(id) {
     chance: "TRY",
     date: "PICK DATE",
     direction: "SPIN",
-    letter: "DRAW"
+    letter: "DRAW",
+    time: "PICK TIME",
+    coordinate: "GENERATE",
+    rps: "PLAY"
   };
   return labels[id] || "READY";
 }
@@ -646,7 +682,10 @@ function stageLabel(id) {
     chance: "Chance result",
     date: "Random date",
     direction: "Direction",
-    letter: "Random letter"
+    letter: "Random letter",
+    time: "Random time",
+    coordinate: "Coordinates",
+    rps: "Random play"
   };
   return labels[id] || "Result";
 }
@@ -655,11 +694,37 @@ function buildControls(tool, ts) {
   const controls = node("div", { class: "controls" });
   const grid = node("div", { class: "control-grid" });
 
-  if (["wheel", "picker", "shuffle", "teams", "pairs"].includes(tool.id)) {
+  if (["wheel", "picker", "sampler", "shuffle", "teams", "groups", "pairs", "assignment", "elimination", "ladder", "secret-santa", "tournament"].includes(tool.id)) {
     controls.append(listControls(tool, ts));
     if (tool.id === "teams") {
       grid.append(numberControl("Teams", "team-count", ts.teamCount, 2, 12, (value) => ts.teamCount = value));
       controls.append(grid);
+    } else if (tool.id === "groups") {
+      grid.append(numberControl("Groups", "group-count", ts.groupCount, 2, 20, (value) => ts.groupCount = value));
+      controls.append(grid);
+    } else if (tool.id === "sampler") {
+      grid.append(numberControl("Winners", "sample-count", ts.sampleCount, 1, 100, (value) => ts.sampleCount = value));
+      controls.append(grid);
+    } else if (tool.id === "assignment") {
+      controls.append(textareaControl("Targets / tasks", ts.targetText, (value) => ts.targetText = value));
+    } else if (tool.id === "ladder") {
+      controls.append(textareaControl("Outcomes / prizes", ts.ladderOutcomes, (value) => ts.ladderOutcomes = value));
+    } else if (tool.id === "secret-santa" && ts.secretAssignments) {
+      const reveal = node("select", { class: "field", "aria-label": "Choose participant to reveal" },
+        ts.secretAssignments.map((item, index) => node("option", { value: String(index), text: item.source }))
+      );
+      const revealRow = node("div", { class: "button-row", style: { marginBottom: "12px" } }, [
+        reveal,
+        node("button", { class: "secondary", type: "button", onClick: () => {
+          ts.secretReveal = Number(reveal.value);
+          render();
+        } }, "Reveal privately"),
+        node("button", { class: "secondary", type: "button", onClick: () => {
+          ts.secretReveal = null;
+          render();
+        } }, "Hide")
+      ]);
+      controls.append(revealRow);
     }
   } else if (tool.id === "dice") {
     grid.append(
@@ -688,6 +753,20 @@ function buildControls(tool, ts) {
       dateControl("To", ts.dateEnd, (value) => ts.dateEnd = value)
     );
     controls.append(grid);
+  } else if (tool.id === "time") {
+    grid.append(
+      timeControl("From", ts.timeStart, (value) => ts.timeStart = value),
+      timeControl("To", ts.timeEnd, (value) => ts.timeEnd = value)
+    );
+    controls.append(grid);
+  } else if (tool.id === "coordinate") {
+    grid.append(
+      numberControl("X min", "x-min", ts.xMin, -1000000, 1000000, (value) => ts.xMin = value),
+      numberControl("X max", "x-max", ts.xMax, -1000000, 1000000, (value) => ts.xMax = value),
+      numberControl("Y min", "y-min", ts.yMin, -1000000, 1000000, (value) => ts.yMin = value),
+      numberControl("Y max", "y-max", ts.yMax, -1000000, 1000000, (value) => ts.yMax = value)
+    );
+    controls.append(grid);
   }
 
   const actions = node("div", { class: "button-row" });
@@ -704,6 +783,16 @@ function buildControls(tool, ts) {
       ts.result = null;
       render();
     } }, "Reset deck"));
+  }
+
+  if (tool.id === "elimination" && ts.eliminationRemaining) {
+    actions.append(node("button", { class: "secondary", type: "button", onClick: () => {
+      ts.eliminationRemaining = null;
+      ts.eliminationOut = [];
+      ts.eliminationSignature = "";
+      ts.result = null;
+      render();
+    } }, "Reset elimination"));
   }
 
   if (ts.result) {
@@ -736,7 +825,17 @@ function actionLabel(id, ts) {
     color: "NEW COLOR",
     date: "PICK DATE",
     direction: "SPIN DIRECTION",
-    letter: "DRAW LETTER"
+    letter: "DRAW LETTER",
+    sampler: "DRAW WINNERS",
+    groups: ts.result ? "REGROUP" : "MAKE GROUPS",
+    assignment: ts.result ? "REASSIGN" : "ASSIGN",
+    elimination: ts.result?.winner ? "COMPLETE" : "ELIMINATE",
+    ladder: "GENERATE LADDER",
+    "secret-santa": ts.secretAssignments ? "REGENERATE" : "GENERATE",
+    tournament: "DRAW MATCHUPS",
+    time: "PICK TIME",
+    coordinate: "GENERATE POINT",
+    rps: "PLAY"
   };
   return labels[id] || "RANDOMIZE";
 }
@@ -771,6 +870,13 @@ function listControls(tool, ts) {
   return wrap;
 }
 
+function textareaControl(label, value, onChange) {
+  const textarea = node("textarea", { class: "field", "aria-label": label, placeholder: "One item per line" });
+  textarea.value = value;
+  textarea.addEventListener("input", () => onChange(textarea.value));
+  return node("div", { class: "control", style: { marginBottom: "12px" } }, [node("label", { text: label }), textarea]);
+}
+
 function stepperControl(label, value, min, max, onChange) {
   const output = node("output", { text: String(value) });
   const dec = node("button", { type: "button", "aria-label": "Decrease " + label, onClick: () => {
@@ -802,6 +908,12 @@ function numberControl(label, id, value, min, max, onChange) {
 
 function dateControl(label, value, onChange) {
   const input = node("input", { class: "field", type: "date", value });
+  input.addEventListener("input", () => onChange(input.value));
+  return node("div", { class: "control" }, [node("label", { text: label }), input]);
+}
+
+function timeControl(label, value, onChange) {
+  const input = node("input", { class: "field", type: "time", value });
   input.addEventListener("input", () => onChange(input.value));
   return node("div", { class: "control" }, [node("label", { text: label }), input]);
 }
