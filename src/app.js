@@ -61,6 +61,18 @@ function announce(text) {
 }
 
 function rng() {
+  if (state.settings.randomness.mode === "seeded") {
+    const position = Number.isSafeInteger(state.settings.randomness.position)
+      ? state.settings.randomness.position
+      : 0;
+    const source = createRng({
+      mode: "seeded",
+      seed: (state.settings.randomness.seed || "ARCADE-2026") + "::" + position
+    });
+    state.settings.randomness.position = position + 1;
+    saveSettings(state.settings).catch(() => {});
+    return source;
+  }
   return createRng(state.settings.randomness);
 }
 
@@ -411,7 +423,7 @@ function renderHistory() {
       class: "history-item",
       type: "button",
       style: { textAlign: "left", color: "inherit", cursor: "pointer" },
-      onClick: () => openTool(item.toolId)
+      onClick: () => item.toolId === "studio" ? setView("studio") : openTool(item.toolId)
     }, [
       node("div", { class: "history-icon", text: item.icon || "✦" }),
       node("div", { class: "history-copy" }, [
@@ -797,13 +809,14 @@ async function runTool(id) {
   try {
     let summary = "";
     let detail = null;
+    let animationDuration = 0;
 
     if (id === "coin") {
       const result = source.int(0, 1) === 0 ? "Heads" : "Tails";
       ts.result = result;
       ts.animating = true;
       summary = result;
-      window.setTimeout(() => finishAnimation(id), 850);
+      animationDuration = 850;
     } else if (id === "dice") {
       const count = Math.max(1, Math.min(8, Number(ts.diceCount) || 1));
       const sides = Math.max(1, Math.min(100, Number(ts.diceSides) || 6));
@@ -812,7 +825,7 @@ async function runTool(id) {
       ts.animating = true;
       summary = String(ts.result.total);
       detail = { values, sides };
-      window.setTimeout(() => finishAnimation(id), 720);
+      animationDuration = 720;
     } else if (id === "number") {
       const min = Number(ts.numberMin);
       const max = Number(ts.numberMax);
@@ -836,7 +849,7 @@ async function runTool(id) {
       ts.animating = true;
       summary = ts.result;
       detail = { entries: items.length, selectedIndex: index };
-      window.setTimeout(() => finishAnimation(id), 1700);
+      animationDuration = 1700;
     } else if (id === "picker") {
       const items = parseList(ts.listText);
       if (!items.length) throw new Error("Add at least one entry.");
@@ -903,9 +916,9 @@ async function runTool(id) {
       summary = ts.result;
     }
 
-    if (!ts.animating) render();
-    else render();
     await record(tool, summary, detail);
+    render();
+    if (animationDuration) window.setTimeout(() => finishAnimation(id), animationDuration);
     announce(tool.name + " result: " + summary);
   } catch (error) {
     alert(error.message || "This randomizer could not run.");
@@ -979,6 +992,7 @@ function renderModal() {
         type: "button",
         onClick: async () => {
           state.settings.randomness.mode = mode;
+          if (mode === "seeded") state.settings.randomness.position = 0;
           await saveSettings(state.settings);
           render();
         }
@@ -989,6 +1003,7 @@ function renderModal() {
       const seed = node("input", { class: "field", value: state.settings.randomness.seed || "ARCADE-2026", "aria-label": "Seed", style: { marginTop: "12px" } });
       seed.addEventListener("change", async () => {
         state.settings.randomness.seed = seed.value || "ARCADE-2026";
+        state.settings.randomness.position = 0;
         await saveSettings(state.settings);
       });
       modal.append(seed);
