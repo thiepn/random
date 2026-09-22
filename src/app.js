@@ -2855,6 +2855,10 @@ function buildControls(tool, ts) {
       controls.append(selectionRulesControl(tool, ts));
     }
 
+    if (constraintTools.has(tool.id)) {
+      controls.append(constraintRulesControl(tool, ts));
+    }
+
     if (tool.id === "secret-santa" && ts.secretAssignments) {
       const reveal = node("select", {
         class: "field",
@@ -3140,6 +3144,13 @@ async function runTool(id) {
     targets: parseList(ts.targetText),
     outcomes: parseList(ts.ladderOutcomes)
   };
+
+  if (constraintTools.has(id)) {
+    const context = constraintContext(tool, ts);
+    config.constraintItems = context.items;
+    config.constraintFields = context.fields;
+    config.historyPairs = [...historyPairsForTool(tool, ts)];
+  }
 
   try {
     const output = executeTool(id, config, prepared.source);
