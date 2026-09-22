@@ -604,6 +604,7 @@ export function createWorkflowSession(workflow, {
     inputItems: Array.isArray(inputItems)
       ? inputItems.map((item) => String(item).trim()).filter(Boolean).slice(0, 500)
       : [],
+    nodeInputs: {},
     lastOutputItems: [],
     lastSummary: "",
     path: [],
@@ -615,7 +616,11 @@ export function createWorkflowSession(workflow, {
   };
 }
 
-export function provideWorkflowInput(session, items) {
+export function provideWorkflowInput(
+  session,
+  items,
+  nodeId = session?.currentNodeId || null
+) {
   if (!session || !["paused", "active"].includes(session.status)) {
     throw new WorkflowModelError(
       "Workflow Session cannot accept input.",
@@ -636,6 +641,10 @@ export function provideWorkflowInput(session, items) {
 
   const next = clone(session);
   next.inputItems = normalized;
+  next.nodeInputs = {
+    ...(next.nodeInputs || {}),
+    ...(nodeId ? { [nodeId]: normalized } : {})
+  };
   next.status = "active";
   next.pauseReason = null;
   next.pauseNodeId = null;
@@ -704,9 +713,16 @@ export function recordWorkflowNode(session, workflow, nodeId, {
   next.stepCount += 1;
 
   if (node.type === "input") {
+    const promptItems = Array.isArray(next.nodeInputs?.[node.id])
+      ? next.nodeInputs[node.id]
+      : (
+          next.nodeInputs == null && Array.isArray(next.inputItems)
+            ? next.inputItems
+            : []
+        );
     next.lastOutputItems = node.config.mode === "fixed"
       ? [...node.config.fixedItems]
-      : [...next.inputItems];
+      : [...promptItems];
     next.lastSummary = next.lastOutputItems.join(", ");
   } else if (node.type === "tool") {
     next.lastOutputItems = items;
