@@ -1434,7 +1434,37 @@ function partyFairnessBadges(tool, ts) {
       : "Secure Random"
   ];
 
-  if (selectionTools.has(tool.id)) {
+  if (tool.custom) {
+    const experience = customExperienceFromToolId(tool.id);
+    const fairness = ts.lastCustomFairness;
+    panel.querySelector(".fairness-body").append(
+      node("div", { class: "fairness-method" }, [
+        node("strong", { text: "Declarative Custom Experience" }),
+        node("p", {
+          text:
+            "This creation uses the approved “"
+            + (experience?.primitive || "custom")
+            + "” primitive. It cannot execute custom JavaScript, HTML, or CSS."
+        })
+      ]),
+      fairness
+        ? node("div", { class: "fairness-method" }, [
+            node("strong", {
+              text: fairness.mode || fairness.kind || "Random operation"
+            }),
+            node("p", {
+              text:
+                (fairness.candidateCount != null
+                  ? fairness.candidateCount + " configured candidates. "
+                  : "")
+                + (fairness.eligibleCount != null
+                  ? fairness.eligibleCount + " currently eligible."
+                  : "")
+            })
+          ])
+        : null
+    );
+  } else if (selectionTools.has(tool.id)) {
     const model = currentSelectionModel(tool.id, ts);
     if (model?.customWeights) badges.push("Weighted");
     if (model?.excludedCount) {
@@ -4074,6 +4104,243 @@ function particleField(presentation) {
   ));
 }
 
+function customWheelModel(experience, ts) {
+  if (!experience) return null;
+
+  const entries = experience.config.source === "prompt"
+    ? parseList(ts.customInputText).map((label, index) => ({
+        id: "prompt:" + index,
+        label,
+        weight: 1
+      }))
+    : experience.config.entries || [];
+
+  try {
+    return normalizeSelection(
+      entries.map((entry) => entry.label),
+      entries.map((entry, index) => ({
+        key: entry.id || (entry.label + "\u001f" + index),
+        label: entry.label,
+        weight: Number(entry.weight ?? 1),
+        excluded: false
+      }))
+    );
+  } catch {
+    return null;
+  }
+}
+
+function customResultDisplay(result) {
+  if (result == null) return "READY";
+  if (typeof result === "string" || typeof result === "number") {
+    return String(result);
+  }
+  if (Array.isArray(result)) {
+    return result.length === 1 ? String(result[0]) : result.join(", ");
+  }
+  if (result.value != null) return String(result.value);
+  if (result.total != null) return String(result.total);
+  if (result.card != null) return String(result.card);
+  if (Array.isArray(result.cards)) return result.cards.join(", ");
+  if (result.output != null) return customResultDisplay(result.output);
+  if (result.summary != null) return String(result.summary);
+  return "RESULT";
+}
+
+function customResultListValues(result) {
+  if (result == null) return [];
+  if (Array.isArray(result)) return result.map(String);
+  if (Array.isArray(result.cards)) return result.cards.map(String);
+  if (Array.isArray(result.items)) return result.items.map(String);
+  if (result.output != null) return customResultItems(result.output);
+  return [];
+}
+
+function buildCustomStage(tool, ts, wrap) {
+  const experience = customExperienceFromToolId(tool.id);
+  const result = ts.result;
+  if (!experience) {
+    wrap.append(node("div", {
+      class: "stage-result",
+      text: "UNAVAILABLE"
+    }));
+    return;
+  }
+
+  const layout = experience.appearance.layout === "auto"
+    ? (
+        experience.primitive === "dice" || experience.primitive === "faces"
+          ? "dice"
+          : experience.primitive === "deck"
+            ? "card"
+            : experience.primitive === "shuffle"
+              ? "list"
+              : experience.primitive === "number"
+                ? "number"
+                : experience.primitive === "table"
+                  ? "table"
+                  : "text"
+      )
+    : experience.appearance.layout;
+
+  if (layout === "wheel") {
+    const model = customWheelModel(experience, ts);
+    const wheel = node("div", {
+      class: "wheel",
+      style: {
+        background: makeWheelGradient(model),
+        transform:
+          "rotate(" + (ts.previousWheelRotation || 0) + "deg)",
+        transitionDuration:
+          (ts.presentation?.duration || 0) + "ms"
+      }
+    });
+    const labels = wheelLabels(model);
+    if (labels) wheel.append(labels);
+
+    wrap.append(
+      node("div", { class: "wheel-wrap" }, [
+        wheel,
+        node("div", {
+          class: "wheel-pointer",
+          "aria-hidden": "true"
+        }),
+        node("div", {
+          class: "wheel-center-label",
+          text: (model?.eligibleCount || 0) + " eligible"
+        })
+      ]),
+      node("div", {
+        class: "stage-label",
+        text: experience.appearance.resultLabel
+      }),
+      node("div", {
+        class: "stage-result",
+        text: customResultDisplay(result)
+      })
+    );
+
+    if (ts.pendingWheelRotation != null) {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        wheel.style.transform =
+          "rotate(" + ts.pendingWheelRotation + "deg)";
+      }));
+    }
+    return;
+  }
+
+  if (layout === "dice") {
+    let rolls = [];
+    if (Array.isArray(result)) rolls = result;
+    else if (result?.diceGroups?.length) {
+      rolls = result.diceGroups.flatMap((group) =>
+        group.dice.map((die) => die.total)
+      );
+    }
+
+    wrap.append(
+      rolls.length
+        ? node("div", {
+            class: "dice-row " + (ts.animating ? "rolling" : "")
+          }, rolls.slice(0, 20).map((value) =>
+            node("div", {
+              class: "die custom-die",
+              text: String(value)
+            })
+          ))
+        : null,
+      node("div", {
+        class: "stage-label",
+        text: experience.appearance.resultLabel
+      }),
+      node("div", {
+        class: "stage-result",
+        text: customResultDisplay(result)
+      })
+    );
+    return;
+  }
+
+  if (layout === "card") {
+    const cards = customResultListValues(result);
+    wrap.append(
+      node("div", {
+        class: "stage-label",
+        text: experience.appearance.resultLabel
+      }),
+      cards.length
+        ? node("div", { class: "custom-card-row" },
+            cards.slice(0, 12).map((card) =>
+              node("div", {
+                class: "play-card custom-play-card",
+                text: card
+              })
+            )
+          )
+        : node("div", {
+            class: "stage-result play-card custom-play-card",
+            text: "DRAW"
+          }),
+      result?.remaining != null
+        ? node("div", {
+            class: "stage-sub",
+            text: result.remaining + " remain in source deck"
+          })
+        : null
+    );
+    return;
+  }
+
+  if (layout === "list") {
+    const values = customResultListValues(result);
+    wrap.append(
+      node("div", {
+        class: "stage-label",
+        text: experience.appearance.resultLabel
+      }),
+      values.length
+        ? resultList(values)
+        : node("div", {
+            class: "stage-result",
+            text: customResultDisplay(result)
+          })
+    );
+    return;
+  }
+
+  if (layout === "table" && result?.label != null) {
+    wrap.append(
+      node("div", {
+        class: "stage-label",
+        text: result.label
+      }),
+      node("div", {
+        class: "stage-result",
+        text: String(result.value)
+      })
+    );
+    return;
+  }
+
+  wrap.append(
+    node("div", {
+      class: "stage-label",
+      text: experience.appearance.resultLabel
+    }),
+    node("div", {
+      class: "stage-result",
+      text: customResultDisplay(result)
+    }),
+    experience.primitive === "compound" && result?.steps?.length
+      ? resultList(
+          result.steps.map((step) =>
+            step.name + " · " + step.summary
+          )
+        )
+      : null
+  );
+}
+
 function buildStage(tool, ts) {
   const stage = node("div", {
     class:
@@ -4085,7 +4352,9 @@ function buildStage(tool, ts) {
   const wrap = node("div", { class: "stage-content" });
   const result = ts.result;
 
-  if (tool.id === "coin") {
+  if (tool.custom) {
+    buildCustomStage(tool, ts, wrap);
+  } else if (tool.id === "coin") {
     wrap.append(
       node("div", {
         class: "stage-orb " + (ts.animating ? "flipping" : ""),
@@ -5713,6 +5982,69 @@ function configSetter(toolId, ts, key, value, rerender = false) {
   if (rerender) render();
 }
 
+function customControls(tool, ts) {
+  const experience = customExperienceFromToolId(tool.id);
+  const wrap = node("div", { class: "custom-runtime-controls" });
+
+  if (!experience) {
+    return toolError("This Custom Experience no longer exists.");
+  }
+
+  wrap.append(node("div", { class: "custom-runtime-summary" }, [
+    node("div", {}, [
+      node("strong", { text: experience.primitive }),
+      node("span", {
+        text:
+          "Revision "
+          + experience.revision
+          + " · declarative"
+      })
+    ]),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => openBuilder(experience.id)
+    }, "Edit in Builder")
+  ]));
+
+  if (customExperienceNeedsPromptInput(experience)) {
+    const input = node("textarea", {
+      class: "field",
+      "aria-label": "Custom Experience input",
+      placeholder: "One item per line"
+    });
+    input.value = ts.customInputText;
+    input.addEventListener("input", () => {
+      ts.customInputText = input.value;
+      invalidateTool(tool.id, ts);
+    });
+    wrap.append(node("div", {
+      class: "control custom-prompt-input"
+    }, [
+      node("label", { text: "Input for this run" }),
+      input
+    ]));
+  } else {
+    const count =
+      experience.config.entries?.length
+      || experience.config.rows?.length
+      || experience.config.cards?.length
+      || experience.config.faces?.length
+      || experience.config.steps?.length
+      || null;
+
+    wrap.append(node("div", {
+      class: "notice custom-definition-notice",
+      text:
+        "Definition is locked at runtime"
+        + (count != null ? " · " + count + " configured items/steps" : "")
+        + ". Edit it in Builder."
+    }));
+  }
+
+  return wrap;
+}
+
 function buildControls(tool, ts) {
   const controls = node("div", { class: "controls" });
   const grid = node("div", { class: "control-grid" });
@@ -5725,7 +6057,9 @@ function buildControls(tool, ts) {
 
   if (ts.error) controls.append(toolError(ts.error));
 
-  if (toolAcceptsListInput(tool.id)) {
+  if (tool.custom) {
+    controls.append(customControls(tool, ts));
+  } else if (toolAcceptsListInput(tool.id)) {
     controls.append(listControls(tool, ts));
 
     if (tool.id === "teams") {
@@ -5956,7 +6290,7 @@ function buildControls(tool, ts) {
           bindingMode:
             ts.workingSet?.source?.poolId
               ? "live-source"
-              : listInputTools.has(tool.id)
+              : toolAcceptsListInput(tool.id)
                 ? "frozen"
                 : "none",
           favorite: false,
@@ -6128,6 +6462,10 @@ function deriveAfterState(id, beforeState, output, result) {
   if (output.statePatch) Object.assign(after, cloneData(output.statePatch));
   after.result = cloneData(result);
   after.error = null;
+
+  if (customExperienceFromToolId(id)) {
+    after.lastCustomFairness = cloneData(output.fairness || null);
+  }
 
   if (output.fairness?.kind === "constrained") {
     after.lastSolverDiagnostics = cloneData(output.detail?.solver || null);
