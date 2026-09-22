@@ -263,19 +263,24 @@ export function makeAudienceState({
       icon: tool.icon,
       accent: tool.accent
     },
-    round: party.round,
+    round:
+      stage === "result"
+        ? Math.max(1, party.runIds.length)
+        : party.round,
     pace: party.options.pace,
     stage,
     countdown: Number(countdown || 0),
     private: privateTool || privateReveal,
     statusText:
-      privateTool || privateReveal
-        ? "Private reveal on host device"
-        : stage === "countdown"
-          ? "Get ready"
-          : run
-            ? "Result"
-            : "Ready",
+      stage === "ended"
+        ? "Party ended"
+        : privateTool || privateReveal
+          ? "Private reveal on host device"
+          : stage === "countdown"
+            ? "Get ready"
+            : run
+              ? "Result"
+              : "Ready",
     result: publicResult,
     fairness: privateTool
       ? null
