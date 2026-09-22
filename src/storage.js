@@ -1,6 +1,13 @@
 const DB_NAME = "randomizer-arcade";
-const DB_VERSION = 1;
-const STORES = ["pools", "history", "favorites", "presets", "settings"];
+const DB_VERSION = 2;
+const STORES = [
+  "pools",
+  "poolViews",
+  "history",
+  "favorites",
+  "presets",
+  "settings"
+];
 
 let dbPromise;
 
@@ -29,7 +36,7 @@ async function withStore(name, mode, task) {
     const store = tx.objectStore(name);
     let result;
     try {
-      result = task(store);
+      result = task(store, tx);
     } catch (error) {
       reject(error);
       return;
@@ -59,7 +66,51 @@ export async function getOne(store, id) {
 }
 
 export async function put(store, value) {
-  return withStore(store, "readwrite", (objectStore) => objectStore.put(value));
+  return withStore(store, "readwrite", (objectStore) => {
+    objectStore.put(value);
+    return value;
+  });
+}
+
+export async function putWithRevision(store, value, expectedRevision) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    const objectStore = tx.objectStore(store);
+    const read = objectStore.get(value.id);
+    let committed = null;
+
+    read.onerror = () => {
+      tx.abort();
+      reject(read.error);
+    };
+
+    read.onsuccess = () => {
+      const current = read.result || null;
+      const actualRevision = current?.revision ?? null;
+
+      if (expectedRevision != null && actualRevision !== expectedRevision) {
+        tx.abort();
+        const error = new Error(
+          "This record changed in another window. Reload it before saving."
+        );
+        error.name = "RevisionConflictError";
+        error.expectedRevision = expectedRevision;
+        error.actualRevision = actualRevision;
+        reject(error);
+        return;
+      }
+
+      objectStore.put(value);
+      committed = value;
+    };
+
+    tx.oncomplete = () => resolve(committed);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => {
+      if (tx.error) reject(tx.error);
+    };
+  });
 }
 
 export async function remove(store, id) {
