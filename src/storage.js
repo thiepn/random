@@ -258,7 +258,18 @@ export async function clear(store) {
 export async function getSettings() {
   const record = await getOne("settings", "app");
   return record?.value || {
-    randomness: { mode: "secure", seed: "ARCADE-2026" },
+    randomness: {
+      mode: "secure",
+      seed: "ARCADE-2026",
+      position: 0
+    },
+    presentation: {
+      mode: "normal",
+      effects: "auto",
+      sound: true,
+      haptics: "standard",
+      motion: "system"
+    },
     sound: true,
     motion: "system"
   };
