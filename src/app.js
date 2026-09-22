@@ -307,6 +307,7 @@ function prepareRandomSource() {
     return {
       source: createRng({ mode: "secure" }),
       context: { mode: "secure" },
+      settingsRecord: null,
       commit: async () => {}
     };
   }
@@ -315,6 +316,8 @@ function prepareRandomSource() {
     ? state.settings.randomness.position
     : 0;
   const seed = state.settings.randomness.seed || "ARCADE-2026";
+  const nextSettings = cloneData(state.settings);
+  nextSettings.randomness.position = position + 1;
 
   const source = createRng({
     mode: "seeded",
@@ -324,8 +327,10 @@ function prepareRandomSource() {
   return {
     source,
     context: { mode: "seeded", seed, position },
+    settingsRecord: { id: "app", value: nextSettings },
+    nextSettings,
     commit: async () => {
-      state.settings.randomness.position = position + 1;
+      state.settings = nextSettings;
       await saveSettings(state.settings);
     }
   };
