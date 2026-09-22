@@ -1,4 +1,4 @@
-const CACHE = "randomizer-shell-v9";
+const CACHE = "randomizer-shell-v10";
 const SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const SHELL = [
   "./phase5.css",
   "./phase6.css",
   "./phase7.css",
+  "./phase8.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./src/app.js",
@@ -23,6 +24,8 @@ const SHELL = [
   "./src/constraint-engine.js",
   "./src/session-model.js",
   "./src/presentation-engine.js",
+  "./src/preset-model.js",
+  "./src/session-template-model.js",
   "./src/storage.js",
   "./src/registry.js"
 ];
