@@ -34,6 +34,7 @@ export function normalizePartyOptions(options = {}) {
       ? options.countdown
       : "short",
     hostLocked: Boolean(options.hostLocked),
+    paused: Boolean(options.paused),
     wakeLock: options.wakeLock !== false,
     audienceEnabled: Boolean(options.audienceEnabled),
     fullscreen: options.fullscreen !== false
@@ -274,7 +275,9 @@ export function makeAudienceState({
     statusText:
       stage === "ended"
         ? "Party ended"
-        : privateTool || privateReveal
+        : stage === "paused"
+          ? "Party paused"
+          : privateTool || privateReveal
           ? "Private reveal on host device"
           : stage === "countdown"
             ? "Get ready"
