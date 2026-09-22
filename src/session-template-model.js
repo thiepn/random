@@ -376,6 +376,15 @@ export function resultToItems(toolId, result) {
   if (Array.isArray(result.displayValues)) {
     return result.displayValues.map(String);
   }
+  if (Array.isArray(result.cards)) {
+    return result.cards.map(String);
+  }
+  if (result.value != null) {
+    return [String(result.value)];
+  }
+  if (result.total != null) {
+    return [String(result.total)];
+  }
   if (result.card) return [String(result.card)];
   if (result.winner) return [String(result.winner)];
   if (result.eliminated) return [String(result.eliminated)];
