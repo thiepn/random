@@ -430,3 +430,32 @@
     color:CanvasText
   }
 }
+
+.duplicate-review{
+  display:grid;
+  gap:5px;
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid rgba(255,202,58,.22);
+  border-radius:14px;
+  background:rgba(255,202,58,.055)
+}
+.duplicate-review>strong{font-size:11px;color:#ffe28a}
+.duplicate-review>span{color:var(--muted);font-size:9px}
+.duplicate-review-row{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  min-height:28px;
+  align-items:center;
+  padding:3px 7px;
+  border-radius:8px;
+  background:rgba(255,255,255,.03);
+  font-size:10px
+}
+.duplicate-review-row span{
+  min-width:0;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis
+}
