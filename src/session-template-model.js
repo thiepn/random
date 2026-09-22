@@ -323,6 +323,21 @@ export function resultToItems(toolId, result) {
           && item.every((value) => typeof value === "string" || typeof value === "number")
       )
     ) {
+      if (toolId === "teams") {
+        return result.map(
+          (group, index) =>
+            "Team " + (index + 1) + " · " + group.map(String).join(", ")
+        );
+      }
+      if (toolId === "groups") {
+        return result.map(
+          (group, index) =>
+            "Group " + (index + 1) + " · " + group.map(String).join(", ")
+        );
+      }
+      if (toolId === "pairs") {
+        return result.map((group) => group.map(String).join(" & "));
+      }
       return result.flat().map(String);
     }
 
@@ -398,7 +413,7 @@ export const BUILTIN_SESSION_TEMPLATES = Object.freeze([
   }),
   createSessionTemplate({
     name: "Classroom Mixer",
-    description: "Randomize students, create groups, then pick a presenter.",
+    description: "Randomize students, create groups, then pick one group.",
     builtinKey: "classroom-mixer",
     steps: [
       {
@@ -418,7 +433,7 @@ export const BUILTIN_SESSION_TEMPLATES = Object.freeze([
       },
       {
         id: "classroom-presenter",
-        name: "Pick Presenter",
+        name: "Pick Group",
         toolId: "picker",
         input: {
           kind: "previous",
