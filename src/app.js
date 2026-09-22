@@ -11,12 +11,29 @@ import {
 import {
   getAll,
   put,
+  putWithRevision,
   remove,
   clear,
   getSettings,
   saveSettings,
   requestPersistentStorage
 } from "./storage.js";
+import {
+  normalizePool,
+  createPool,
+  mutatePool,
+  createPoolItem,
+  createPoolField,
+  createWorkingSet,
+  workingSetLabels,
+  filterPoolItems,
+  duplicateSummary,
+  parseDelimitedText,
+  importRowsToPoolItems,
+  createPoolView,
+  resolvePoolView,
+  poolStats
+} from "./pool-model.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -25,6 +42,9 @@ const state = {
   view: "play",
   toolId: null,
   pools: [],
+  poolViews: [],
+  poolSearch: "",
+  poolShowArchived: false,
   history: [],
   favorites: [],
   settings: null,
@@ -146,6 +166,7 @@ function ensureToolState(toolId) {
       groupCount: 3,
       sampleCount: 3,
       selectionEntries: [],
+      workingSet: null,
       allowRepeats: false,
       selectionOpen: false,
       fairnessOpen: false,
@@ -259,16 +280,18 @@ function prepareRandomSource() {
 }
 
 async function loadData() {
-  const [pools, historyEntries, favorites, settings] = await Promise.all([
+  const [pools, poolViews, historyEntries, favorites, settings] = await Promise.all([
     getAll("pools"),
+    getAll("poolViews"),
     getAll("history"),
     getAll("favorites"),
     getSettings()
   ]);
 
-  state.pools = pools.sort((a, b) =>
-    (b.updatedAt || "").localeCompare(a.updatedAt || "")
-  );
+  state.pools = pools
+    .map(normalizePool)
+    .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+  state.poolViews = poolViews;
   state.history = historyEntries
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 500);
