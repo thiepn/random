@@ -3214,11 +3214,14 @@ function renderPoolEditorModal(modal, editor) {
 
   modal.append(profilesBox);
 
-  const visible = filterPoolItems(draft, {
-    search: editor.search,
-    active: editor.active,
-    tags: editor.tagFilter ? [editor.tagFilter] : []
-  });
+  const visibleIds = new Set(
+    filterPoolItems(draft, {
+      search: editor.search,
+      active: editor.active,
+      tags: editor.tagFilter ? [editor.tagFilter] : []
+    }).map((item) => item.id)
+  );
+  const visible = draft.items.filter((item) => visibleIds.has(item.id));
 
   const selected = editor.selected;
   const bulkTag = node("input", {
