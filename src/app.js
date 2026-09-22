@@ -993,6 +993,13 @@ async function runTool(id) {
       if (!items.length) throw new Error("Add at least one entry.");
       ts.result = pick(items, random());
       summary = ts.result;
+    } else if (id === "sampler") {
+      const items = parseList(ts.listText);
+      const count = Number(ts.sampleCount);
+      if (!Number.isSafeInteger(count) || count < 1 || count > items.length) throw new Error("Winner count must be between 1 and the number of entries.");
+      ts.result = sample(items, count, random());
+      summary = ts.result.join(", ");
+      detail = { selected: ts.result };
     } else if (id === "shuffle") {
       const items = parseList(ts.listText);
       if (items.length < 2) throw new Error("Add at least two entries.");
@@ -1006,12 +1013,80 @@ async function runTool(id) {
       ts.result = partition(items, count, random());
       summary = count + " teams";
       detail = { groups: ts.result };
+    } else if (id === "groups") {
+      const items = parseList(ts.listText);
+      const count = Math.max(2, Math.min(20, Number(ts.groupCount) || 2));
+      if (items.length < count) throw new Error("You need at least as many entries as groups.");
+      ts.result = partition(items, count, random());
+      summary = count + " groups";
+      detail = { groups: ts.result };
     } else if (id === "pairs") {
       const items = parseList(ts.listText);
       if (items.length < 2) throw new Error("Add at least two people.");
       ts.result = pairs(items, random());
       summary = ts.result.length + " groups";
       detail = { pairs: ts.result };
+    } else if (id === "assignment") {
+      const sources = parseList(ts.listText);
+      const targets = parseList(ts.targetText);
+      if (!sources.length || !targets.length) throw new Error("Add at least one source and one target.");
+      const orderedSources = shuffle(sources, random());
+      const orderedTargets = shuffle(targets, random());
+      ts.result = orderedSources.map((sourceItem, index) => ({
+        source: sourceItem,
+        target: orderedTargets[index % orderedTargets.length]
+      }));
+      summary = ts.result.length + " assignments";
+      detail = { assignments: ts.result };
+    } else if (id === "ladder") {
+      const sources = parseList(ts.listText);
+      const targets = parseList(ts.ladderOutcomes);
+      if (sources.length < 2) throw new Error("Add at least two players.");
+      if (sources.length !== targets.length) throw new Error("Ladder needs the same number of players and outcomes.");
+      const mapped = shuffle(targets, random());
+      ts.result = sources.map((sourceItem, index) => ({ source: sourceItem, target: mapped[index] }));
+      summary = ts.result.length + " paths";
+      detail = { mapping: ts.result };
+    } else if (id === "tournament") {
+      const entrants = parseList(ts.listText);
+      if (entrants.length < 2) throw new Error("Add at least two entrants.");
+      ts.result = pairs(entrants, random());
+      summary = ts.result.length + " matchups";
+      detail = { matchups: ts.result };
+    } else if (id === "elimination") {
+      const entrants = parseList(ts.listText);
+      if (entrants.length < 2) throw new Error("Add at least two entrants.");
+      const signature = entrants.join("\u001f");
+      if (ts.eliminationSignature !== signature || !ts.eliminationRemaining) {
+        ts.eliminationSignature = signature;
+        ts.eliminationRemaining = [...entrants];
+        ts.eliminationOut = [];
+        ts.result = null;
+      }
+      if (ts.eliminationRemaining.length <= 1) throw new Error("This elimination is complete. Reset it to start again.");
+      const eliminated = pick(ts.eliminationRemaining, random());
+      const index = ts.eliminationRemaining.indexOf(eliminated);
+      ts.eliminationRemaining.splice(index, 1);
+      ts.eliminationOut.push(eliminated);
+      const winner = ts.eliminationRemaining.length === 1 ? ts.eliminationRemaining[0] : null;
+      ts.result = {
+        eliminated,
+        winner,
+        summary: winner ? "WINNER: " + winner : eliminated + " OUT",
+        sub: winner ? "Last entrant standing" : ts.eliminationRemaining.length + " remain"
+      };
+      summary = winner ? "Winner: " + winner : "Eliminated: " + eliminated;
+      detail = { remaining: ts.eliminationRemaining.length, eliminatedCount: ts.eliminationOut.length };
+    } else if (id === "secret-santa") {
+      const entrants = parseList(ts.listText);
+      if (entrants.length < 2) throw new Error("Secret Santa needs at least two people.");
+      if (new Set(entrants).size !== entrants.length) throw new Error("Secret Santa currently requires unique participant names.");
+      const receivers = derangement(entrants, random());
+      ts.secretAssignments = entrants.map((sourceItem, index) => ({ source: sourceItem, target: receivers[index] }));
+      ts.secretReveal = null;
+      ts.result = { summary: "ASSIGNMENTS READY", sub: entrants.length + " private matches" };
+      summary = entrants.length + " private assignments generated";
+      detail = null;
     } else if (id === "cards") {
       if (!ts.deck || ts.deck.length === 0) ts.deck = shuffle(makeDeck(), random());
       const card = ts.deck.shift();
@@ -1046,6 +1121,29 @@ async function runTool(id) {
         iso: date.toISOString().slice(0, 10)
       };
       summary = ts.result.summary;
+    } else if (id === "time") {
+      const toMinutes = (value) => {
+        const parts = String(value).split(":").map(Number);
+        return parts.length === 2 && parts.every(Number.isFinite) ? parts[0] * 60 + parts[1] : NaN;
+      };
+      const start = toMinutes(ts.timeStart);
+      const end = toMinutes(ts.timeEnd);
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end > 1439 || start > end) throw new Error("Choose a valid time range within one day.");
+      const minutes = random().int(start, end);
+      const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+      const mins = String(minutes % 60).padStart(2, "0");
+      ts.result = hours + ":" + mins;
+      summary = ts.result;
+    } else if (id === "coordinate") {
+      const xMin = Number(ts.xMin), xMax = Number(ts.xMax), yMin = Number(ts.yMin), yMax = Number(ts.yMax);
+      if (![xMin, xMax, yMin, yMax].every(Number.isSafeInteger) || xMin > xMax || yMin > yMax) throw new Error("Choose valid integer X and Y bounds.");
+      const x = random().int(xMin, xMax);
+      const y = random().int(yMin, yMax);
+      ts.result = { summary: "(" + x + ", " + y + ")", x, y };
+      summary = ts.result.summary;
+    } else if (id === "rps") {
+      ts.result = pick(["ROCK", "PAPER", "SCISSORS"], random());
+      summary = ts.result;
     } else if (id === "direction") {
       ts.result = pick(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], random());
       summary = ts.result;
@@ -1101,8 +1199,11 @@ async function shareCurrentResult() {
 function summarizeResult(id, result) {
   if (id === "dice") return result.values.join(" + ") + " = " + result.total;
   if (id === "teams") return result.map((group, index) => "Team " + (index + 1) + ": " + group.join(", ")).join(" | ");
-  if (id === "shuffle") return result.join(", ");
+  if (id === "groups") return result.map((group, index) => "Group " + (index + 1) + ": " + group.join(", ")).join(" | ");
+  if (id === "shuffle" || id === "sampler") return result.join(", ");
   if (id === "pairs") return result.map((group) => group.join(" & ")).join(" | ");
+  if (id === "assignment" || id === "ladder") return result.map((item) => item.source + " → " + item.target).join(" | ");
+  if (id === "tournament") return result.map((group) => group.length === 2 ? group.join(" vs ") : group[0] + " — BYE").join(" | ");
   if (id === "lottery") return result.join(", ");
   if (typeof result === "object") return result.summary || result.card || JSON.stringify(result);
   return String(result);
