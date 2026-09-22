@@ -34,6 +34,14 @@ import {
   resolvePoolView,
   poolStats
 } from "./pool-model.js";
+import {
+  createRule,
+  ruleTypesForTool,
+  validateRules,
+  summarizeRule,
+  ruleStrengthLabel
+} from "./rule-model.js";
+import { historyPairKey } from "./constraint-engine.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -60,6 +68,14 @@ const palette = [
 ];
 
 const selectionTools = new Set(["wheel", "picker", "sampler"]);
+const constraintTools = new Set([
+  "teams",
+  "groups",
+  "pairs",
+  "assignment",
+  "secret-santa",
+  "tournament"
+]);
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
@@ -171,6 +187,9 @@ function ensureToolState(toolId) {
       allowRepeats: false,
       selectionOpen: false,
       fairnessOpen: false,
+      rules: [],
+      rulesOpen: false,
+      solverEffort: "automatic",
 
       targetText: "Setup\nCleanup\nSnacks",
       ladderOutcomes: "Prize A\nPrize B\nPrize C\nPrize D",
