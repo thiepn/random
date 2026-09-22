@@ -94,10 +94,15 @@ function executePrimitive(primitive, config, runtime, rng, overrideItems = null)
       entries.map((entry) => entry.weight),
       rng
     );
+    const selectedIndex = entries.indexOf(chosen);
     const output = entryOutput(chosen);
     return {
       result: output,
       summary: String(output),
+      detail: {
+        selectedIndex,
+        selectedEntryId: chosen.id
+      },
       fairness: {
         kind: "custom-selection",
         mode: entries.some((entry) => entry.weight !== 1)
@@ -235,6 +240,7 @@ function executePrimitive(primitive, config, runtime, rng, overrideItems = null)
       rows.map((entry) => entry.weight),
       rng
     );
+    const selectedIndex = rows.indexOf(row);
     const output = entryOutput(row);
     return {
       result: {
@@ -242,6 +248,10 @@ function executePrimitive(primitive, config, runtime, rng, overrideItems = null)
         value: output
       },
       summary: String(output),
+      detail: {
+        selectedIndex,
+        selectedEntryId: row.id
+      },
       fairness: {
         kind: "custom-table",
         mode: rows.some((entry) => entry.weight !== 1)
