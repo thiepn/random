@@ -492,7 +492,7 @@ async function runStudio() {
   if (items.length < 2) return alert("Add at least two options.");
   if (!Number.isSafeInteger(count) || count < 2 || count > items.length) return alert("Finalist count must be between 2 and the number of options.");
   const source = rng();
-  const finalists = sample(items, count, source);
+  const finalists = sample(items, count, random());
   const winner = pick(finalists, source);
   state.studioResult = { finalists, winner };
   await record({ id: "studio", name: "Decision Studio", icon: "◆" }, winner, { finalists });
@@ -805,14 +805,18 @@ async function runTool(id) {
     return;
   }
 
-  const source = rng();
+  let source = null;
+  const random = () => {
+    if (!source) source = rng();
+    return source;
+  };
   try {
     let summary = "";
     let detail = null;
     let animationDuration = 0;
 
     if (id === "coin") {
-      const result = source.int(0, 1) === 0 ? "Heads" : "Tails";
+      const result = random().int(0, 1) === 0 ? "Heads" : "Tails";
       ts.result = result;
       ts.animating = true;
       summary = result;
@@ -820,7 +824,7 @@ async function runTool(id) {
     } else if (id === "dice") {
       const count = Math.max(1, Math.min(8, Number(ts.diceCount) || 1));
       const sides = Math.max(1, Math.min(100, Number(ts.diceSides) || 6));
-      const values = Array.from({ length: count }, () => source.int(1, sides));
+      const values = Array.from({ length: count }, () => random().int(1, sides));
       ts.result = { values, total: values.reduce((a, b) => a + b, 0) };
       ts.animating = true;
       summary = String(ts.result.total);
@@ -830,12 +834,12 @@ async function runTool(id) {
       const min = Number(ts.numberMin);
       const max = Number(ts.numberMax);
       if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || min > max || max - min + 1 > 0x100000000) throw new Error("Choose a valid integer range of at most 4,294,967,296 values.");
-      ts.result = source.int(min, max);
+      ts.result = random().int(min, max);
       summary = String(ts.result);
     } else if (id === "wheel") {
       const items = parseList(ts.listText);
       if (items.length < 2) throw new Error("Add at least two Wheel entries.");
-      const index = source.int(0, items.length - 1);
+      const index = random().int(0, items.length - 1);
       ts.result = items[index];
       const segment = 360 / items.length;
       const desired = (360 - (index + 0.5) * segment) % 360;
@@ -853,36 +857,36 @@ async function runTool(id) {
     } else if (id === "picker") {
       const items = parseList(ts.listText);
       if (!items.length) throw new Error("Add at least one entry.");
-      ts.result = pick(items, source);
+      ts.result = pick(items, random());
       summary = ts.result;
     } else if (id === "shuffle") {
       const items = parseList(ts.listText);
       if (items.length < 2) throw new Error("Add at least two entries.");
-      ts.result = shuffle(items, source);
+      ts.result = shuffle(items, random());
       summary = ts.result.slice(0, 3).join(", ") + (ts.result.length > 3 ? "…" : "");
       detail = { order: ts.result };
     } else if (id === "teams") {
       const items = parseList(ts.listText);
       const count = Math.max(2, Math.min(12, Number(ts.teamCount) || 2));
       if (items.length < count) throw new Error("You need at least as many people as teams.");
-      ts.result = partition(items, count, source);
+      ts.result = partition(items, count, random());
       summary = count + " teams";
       detail = { groups: ts.result };
     } else if (id === "pairs") {
       const items = parseList(ts.listText);
       if (items.length < 2) throw new Error("Add at least two people.");
-      ts.result = pairs(items, source);
+      ts.result = pairs(items, random());
       summary = ts.result.length + " groups";
       detail = { pairs: ts.result };
     } else if (id === "cards") {
-      if (!ts.deck || ts.deck.length === 0) ts.deck = shuffle(makeDeck(), source);
+      if (!ts.deck || ts.deck.length === 0) ts.deck = shuffle(makeDeck(), random());
       const card = ts.deck.shift();
       ts.result = { card, remaining: ts.deck.length };
       summary = card;
       detail = { remaining: ts.deck.length };
     } else if (id === "chance") {
       const chance = Math.max(0, Math.min(100, Number(ts.chance) || 0));
-      const success = source.float() * 100 < chance;
+      const success = random().float() * 100 < chance;
       ts.result = { summary: success ? "YES" : "NO", sub: chance + "% success chance" };
       summary = ts.result.summary;
       detail = { chance };
@@ -891,17 +895,17 @@ async function runTool(id) {
       const max = Number(ts.lotteryMax);
       if (!Number.isSafeInteger(count) || !Number.isSafeInteger(max) || count < 1 || max < 1 || count > max || max > 10000) throw new Error("Choose a valid draw count and range up to 10,000.");
       const numbers = Array.from({ length: max }, (_, index) => index + 1);
-      ts.result = sample(numbers, count, source).sort((a, b) => a - b);
+      ts.result = sample(numbers, count, random()).sort((a, b) => a - b);
       summary = ts.result.join(", ");
     } else if (id === "color") {
-      ts.result = randomHexColor(source);
+      ts.result = randomHexColor(random());
       summary = ts.result;
     } else if (id === "date") {
       const start = Date.parse(ts.dateStart + "T00:00:00Z");
       const end = Date.parse(ts.dateEnd + "T00:00:00Z");
       if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) throw new Error("Choose a valid date range.");
       const days = Math.floor((end - start) / 86400000);
-      const offset = source.int(0, days);
+      const offset = random().int(0, days);
       const date = new Date(start + offset * 86400000);
       ts.result = {
         summary: new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeZone: "UTC" }).format(date),
@@ -909,10 +913,10 @@ async function runTool(id) {
       };
       summary = ts.result.summary;
     } else if (id === "direction") {
-      ts.result = pick(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], source);
+      ts.result = pick(["N", "NE", "E", "SE", "S", "SW", "W", "NW"], random());
       summary = ts.result;
     } else if (id === "letter") {
-      ts.result = String.fromCharCode(65 + source.int(0, 25));
+      ts.result = String.fromCharCode(65 + random().int(0, 25));
       summary = ts.result;
     }
 
