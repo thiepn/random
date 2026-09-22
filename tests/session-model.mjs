@@ -121,12 +121,33 @@ import {
 }
 
 {
-  const completed = completeSession(createSession({
+  let completed = createSession({
     toolId: "elimination",
     toolName: "Elimination",
-    initialState: { eliminationRemaining: ["A", "B"] }
-  }));
+    initialState: { eliminationRemaining: ["A", "B"], result: null }
+  });
+  const finalRun = createRun({
+    toolId: "elimination",
+    toolName: "Elimination",
+    sessionId: completed.id,
+    beforeState: completed.initialState,
+    afterState: {
+      eliminationRemaining: ["Anna"],
+      result: { winner: "Anna" }
+    },
+    result: { winner: "Anna" },
+    summary: "Winner: Anna"
+  });
+  completed = appendRunToSession(completed, finalRun);
+  completed = completeSession(completed);
   assert.equal(completed.status, "completed");
+
+  const reopened = undoSession(
+    completed,
+    new Map([[finalRun.id, finalRun]])
+  );
+  assert.equal(reopened.status, "active");
+  assert.equal(reopened.cursor, 0);
 
   const abandoned = abandonSession(createSession({
     toolId: "cards",
