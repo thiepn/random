@@ -308,8 +308,7 @@ function prepareRandomSource() {
     return {
       source: createRng({ mode: "secure" }),
       context: { mode: "secure" },
-      settingsRecord: null,
-      commit: async () => {}
+      settingsRecord: null
     };
   }
 
@@ -329,11 +328,7 @@ function prepareRandomSource() {
     source,
     context: { mode: "seeded", seed, position },
     settingsRecord: { id: "app", value: nextSettings },
-    nextSettings,
-    commit: async () => {
-      state.settings = nextSettings;
-      await saveSettings(state.settings);
-    }
+    nextSettings
   };
 }
 
@@ -516,21 +511,6 @@ function runsByIdMap() {
   return new Map(state.runs.map((run) => [run.id, run]));
 }
 
-async function record(tool, summary, detail = null) {
-  const entry = {
-    id: crypto.randomUUID(),
-    toolId: tool.id,
-    toolName: tool.name,
-    icon: tool.icon,
-    resultSummary: summary,
-    detail,
-    timestamp: Date.now()
-  };
-  await put("history", entry);
-  state.history.unshift(entry);
-  state.history = state.history.slice(0, 500);
-  return entry;
-}
 
 function setView(view) {
   state.view = view;
