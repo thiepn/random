@@ -10,7 +10,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Reusable Pools stored in IndexedDB
 - History and favorites
 - Offline service worker + web app manifest
-- Core tools: coin, dice, number, wheel, picker, shuffle, teams, pairs, cards, chance, lottery, color, date, direction, letters
+- 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
 
 No build step is required. The repository can be served directly through GitHub Pages.
 
