@@ -87,6 +87,12 @@ import {
 }
 
 {
+  const parsed = parseDelimitedText("name,tag\nAnna,leader");
+  const items = importRowsToPoolItems(parsed);
+  assert.deepEqual(items[0].tags, ["leader"]);
+}
+
+{
   const parsed = parseDelimitedText("Anna\tLeader\nBen\tMember", { hasHeader: false });
   assert.equal(parsed.delimiter, "\t");
   assert.deepEqual(parsed.headers, ["label", "column_2"]);
