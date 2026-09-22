@@ -1,8 +1,11 @@
 const DB_NAME = "randomizer-arcade";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORES = [
   "pools",
   "poolViews",
+  "ruleSets",
+  "sessionTemplates",
+  "templateSessions",
   "history",
   "runs",
   "sessions",
@@ -126,13 +129,16 @@ export async function commitRunAndSession({
   run,
   session = null,
   event = null,
+  templateSession = null,
   settingsRecord = null,
-  expectedSessionRevision = null
+  expectedSessionRevision = null,
+  expectedTemplateSessionRevision = null
 }) {
   const db = await openDb();
   const storeNames = ["runs"];
   if (session) storeNames.push("sessions");
   if (event) storeNames.push("sessionEvents");
+  if (templateSession) storeNames.push("templateSessions");
   if (settingsRecord) storeNames.push("settings");
 
   return new Promise((resolve, reject) => {
@@ -140,13 +146,17 @@ export async function commitRunAndSession({
     const runStore = tx.objectStore("runs");
     const sessionStore = session ? tx.objectStore("sessions") : null;
     const eventStore = event ? tx.objectStore("sessionEvents") : null;
+    const templateStore = templateSession
+      ? tx.objectStore("templateSessions")
+      : null;
     const settingsStore = settingsRecord ? tx.objectStore("settings") : null;
 
     let explicitError = null;
     let sessionReady = !session;
+    let templateReady = !templateSession;
 
     const writeAll = () => {
-      if (!sessionReady || explicitError) return;
+      if (!sessionReady || !templateReady || explicitError) return;
 
       const existingRun = runStore.get(run.id);
       existingRun.onerror = () => {
@@ -164,6 +174,7 @@ export async function commitRunAndSession({
         runStore.add(run);
         if (session) sessionStore.put(session);
         if (event) eventStore.add(event);
+        if (templateSession) templateStore.put(templateSession);
         if (settingsRecord) settingsStore.put(settingsRecord);
       };
     };
@@ -193,11 +204,46 @@ export async function commitRunAndSession({
         sessionReady = true;
         writeAll();
       };
-    } else {
+    }
+
+    if (templateSession) {
+      const readTemplate = templateStore.get(templateSession.id);
+      readTemplate.onerror = () => {
+        explicitError = readTemplate.error;
+        tx.abort();
+      };
+      readTemplate.onsuccess = () => {
+        const current = readTemplate.result || null;
+        const actualRevision = current?.revision ?? null;
+
+        if (
+          expectedTemplateSessionRevision != null
+          && actualRevision !== expectedTemplateSessionRevision
+        ) {
+          explicitError = revisionConflict(
+            expectedTemplateSessionRevision,
+            actualRevision
+          );
+          tx.abort();
+          return;
+        }
+
+        templateReady = true;
+        writeAll();
+      };
+    }
+
+    if (!session && !templateSession) {
       writeAll();
     }
 
-    tx.oncomplete = () => resolve({ run, session, event, settingsRecord });
+    tx.oncomplete = () => resolve({
+      run,
+      session,
+      event,
+      templateSession,
+      settingsRecord
+    });
     tx.onerror = () => reject(explicitError || tx.error);
     tx.onabort = () => reject(
       explicitError || tx.error || new Error("Run transaction aborted.")
