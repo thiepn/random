@@ -1990,6 +1990,11 @@ async function runTool(id) {
   }
 
   ts.error = null;
+
+  if (selectionTools.has(id)) {
+    syncSelectionState(id, ts);
+  }
+
   const prepared = prepareRandomSource();
 
   const config = {
@@ -2028,8 +2033,9 @@ async function runTool(id) {
 
     if (id === "wheel") {
       const index = output.detail.selectedIndex;
-      const segment = 360 / config.items.length;
-      const desired = (360 - (index + 0.5) * segment) % 360;
+      const model = normalizeSelection(config.items, config.selectionEntries || []);
+      const segment = wheelSegmentForIndex(model, index);
+      const desired = (360 - segment.center) % 360;
       const previous = ts.wheelRotation || 0;
       const current = ((previous % 360) + 360) % 360;
       const delta = (desired - current + 360) % 360;
@@ -2076,7 +2082,22 @@ async function shareCurrentResult() {
   const ts = ensureToolState(tool.id);
   if (!ts.result) return;
 
-  const text = tool.name + ": " + summarizeResult(tool.id, ts.result);
+  let text = tool.name + ": " + summarizeResult(tool.id, ts.result);
+
+  if (selectionTools.has(tool.id)) {
+    const model = currentSelectionModel(tool.id, ts);
+    if (model) {
+      const rules = selectionRuleSummary(model, {
+        allowRepeats: ts.allowRepeats,
+        multi: tool.id === "sampler"
+      });
+      if (rules.length) text += " · " + rules.join(" · ");
+    }
+  }
+
+  text += state.settings.randomness.mode === "seeded"
+    ? " · Seeded"
+    : " · Secure Random";
 
   try {
     if (navigator.share) {
