@@ -1,3 +1,4 @@
+import { parseDiceExpression } from "./dice-engine.js";
 export const CUSTOM_EXPERIENCE_SCHEMA_VERSION = 1;
 export const CUSTOM_EXPORT_VERSION = 1;
 
@@ -243,18 +244,43 @@ function normalizePrimitiveConfig(primitive, config = {}, {
       primitive === "shuffle" ? 2 : 1
     );
 
+    if (
+      source.source === "embedded"
+      && primitive !== "shuffle"
+      && !source.entries.some((entry) => entry.weight > 0)
+    ) {
+      throw new CustomExperienceError(
+        "At least one embedded entry must have positive weight.",
+        "CUSTOM_NO_ELIGIBLE_ENTRIES"
+      );
+    }
+
     if (primitive === "sample") {
       const count = Number(config.count == null ? 2 : config.count);
+      const replacement = Boolean(config.replacement);
       if (!Number.isSafeInteger(count) || count < 1 || count > 100) {
         throw new CustomExperienceError(
           "Sample count must be from 1 to 100.",
           "INVALID_CUSTOM_SAMPLE_COUNT"
         );
       }
+
+      if (source.source === "embedded" && !replacement) {
+        const eligible = source.entries.filter(
+          (entry) => entry.weight > 0
+        ).length;
+        if (count > eligible) {
+          throw new CustomExperienceError(
+            "Sample count exceeds the number of eligible embedded entries.",
+            "CUSTOM_SAMPLE_EXCEEDS_ELIGIBLE"
+          );
+        }
+      }
+
       return {
         ...source,
         count,
-        replacement: Boolean(config.replacement)
+        replacement
       };
     }
 
@@ -267,6 +293,7 @@ function normalizePrimitiveConfig(primitive, config = {}, {
     const max = Number(config.max == null ? 100 : config.max);
     const count = Number(config.count == null ? 1 : config.count);
     const precision = Number(config.precision == null ? 2 : config.precision);
+    const unique = Boolean(config.unique);
 
     if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
       throw new CustomExperienceError(
@@ -280,13 +307,59 @@ function normalizePrimitiveConfig(primitive, config = {}, {
         "INVALID_CUSTOM_NUMBER_COUNT"
       );
     }
+
+    let scaledMin;
+    let scaledMax;
+
+    if (mode === "integer") {
+      if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max)) {
+        throw new CustomExperienceError(
+          "Integer mode requires whole-number bounds.",
+          "INVALID_CUSTOM_INTEGER_BOUND"
+        );
+      }
+      scaledMin = min;
+      scaledMax = max;
+    } else {
+      if (!Number.isSafeInteger(precision) || precision < 1 || precision > 6) {
+        throw new CustomExperienceError(
+          "Decimal precision must be from 1 to 6.",
+          "INVALID_CUSTOM_NUMBER_PRECISION"
+        );
+      }
+      const scale = 10 ** precision;
+      const rawMin = min * scale;
+      const rawMax = max * scale;
+      scaledMin = Math.round(rawMin);
+      scaledMax = Math.round(rawMax);
+      if (
+        !Number.isSafeInteger(scaledMin)
+        || !Number.isSafeInteger(scaledMax)
+        || Math.abs(rawMin - scaledMin) > 1e-7
+        || Math.abs(rawMax - scaledMax) > 1e-7
+      ) {
+        throw new CustomExperienceError(
+          "Number bounds do not match the selected decimal precision.",
+          "CUSTOM_NUMBER_PRECISION_MISMATCH"
+        );
+      }
+    }
+
+    const size = scaledMax - scaledMin + 1;
     if (
-      mode === "decimal"
-      && (!Number.isSafeInteger(precision) || precision < 1 || precision > 6)
+      !Number.isSafeInteger(size)
+      || size < 1
+      || size > 0x100000000
     ) {
       throw new CustomExperienceError(
-        "Decimal precision must be from 1 to 6.",
-        "INVALID_CUSTOM_NUMBER_PRECISION"
+        "Custom number range can contain at most 4,294,967,296 distinct values.",
+        "CUSTOM_NUMBER_RANGE_TOO_LARGE"
+      );
+    }
+    if (unique && count > size) {
+      throw new CustomExperienceError(
+        "Unique number count exceeds the available values.",
+        "CUSTOM_UNIQUE_COUNT_TOO_LARGE"
       );
     }
 
@@ -296,7 +369,7 @@ function normalizePrimitiveConfig(primitive, config = {}, {
       max,
       count,
       precision,
-      unique: Boolean(config.unique)
+      unique
     };
   }
 
@@ -307,6 +380,16 @@ function normalizePrimitiveConfig(primitive, config = {}, {
       300,
       { required: true }
     );
+
+    try {
+      parseDiceExpression(expression);
+    } catch (error) {
+      throw new CustomExperienceError(
+        "Invalid dice expression: " + (error?.message || "could not parse."),
+        "INVALID_CUSTOM_DICE_EXPRESSION"
+      );
+    }
+
     return { expression };
   }
 
@@ -361,6 +444,12 @@ function normalizePrimitiveConfig(primitive, config = {}, {
       min: 1,
       label: "Table rows"
     });
+    if (!rows.some((row) => row.weight > 0)) {
+      throw new CustomExperienceError(
+        "At least one table row must have positive weight.",
+        "CUSTOM_NO_ELIGIBLE_ROWS"
+      );
+    }
     return { rows };
   }
 
