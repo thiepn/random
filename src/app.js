@@ -3294,6 +3294,20 @@ async function endActiveSession(toolId, status = "abandoned", resetTool = false)
 
 function replayStoredRun(run) {
   if (!run?.afterState) return;
+
+  if (run.toolId === "studio") {
+    state.view = "studio";
+    state.toolId = null;
+    state.modal = null;
+    state.tool.studioText = run.beforeState?.studioText || "";
+    state.tool.studioCount = run.beforeState?.studioCount || 3;
+    state.studioResult = cloneData(run.result);
+    history.replaceState({}, "", location.pathname);
+    render();
+    announce("Replaying stored Studio result. No randomness was used.");
+    return;
+  }
+
   state.view = "tool";
   state.toolId = run.toolId;
   state.modal = null;
@@ -3312,6 +3326,20 @@ function replayStoredRun(run) {
 
 async function rerunStoredRun(run) {
   if (!run?.beforeState) return;
+
+  if (run.toolId === "studio") {
+    state.view = "studio";
+    state.toolId = null;
+    state.modal = null;
+    state.tool.studioText = run.beforeState?.studioText || "";
+    state.tool.studioCount = run.beforeState?.studioCount || 3;
+    state.studioResult = cloneData(run.beforeState?.studioResult || null);
+    history.replaceState({}, "", location.pathname);
+    render();
+    await runStudio();
+    return;
+  }
+
   state.view = "tool";
   state.toolId = run.toolId;
   state.modal = null;
@@ -5685,6 +5713,7 @@ async function init() {
     state.view = "tool";
     state.toolId = requestedTool;
     ensureToolState(requestedTool);
+    maybeResumeLatestSession(requestedTool);
   }
 
   render();
