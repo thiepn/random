@@ -366,6 +366,129 @@ async function loadData() {
   state.settings = settings;
 }
 
+function cloneData(value) {
+  return value == null ? value : structuredClone(value);
+}
+
+function snapshotToolState(toolId, toolState) {
+  const snapshot = cloneData(toolState);
+  delete snapshot.error;
+  delete snapshot.animating;
+  delete snapshot.pendingWheelRotation;
+  delete snapshot.selectionOpen;
+  delete snapshot.fairnessOpen;
+  delete snapshot.rulesOpen;
+  delete snapshot.diceHelpOpen;
+  delete snapshot.activeSessionId;
+  delete snapshot.replayRunId;
+  return snapshot;
+}
+
+function setupSnapshot(toolId, toolState) {
+  const snapshot = snapshotToolState(toolId, toolState);
+  snapshot.result = null;
+  snapshot.lastSolverDiagnostics = null;
+  snapshot.lastConstraintScore = null;
+
+  if (toolId === "cards") {
+    snapshot.deck = null;
+  }
+
+  if (toolId === "elimination") {
+    snapshot.eliminationRemaining = null;
+    snapshot.eliminationOut = [];
+    snapshot.eliminationSignature = "";
+  }
+
+  return snapshot;
+}
+
+function restoreToolSnapshot(toolId, snapshot, {
+  sessionId = null,
+  replayRunId = null
+} = {}) {
+  const previous = ensureToolState(toolId);
+  const restored = {
+    ...previous,
+    ...cloneData(snapshot),
+    error: null,
+    animating: false,
+    pendingWheelRotation: null,
+    activeSessionId: sessionId,
+    replayRunId
+  };
+  state.tool[toolId] = restored;
+  return restored;
+}
+
+function sessionById(id) {
+  return state.sessions.find((session) => session.id === id) || null;
+}
+
+function runById(id) {
+  return state.runs.find((run) => run.id === id) || null;
+}
+
+function replaceSession(next) {
+  state.sessions = [
+    next,
+    ...state.sessions.filter((session) => session.id !== next.id)
+  ].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function latestActiveSession(toolId) {
+  return state.sessions
+    .filter((session) => session.toolId === toolId && session.status === "active")
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0] || null;
+}
+
+function resumeSessionInTool(session) {
+  const restored = restoreToolSnapshot(
+    session.toolId,
+    resumeSessionState(session),
+    { sessionId: session.id }
+  );
+  restored.replayRunId = null;
+  return restored;
+}
+
+function maybeResumeLatestSession(toolId) {
+  if (!isStatefulTool(toolId)) return null;
+  const current = ensureToolState(toolId);
+  if (current.activeSessionId) {
+    const session = sessionById(current.activeSessionId);
+    if (session?.status === "active") return session;
+  }
+
+  const session = latestActiveSession(toolId);
+  if (!session) return null;
+  resumeSessionInTool(session);
+  return session;
+}
+
+function runInputSnapshot(toolId, toolState) {
+  return {
+    items: parseList(toolState.listText),
+    workingSetSource: cloneData(toolState.workingSet?.source || null)
+  };
+}
+
+function runConfigSnapshot(toolId, toolState) {
+  return setupSnapshot(toolId, toolState);
+}
+
+function setupFingerprintFor(toolId, toolState) {
+  return fingerprintSetup(
+    toolId,
+    runInputSnapshot(toolId, toolState),
+    runConfigSnapshot(toolId, toolState)
+  );
+}
+
+function runsByIdMap() {
+  return new Map(state.runs.map((run) => [run.id, run]));
+}
+
 async function record(tool, summary, detail = null) {
   const entry = {
     id: crypto.randomUUID(),
@@ -398,6 +521,7 @@ function openTool(id) {
   state.toolId = id;
   state.modal = null;
   ensureToolState(id);
+  maybeResumeLatestSession(id);
   history.replaceState({}, "", location.pathname + "?tool=" + encodeURIComponent(id));
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
