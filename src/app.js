@@ -851,7 +851,7 @@ async function applyPresetToTool(preset, {
       next.selectionEntries = next.selectionEntries.map((entry, index) => ({
         ...entry,
         weight: resolved.workingSet.items[index]?.weight ?? entry.weight,
-        excluded: false
+        excluded: Boolean(entry.excluded)
       }));
     }
   }
@@ -2669,7 +2669,52 @@ function constraintValidation(tool, ts) {
 function renderRuleStrip(tool, ts) {
   let rules = [];
 
-  if (selectionTools.has(tool.id)) {
+  if (
+    constraintTools.has(tool.id)
+    && (ts.rules || []).some((rule) => rule.enabled !== false)
+  ) {
+    const activeRules = ts.rules.filter((rule) => rule.enabled !== false);
+    const required = activeRules.filter(
+      (rule) => rule.strength !== "soft"
+    ).length;
+    const preferred = activeRules.filter(
+      (rule) => rule.strength === "soft"
+    ).length;
+
+    panel.querySelector(".fairness-body").append(
+      node("div", { class: "fairness-method" }, [
+        node("strong", { text: "Constrained randomization" }),
+        node("p", {
+          text:
+            "The solver searches randomly among configurations satisfying required rules, then uses preferences to rank valid candidates. "
+            + "It is not guaranteed to sample uniformly across every mathematically valid arrangement. "
+            + required
+            + " required and "
+            + preferred
+            + " preferred rules are active."
+        }),
+        ts.lastSolverDiagnostics
+          ? node("div", { class: "solver-diagnostics" }, [
+              node("span", {
+                text: "Search nodes " + ts.lastSolverDiagnostics.nodes
+              }),
+              node("span", {
+                text: "Valid candidates " + ts.lastSolverDiagnostics.solutions
+              }),
+              node("span", {
+                text:
+                  "Preference score "
+                  + (
+                    ts.lastConstraintScore == null
+                      ? "—"
+                      : Number(ts.lastConstraintScore).toFixed(2)
+                  )
+              })
+            ])
+          : null
+      ])
+    );
+  } else if (selectionTools.has(tool.id)) {
     const model = currentSelectionModel(tool.id, ts);
     if (!model) return null;
     rules = selectionRuleSummary(model, {
@@ -6861,6 +6906,9 @@ function renderUseResultModal(modal, config) {
             next.templateStepIndex = null;
             next.templateStepId = null;
             invalidateTool(tool.id, next);
+            if (selectionTools.has(tool.id)) {
+              reconcileToolSelection(tool.id, next);
+            }
 
             state.modal = null;
             openTool(tool.id);
@@ -6973,16 +7021,44 @@ function renderNewSessionTemplateModal(modal, config) {
       }),
       presetSelect,
       inputKind,
-      config.steps.length > 1
-        ? node("button", {
-            class: "small-action",
-            type: "button",
-            onClick: () => {
-              config.steps.splice(index, 1);
-              render();
-            }
-          }, "×")
-        : null
+      node("div", { class: "template-builder-step-actions" }, [
+        index > 0
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              "aria-label": "Move step up",
+              onClick: () => {
+                const previous = config.steps[index - 1];
+                config.steps[index - 1] = config.steps[index];
+                config.steps[index] = previous;
+                render();
+              }
+            }, "↑")
+          : null,
+        index < config.steps.length - 1
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              "aria-label": "Move step down",
+              onClick: () => {
+                const following = config.steps[index + 1];
+                config.steps[index + 1] = config.steps[index];
+                config.steps[index] = following;
+                render();
+              }
+            }, "↓")
+          : null,
+        config.steps.length > 1
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: () => {
+                config.steps.splice(index, 1);
+                render();
+              }
+            }, "×")
+          : null
+      ])
     ]));
   });
 
