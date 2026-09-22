@@ -925,6 +925,10 @@ async function startPartyMode(toolId) {
     }
   });
 
+  const fullscreenAttempt = party.options.fullscreen
+    ? requestPartyFullscreen()
+    : Promise.resolve();
+
   await put("partySessions", party);
   replacePartySession(party);
   const ts = ensureToolState(toolId);
@@ -943,7 +947,7 @@ async function startPartyMode(toolId) {
     location.pathname + "?party=" + encodeURIComponent(party.id)
   );
 
-  if (party.options.fullscreen) await requestPartyFullscreen();
+  await fullscreenAttempt;
   await requestPartyWakeLock(party);
   broadcastPartyAudience({ party, stage: "ready" });
   render();
@@ -1017,11 +1021,20 @@ async function endPartyMode() {
 async function openAudienceWindow(party = activePartySession()) {
   if (!party) return;
 
-  const popup = window.open("about:blank", "_blank");
-  if (!popup) {
-    announce("Audience window was blocked by the browser.");
-    return;
-  }
+  const url =
+    location.origin
+    + location.pathname
+    + "?audience="
+    + encodeURIComponent(party.id);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.style.display = "none";
+  document.body.append(link);
+  link.click();
+  link.remove();
 
   let current = party;
   if (!current.options.audienceEnabled) {
@@ -1031,14 +1044,6 @@ async function openAudienceWindow(party = activePartySession()) {
   }
 
   broadcastPartyAudience({ party: current, stage: "ready" });
-
-  const url =
-    location.origin
-    + location.pathname
-    + "?audience="
-    + encodeURIComponent(current.id);
-
-  popup.location.href = url;
 }
 
 function presetConfigSnapshot(toolId, toolState) {
@@ -1423,6 +1428,7 @@ function partyPrivateControls(tool, ts, party) {
       node("button", {
         class: "primary party-primary",
         type: "button",
+        disabled: party.options.paused ? "disabled" : null,
         onClick: () => {
           finishPresentation("secret-santa", null, false);
           ts.secretReveal = null;
@@ -1447,6 +1453,7 @@ function partyPrivateControls(tool, ts, party) {
     node("button", {
       class: "primary party-primary",
       type: "button",
+      disabled: party.options.paused ? "disabled" : null,
       onClick: () => {
         ts.secretReveal = ts.partyPrivateIndex;
         beginPresentation(
@@ -1554,6 +1561,7 @@ function renderParty() {
     actionZone.append(node("button", {
       class: "primary party-primary",
       type: "button",
+      disabled: party.options.paused ? "disabled" : null,
       onClick: runPartyAction
     }, party.options.paused
       ? "PARTY PAUSED"
@@ -1582,8 +1590,12 @@ function renderParty() {
         class: "party-icon-button",
         type: "button",
         onClick: async () => {
+          const pausing = !party.options.paused;
+          if (pausing) {
+            cancelPartyCountdown({ renderAfter: false });
+          }
           const next = await updateActivePartyOptions({
-            paused: !party.options.paused
+            paused: pausing
           });
           broadcastPartyAudience({
             party: next,
