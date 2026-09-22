@@ -119,23 +119,77 @@ export function sample(items, count, rng) {
   return copy.slice(0, count);
 }
 
+export function weightedIndex(weights, rng) {
+  if (!Array.isArray(weights) || weights.length === 0) {
+    throw new RangeError("Weights must be a non-empty array.");
+  }
+
+  let total = 0;
+  for (const weight of weights) {
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new RangeError("Weights must be finite and non-negative.");
+    }
+    total += weight;
+  }
+
+  if (total <= 0) {
+    throw new RangeError("At least one weight must be greater than zero.");
+  }
+
+  const target = rng.float() * total;
+  let cumulative = 0;
+
+  for (let index = 0; index < weights.length; index += 1) {
+    cumulative += weights[index];
+    if (target < cumulative) return index;
+  }
+
+  return weights.length - 1;
+}
+
 export function weightedPick(items, weights, rng) {
   if (items.length !== weights.length || items.length === 0) {
     throw new RangeError("Items and weights must be non-empty and have equal length.");
   }
-  let total = 0;
-  for (const weight of weights) {
-    if (!Number.isFinite(weight) || weight < 0) throw new RangeError("Weights must be finite and non-negative.");
-    total += weight;
+  return items[weightedIndex(weights, rng)];
+}
+
+export function weightedSample(items, weights, count, rng, { replacement = false } = {}) {
+  if (items.length !== weights.length || items.length === 0) {
+    throw new RangeError("Items and weights must be non-empty and have equal length.");
   }
-  if (total <= 0) throw new RangeError("At least one weight must be greater than zero.");
-  const target = rng.float() * total;
-  let cumulative = 0;
-  for (let i = 0; i < items.length; i += 1) {
-    cumulative += weights[i];
-    if (target < cumulative) return items[i];
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new RangeError("Invalid weighted sample size.");
   }
-  return items[items.length - 1];
+
+  const eligible = items
+    .map((item, index) => ({ item, weight: weights[index], index }))
+    .filter((entry) => {
+      if (!Number.isFinite(entry.weight) || entry.weight < 0) {
+        throw new RangeError("Weights must be finite and non-negative.");
+      }
+      return entry.weight > 0;
+    });
+
+  if (!eligible.length) {
+    throw new RangeError("At least one weight must be greater than zero.");
+  }
+
+  if (!replacement && count > eligible.length) {
+    throw new RangeError("Sample size exceeds the number of eligible items.");
+  }
+
+  const selected = [];
+  const pool = [...eligible];
+
+  for (let draw = 0; draw < count; draw += 1) {
+    const source = replacement ? eligible : pool;
+    const selectedIndex = weightedIndex(source.map((entry) => entry.weight), rng);
+    selected.push(source[selectedIndex]);
+    if (!replacement) pool.splice(selectedIndex, 1);
+  }
+
+  return selected;
 }
 
 export function partition(items, groupCount, rng) {
