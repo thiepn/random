@@ -24,7 +24,7 @@ jobs:
       - name: Syntax check
         run: |
           node --check src/random-core.js
-          node --check src/tool-engine.js
+          node --check src/tool-engine.js\n          node --check src/selection-model.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
