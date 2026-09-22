@@ -126,18 +126,21 @@ export async function commitRunAndSession({
   run,
   session = null,
   event = null,
+  settingsRecord = null,
   expectedSessionRevision = null
 }) {
   const db = await openDb();
   const storeNames = ["runs"];
   if (session) storeNames.push("sessions");
   if (event) storeNames.push("sessionEvents");
+  if (settingsRecord) storeNames.push("settings");
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeNames, "readwrite");
     const runStore = tx.objectStore("runs");
     const sessionStore = session ? tx.objectStore("sessions") : null;
     const eventStore = event ? tx.objectStore("sessionEvents") : null;
+    const settingsStore = settingsRecord ? tx.objectStore("settings") : null;
 
     let explicitError = null;
     let sessionReady = !session;
@@ -161,6 +164,7 @@ export async function commitRunAndSession({
         runStore.add(run);
         if (session) sessionStore.put(session);
         if (event) eventStore.add(event);
+        if (settingsRecord) settingsStore.put(settingsRecord);
       };
     };
 
@@ -193,7 +197,7 @@ export async function commitRunAndSession({
       writeAll();
     }
 
-    tx.oncomplete = () => resolve({ run, session, event });
+    tx.oncomplete = () => resolve({ run, session, event, settingsRecord });
     tx.onerror = () => reject(explicitError || tx.error);
     tx.onabort = () => reject(
       explicitError || tx.error || new Error("Run transaction aborted.")
