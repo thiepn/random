@@ -11,7 +11,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Advanced Number engine with integer/decimal grids, multiple draws, and unique sampling
 - Seeded deterministic mode for reproducible sequences
 - Arcade-style responsive UI
-- Reusable Pools stored in IndexedDB
+- Pools 2.0 stored in IndexedDB: revisioned editing, active/inactive items, tags, structured fields, default weights, weight profiles, saved Views, WorkingSets, archive-first lifecycle, and CSV/TSV import
 - History and favorites
 - Offline service worker + web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -33,8 +33,13 @@ Then open `http://localhost:8080`.
 - `src/random-core.js` — decision randomness and deterministic seeded RNG
 - `src/dice-engine.js` — safe dice-expression tokenizer, parser, AST, evaluator, and roll limits
 - `src/number-engine.js` — uniform integer/decimal grid generator and unique range sampling
+- `src/pool-model.js` — Pool schema v2, WorkingSets, Views, filters, CSV import, duplicate detection, and compatibility normalization
 - `src/storage.js` — IndexedDB persistence
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
 - `styles.css` — visual system and responsive layout
 - `sw.js` — offline shell
+
+## Pool data compatibility
+
+Legacy Pool records are normalized to schema v2 when loaded and are only persisted in the new shape when edited. Pool edits use revisions to prevent silent stale overwrites. Tools copy active Pool/View items into a WorkingSet, so editing a run does not mutate the source Pool.
