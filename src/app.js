@@ -788,12 +788,13 @@ function renderTool() {
     })
   ]);
 
+  const ruleStrip = renderRuleStrip(tool, toolState);
   const stage = buildStage(tool, toolState);
   const controls = buildControls(tool, toolState);
 
   content.append(node("section", {
     class: "tool-screen accent-" + tool.accent
-  }, [head, stage, controls]));
+  }, [head, ruleStrip, stage, controls].filter(Boolean)));
 
   return content;
 }
@@ -875,32 +876,57 @@ function ladderBoard(items, outcomes, ladder) {
   return board;
 }
 
-function makeWheelGradient(count) {
-  if (count < 1) return palette[0];
-  const step = 360 / count;
+function makeWheelGradient(model) {
+  if (!model?.eligibleEntries?.length) return palette[0];
   const parts = [];
-  for (let index = 0; index < count; index += 1) {
+  let cursor = 0;
+
+  model.eligibleEntries.forEach((entry, index) => {
+    const start = cursor * 360;
+    cursor += entry.probability;
+    const end = cursor * 360;
     parts.push(
       palette[index % palette.length]
       + " "
-      + (index * step).toFixed(3)
+      + start.toFixed(3)
       + "deg "
-      + ((index + 1) * step).toFixed(3)
+      + end.toFixed(3)
       + "deg"
     );
-  }
+  });
+
   return "conic-gradient(" + parts.join(",") + ")";
 }
 
-function wheelLabels(items) {
-  if (items.length > 12) return null;
+function wheelSegmentForIndex(model, originalIndex) {
+  if (!model?.eligibleEntries?.length) return null;
+  let cursor = 0;
+  for (const entry of model.eligibleEntries) {
+    const start = cursor * 360;
+    cursor += entry.probability;
+    const end = cursor * 360;
+    if (entry.index === originalIndex) {
+      return { start, end, center: start + (end - start) / 2 };
+    }
+  }
+  return null;
+}
+
+function wheelLabels(model) {
+  if (!model?.eligibleEntries?.length || model.eligibleEntries.length > 12) return null;
   const layer = node("div", {
     class: "wheel-label-layer",
     "aria-hidden": "true"
   });
   const radius = 106;
-  items.forEach((item, index) => {
-    const angle = (index + 0.5) * (360 / items.length);
+  let cursor = 0;
+
+  model.eligibleEntries.forEach((entry) => {
+    const start = cursor * 360;
+    cursor += entry.probability;
+    const end = cursor * 360;
+    const angle = start + (end - start) / 2;
+
     layer.append(node("span", {
       class: "wheel-label",
       style: {
@@ -913,11 +939,12 @@ function wheelLabels(items) {
           + angle
           + "deg)"
       },
-      text: String(item).length > 11
-        ? String(item).slice(0, 10) + "…"
-        : String(item)
+      text: String(entry.label).length > 11
+        ? String(entry.label).slice(0, 10) + "…"
+        : String(entry.label)
     }));
   });
+
   return layer;
 }
 
@@ -947,6 +974,24 @@ function stageLabel(id) {
     letter: "Random letter",
     rps: "Random play"
   })[id] || "Result";
+}
+
+function renderRuleStrip(tool, ts) {
+  if (!selectionTools.has(tool.id)) return null;
+  const model = currentSelectionModel(tool.id, ts);
+  if (!model) return null;
+  const rules = selectionRuleSummary(model, {
+    allowRepeats: ts.allowRepeats,
+    multi: tool.id === "sampler"
+  });
+  if (!rules.length) return null;
+
+  return node("div", {
+    class: "tool-rule-strip",
+    "aria-label": "Active selection rules"
+  }, rules.map((rule) =>
+    node("span", { class: "rule-chip", text: rule })
+  ));
 }
 
 function buildStage(tool, ts) {
@@ -990,15 +1035,15 @@ function buildStage(tool, ts) {
         : null
     );
   } else if (tool.id === "wheel") {
-    const items = parseList(ts.listText);
+    const model = currentSelectionModel("wheel", ts);
     const wheel = node("div", {
       class: "wheel",
       style: {
-        background: makeWheelGradient(Math.max(items.length, 1)),
+        background: makeWheelGradient(model),
         transform: "rotate(" + (ts.previousWheelRotation || 0) + "deg)"
       }
     });
-    const labels = wheelLabels(items);
+    const labels = wheelLabels(model);
     if (labels) wheel.append(labels);
 
     const wheelWrap = node("div", { class: "wheel-wrap" }, [
@@ -1006,7 +1051,7 @@ function buildStage(tool, ts) {
       node("div", { class: "wheel-pointer", "aria-hidden": "true" }),
       node("div", {
         class: "wheel-center-label",
-        text: items.length + " entries"
+        text: (model?.eligibleCount || 0) + " eligible"
       })
     ]);
 
