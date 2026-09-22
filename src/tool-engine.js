@@ -14,6 +14,10 @@ import {
   DiceExpressionError,
   rollDiceExpression
 } from "./dice-engine.js";
+import {
+  NumberEngineError,
+  generateRandomNumbers
+} from "./number-engine.js";
 
 const MAX_UINT32_RANGE = 0x100000000;
 
@@ -237,11 +241,57 @@ export function executeTool(toolId, config, rng) {
     }
 
     case "number": {
-      const min = Number(config.numberMin);
-      const max = Number(config.numberMax);
-      requireRange(min, max, "number");
-      const result = rng.int(min, max);
-      return { result, summary: String(result) };
+      try {
+        const generated = generateRandomNumbers({
+          mode: config.numberMode,
+          min: config.numberMin,
+          max: config.numberMax,
+          precision: config.numberPrecision,
+          count: config.numberCount,
+          unique: config.numberUnique
+        }, rng);
+
+        const summary = generated.displayValues.length === 1
+          ? generated.displayValues[0]
+          : generated.displayValues.join(", ");
+
+        const result = {
+          mode: generated.mode,
+          precision: generated.precision,
+          unique: generated.unique,
+          count: generated.count,
+          values: generated.values,
+          displayValues: generated.displayValues,
+          summary,
+          version: generated.version
+        };
+
+        return {
+          result,
+          summary,
+          detail: {
+            ...result,
+            min: generated.min,
+            max: generated.max
+          },
+          fairness: {
+            kind: "number",
+            mode: "uniform-discrete-grid",
+            valueCount: generated.max - generated.min + 1,
+            drawCount: generated.count,
+            unique: generated.unique,
+            precision: generated.precision
+          }
+        };
+      } catch (error) {
+        if (error instanceof NumberEngineError) {
+          throw new ToolValidationError(
+            error.message,
+            error.code || "INVALID_NUMBER_CONFIG"
+          );
+        }
+        throw error;
+      }
     }
 
     case "wheel": {
