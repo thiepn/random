@@ -1241,9 +1241,24 @@ async function togglePresetFavorite(preset) {
 }
 
 async function deletePreset(preset) {
+  const references = state.sessionTemplates.filter((template) =>
+    template.steps.some((step) => step.presetId === preset.id)
+  );
+
+  if (references.length) {
+    announce(
+      "This Preset is used by "
+      + references.length
+      + " Session Template"
+      + (references.length === 1 ? "." : "s.")
+    );
+    return false;
+  }
+
   await remove("presets", preset.id);
   state.presets = state.presets.filter((item) => item.id !== preset.id);
   render();
+  return true;
 }
 
 function presetCard(preset) {
@@ -1350,6 +1365,15 @@ function templateCard(template) {
             class: "small-action",
             type: "button",
             onClick: async () => {
+              const sessions = state.templateSessions.filter(
+                (session) => session.templateId === template.id
+              );
+              if (sessions.length) {
+                announce(
+                  "This Template has saved Session history and cannot be deleted yet."
+                );
+                return;
+              }
               await remove("sessionTemplates", template.id);
               state.sessionTemplates = state.sessionTemplates.filter(
                 (item) => item.id !== template.id
@@ -1532,7 +1556,7 @@ function renderPlay() {
     ));
     content.append(node("div", { class: "saved-setup-grid" }, [
       ...favoritePresets.map(presetCard),
-      ...regularPresets.slice(0, Math.max(0, 6 - favoritePresets.length)).map(presetCard)
+      ...regularPresets.map(presetCard)
     ]));
   }
 
@@ -6705,7 +6729,8 @@ function renderPresetDetailModal(modal, config) {
       class: "danger",
       type: "button",
       onClick: async () => {
-        await deletePreset(preset);
+        const removed = await deletePreset(preset);
+        if (!removed) return;
         state.modal = null;
         render();
       }
@@ -7085,6 +7110,16 @@ function renderRunDetailModal(modal, config) {
     ["Origin", run.origin || "local"],
     ["Run ID", run.id],
     ["Session", run.sessionId || "Standalone"],
+    [
+      "Template Session",
+      run.templateSessionId
+        ? run.templateSessionId
+        : "None"
+    ],
+    [
+      "Template Step",
+      run.templateStepId || "None"
+    ],
     ["Setup", run.setupFingerprint || "Legacy / unavailable"],
     [
       "Randomness",
@@ -7535,8 +7570,18 @@ function render() {
 async function init() {
   await loadData();
 
-  const requestedTool = new URLSearchParams(location.search).get("tool");
-  if (getTool(requestedTool)) {
+  const params = new URLSearchParams(location.search);
+  const requestedTemplateSession = params.get("templateSession");
+  const requestedTool = params.get("tool");
+
+  if (
+    requestedTemplateSession
+    && templateSessionById(requestedTemplateSession)
+  ) {
+    state.activeTemplateSessionId = requestedTemplateSession;
+    state.view = "template-session";
+    state.toolId = null;
+  } else if (getTool(requestedTool)) {
     state.view = "tool";
     state.toolId = requestedTool;
     ensureToolState(requestedTool);
