@@ -1586,8 +1586,10 @@ function ladderBoard(items, outcomes, ladder) {
     }));
   }
 
-  const rungCount = Math.max(ladder?.rungs?.length || 0, 1);
-  (ladder?.rungs || []).forEach((rung, index) => {
+  const rungs = ladder?.rungs || [];
+  const rungCount = Math.max(rungs.length, 1);
+
+  rungs.forEach((rung, index) => {
     tracks.append(node("span", {
       class: "ladder-rung",
       style: {
@@ -1599,6 +1601,69 @@ function ladderBoard(items, outcomes, ladder) {
     }));
   });
 
+  const pathLayer = node("div", {
+    class: "ladder-path-layer",
+    "aria-hidden": "true"
+  });
+
+  for (let sourceIndex = 0; sourceIndex < items.length; sourceIndex += 1) {
+    let column = sourceIndex;
+    let previousY = 0;
+    let pathStep = 0;
+    const color = palette[sourceIndex % palette.length];
+
+    rungs.forEach((rung, rungIndex) => {
+      const y = (rungIndex + 1) / (rungCount + 1) * 100;
+      const x = column / (items.length - 1) * 100;
+
+      pathLayer.append(node("span", {
+        class: "ladder-path-segment is-vertical",
+        style: {
+          "--path-step": String(pathStep++),
+          "--path-color": color,
+          left: x + "%",
+          top: previousY + "%",
+          height: (y - previousY) + "%"
+        }
+      }));
+
+      if (rung.left === column || rung.left + 1 === column) {
+        const nextColumn = rung.left === column
+          ? column + 1
+          : column - 1;
+        const leftColumn = Math.min(column, nextColumn);
+
+        pathLayer.append(node("span", {
+          class: "ladder-path-segment is-horizontal",
+          style: {
+            "--path-step": String(pathStep++),
+            "--path-color": color,
+            left: (leftColumn / (items.length - 1) * 100) + "%",
+            top: y + "%",
+            width: (100 / (items.length - 1)) + "%"
+          }
+        }));
+
+        column = nextColumn;
+      }
+
+      previousY = y;
+    });
+
+    const finalX = column / (items.length - 1) * 100;
+    pathLayer.append(node("span", {
+      class: "ladder-path-segment is-vertical",
+      style: {
+        "--path-step": String(pathStep),
+        "--path-color": color,
+        left: finalX + "%",
+        top: previousY + "%",
+        height: (100 - previousY) + "%"
+      }
+    }));
+  }
+
+  tracks.append(pathLayer);
   board.append(tracks);
   board.append(node("div", { class: "ladder-label-row ladder-outcomes" },
     outcomes.map((item) => node("span", { text: item }))
@@ -1606,7 +1671,6 @@ function ladderBoard(items, outcomes, ladder) {
 
   return board;
 }
-
 function makeWheelGradient(model) {
   if (!model?.eligibleEntries?.length) return palette[0];
   const parts = [];
