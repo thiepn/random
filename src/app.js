@@ -3428,9 +3428,10 @@ function renderPoolEditorModal(modal, editor) {
         type: "button",
         onClick: async () => {
           try {
+            await persistPoolDraft(editor);
             const view = createPoolView({
               name: editor.viewName,
-              poolId: draft.id,
+              poolId: editor.draft.id,
               mode: "dynamic",
               filters: {
                 search: editor.search,
@@ -3454,9 +3455,10 @@ function renderPoolEditorModal(modal, editor) {
         disabled: selected.size ? null : "disabled",
         onClick: async () => {
           try {
+            await persistPoolDraft(editor);
             const view = createPoolView({
               name: editor.viewName,
-              poolId: draft.id,
+              poolId: editor.draft.id,
               mode: "static",
               itemIds: [...selected]
             });
@@ -3983,21 +3985,6 @@ function renderModal() {
         }
       }, "Create Pool")
     ]));
-  } else if (
-    typeof state.modal === "object"
-    && state.modal.type === "pool-editor"
-  ) {
-    renderPoolEditorModal(modal, state.modal);
-  } else if (
-    typeof state.modal === "object"
-    && state.modal.type === "pool-import"
-  ) {
-    renderPoolImportModal(modal, state.modal);
-  } else if (
-    typeof state.modal === "object"
-    && state.modal.type === "save-tool-pool"
-  ) {
-    renderSaveToolPoolModal(modal, state.modal);
   } else if (
     typeof state.modal === "object"
     && state.modal.type === "use-pool"
