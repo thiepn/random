@@ -65,6 +65,13 @@ assert.equal(
   "portable"
 );
 assert.equal(
+  inferRuleSetScope(
+    [{ type: "capacity" }],
+    "pool-1"
+  ),
+  "portable"
+);
+assert.equal(
   inferRuleSetScope([{ type: "apart" }], "pool-1"),
   "pool"
 );
