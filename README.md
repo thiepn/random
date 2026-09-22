@@ -17,6 +17,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Instant/Normal/Showtime presentation engine with tool-specific reveal choreography, Web Audio cues, optional haptics, deterministic particles, Wheel ticks, reduced-motion alternatives, skip-safe reveals, and automatic low-device effect fallback
 - Reusable Presets with live Pool/View bindings, frozen inputs, prompt inputs, favorites, and saved Rule Set integration
 - Linear Session Templates with previous-result handoff, persistent Template Sessions, step locking, dependency invalidation, and Rerun From Here
+- Fullscreen Party mode with persistent Party Sessions, Fast/Standard/Dramatic reveals, configurable countdowns, Host Lock, Wake Lock, pass-the-phone private reveals, TV/projector layouts, and an optional sanitized audience window
 - History and favorites
 - Offline service worker + web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -45,6 +46,7 @@ Then open `http://localhost:8080`.
 - `src/presentation-engine.js` — presentation plans, reduced-motion/effect fallback, Web Audio cues, haptic patterns, and reveal-mode semantics
 - `src/preset-model.js` — Presets, live/frozen/prompt input bindings, favorites, Rule Sets, and source-scope compatibility
 - `src/session-template-model.js` — linear Session Templates, runtime Template Sessions, locking, invalidation, built-ins, and result handoff contracts
+- `src/party-model.js` — Party Session progression, pace/countdown options, privacy rules, and sanitized audience-state construction
 - `src/storage.js` — IndexedDB persistence
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
@@ -66,3 +68,7 @@ Presentation is deliberately downstream of correctness: a Run is committed befor
 ## Presets and multi-step Sessions
 
 IndexedDB schema v4 adds `ruleSets`, `sessionTemplates`, and `templateSessions`. Presets may bind to the latest live Pool/View, freeze a copied input snapshot, or request fresh input. Session Templates are deliberately linear: steps may use a Preset input or the output of an earlier step, but branching/loops remain reserved for Decision Studio. Completing a Template step is committed atomically with the Run that produced it.
+
+## Party mode and audience privacy
+
+IndexedDB schema v5 adds `partySessions`. Party Runs append to their Party Session in the same transaction as the immutable Run and seeded-position update. Fast/Standard/Dramatic only override presentation. Secret Santa uses a pass-the-phone privacy gate, and the audience window receives a strict sanitized `AudienceState` over `BroadcastChannel`; it starts in a minimal mode and does not load the host's Pools, History, Presets, or other IndexedDB data. The audience window is opened with `noopener` so it cannot inspect the host window.
