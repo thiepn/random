@@ -174,13 +174,19 @@ function ensureToolState(toolId) {
   return state.tool[toolId];
 }
 
-function syncSelectionState(toolId, toolState) {
-  if (!selectionTools.has(toolId)) return null;
+function reconcileToolSelection(toolId, toolState) {
+  if (!selectionTools.has(toolId)) return [];
   const items = parseList(toolState.listText);
   toolState.selectionEntries = reconcileSelectionEntries(
     items,
     toolState.selectionEntries || []
   );
+  return items;
+}
+
+function syncSelectionState(toolId, toolState) {
+  const items = reconcileToolSelection(toolId, toolState);
+  if (!selectionTools.has(toolId)) return null;
   return normalizeSelection(items, toolState.selectionEntries);
 }
 
@@ -1377,7 +1383,7 @@ function listControls(tool, ts) {
     const pool = state.pools.find((item) => item.id === poolSelect.value);
     if (!pool) return;
     ts.listText = pool.items.map((item) => item.label).join("\n");
-    if (selectionTools.has(tool.id)) syncSelectionState(tool.id, ts);
+    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
     invalidateTool(tool.id, ts);
     render();
   });
@@ -1390,7 +1396,7 @@ function listControls(tool, ts) {
   textarea.value = ts.listText;
   textarea.addEventListener("input", () => {
     ts.listText = textarea.value;
-    if (selectionTools.has(tool.id)) syncSelectionState(tool.id, ts);
+    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
     invalidateTool(tool.id, ts);
   });
   textarea.addEventListener("change", render);
@@ -1422,11 +1428,33 @@ function updateSelectionEntry(ts, key, patch) {
 }
 
 function selectionRulesControl(tool, ts) {
-  const model = syncSelectionState(tool.id, ts);
-  const rules = selectionRuleSummary(model, {
-    allowRepeats: ts.allowRepeats,
-    multi: tool.id === "sampler"
-  });
+  reconcileToolSelection(tool.id, ts);
+
+  let model;
+  let modelError = null;
+  try {
+    model = normalizeSelection(parseList(ts.listText), ts.selectionEntries);
+  } catch (error) {
+    modelError = error?.message || "Selection rules are invalid.";
+    model = {
+      entries: ts.selectionEntries.map((entry, index) => ({
+        ...entry,
+        index,
+        probability: 0,
+        eligible: false
+      })),
+      customWeights: true,
+      excludedCount: ts.selectionEntries.filter((entry) => entry.excluded).length,
+      zeroWeightCount: 0
+    };
+  }
+
+  const rules = modelError
+    ? ["Invalid weights"]
+    : selectionRuleSummary(model, {
+        allowRepeats: ts.allowRepeats,
+        multi: tool.id === "sampler"
+      });
 
   const section = node("section", { class: "selection-rules" });
   section.append(node("button", {
@@ -1450,6 +1478,10 @@ function selectionRulesControl(tool, ts) {
   ]));
 
   if (!ts.selectionOpen) return section;
+
+  if (modelError) {
+    section.append(toolError(modelError));
+  }
 
   const toolbar = node("div", { class: "selection-toolbar" }, [
     node("button", {
@@ -1992,7 +2024,7 @@ async function runTool(id) {
   ts.error = null;
 
   if (selectionTools.has(id)) {
-    syncSelectionState(id, ts);
+    reconcileToolSelection(id, ts);
   }
 
   const prepared = prepareRandomSource();
