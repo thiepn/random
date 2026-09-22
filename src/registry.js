@@ -80,6 +80,56 @@ export const TOOLS = [
     id: "letter", name: "Letter", icon: "A", category: "generators",
     blurb: "Choose a random letter A–Z.", accent: "green",
     aliases: ["alphabet", "character"]
+  },
+  {
+    id: "sampler", name: "Pick Several", icon: "✣", category: "classics",
+    blurb: "Draw several unique winners from a list.", accent: "cyan",
+    aliases: ["sample", "multiple winners", "giveaway"]
+  },
+  {
+    id: "groups", name: "Groups", icon: "▦", category: "people",
+    blurb: "Divide a list into neutral random groups.", accent: "blue",
+    aliases: ["group people", "breakout groups", "divide"]
+  },
+  {
+    id: "assignment", name: "Assignments", icon: "↦", category: "people",
+    blurb: "Randomly distribute people across tasks or roles.", accent: "purple",
+    aliases: ["assign tasks", "roles", "chores"]
+  },
+  {
+    id: "elimination", name: "Elimination", icon: "◎", category: "games",
+    blurb: "Eliminate random entrants until one winner remains.", accent: "red",
+    aliases: ["last one standing", "eliminate", "survivor"]
+  },
+  {
+    id: "ladder", name: "Ladder", icon: "╫", category: "games",
+    blurb: "Randomly map players to prizes or outcomes.", accent: "green",
+    aliases: ["ghost leg", "sadari", "사다리"]
+  },
+  {
+    id: "secret-santa", name: "Secret Santa", icon: "◈", category: "people",
+    blurb: "Create private no-self gift assignments.", accent: "red",
+    aliases: ["gift exchange", "secret gift", "santa"]
+  },
+  {
+    id: "tournament", name: "Tournament Draw", icon: "⌘", category: "games",
+    blurb: "Randomly seed entrants into matchups.", accent: "orange",
+    aliases: ["bracket", "matchups", "draw"]
+  },
+  {
+    id: "time", name: "Time", icon: "◷", category: "generators",
+    blurb: "Pick a random time within a daily window.", accent: "blue",
+    aliases: ["random time", "hour", "schedule"]
+  },
+  {
+    id: "coordinate", name: "Coordinates", icon: "⌖", category: "generators",
+    blurb: "Generate a random point inside X/Y bounds.", accent: "cyan",
+    aliases: ["x y", "grid", "point"]
+  },
+  {
+    id: "rps", name: "Rock Paper Scissors", icon: "✊", category: "games",
+    blurb: "Let chance choose rock, paper, or scissors.", accent: "pink",
+    aliases: ["rps", "rock", "paper", "scissors"]
   }
 ];
 
