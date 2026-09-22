@@ -71,6 +71,25 @@ import {
   playHaptic,
   cancelHaptics
 } from "./presentation-engine.js";
+import {
+  createPreset,
+  updatePreset,
+  resolvePresetInput,
+  createRuleSet,
+  ruleSetCompatible,
+  applyRuleSet
+} from "./preset-model.js";
+import {
+  createSessionTemplate,
+  createTemplateSession,
+  completeTemplateStep,
+  setTemplateStepLocked,
+  rerunTemplateFrom,
+  previousStepItems,
+  abandonTemplateSession,
+  resultToItems,
+  BUILTIN_SESSION_TEMPLATES
+} from "./session-template-model.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -82,6 +101,11 @@ const state = {
   poolViews: [],
   poolSearch: "",
   poolShowArchived: false,
+  presets: [],
+  ruleSets: [],
+  sessionTemplates: [],
+  templateSessions: [],
+  activeTemplateSessionId: null,
   history: [],
   runs: [],
   sessions: [],
@@ -258,6 +282,10 @@ function ensureToolState(toolId) {
 
       deck: null,
       presentation: null,
+      activePresetId: null,
+      templateSessionId: null,
+      templateStepIndex: null,
+      templateStepId: null,
       activeSessionId: null,
       replayRunId: null
     };
@@ -470,6 +498,10 @@ async function loadData() {
   const [
     pools,
     poolViews,
+    presets,
+    ruleSets,
+    sessionTemplates,
+    templateSessions,
     historyEntries,
     runs,
     sessions,
@@ -479,6 +511,10 @@ async function loadData() {
   ] = await Promise.all([
     getAll("pools"),
     getAll("poolViews"),
+    getAll("presets"),
+    getAll("ruleSets"),
+    getAll("sessionTemplates"),
+    getAll("templateSessions"),
     getAll("history"),
     getAll("runs"),
     getAll("sessions"),
@@ -491,6 +527,14 @@ async function loadData() {
     .map(normalizePool)
     .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   state.poolViews = poolViews;
+  state.presets = presets.sort((a, b) => b.updatedAt - a.updatedAt);
+  state.ruleSets = ruleSets.sort((a, b) => b.updatedAt - a.updatedAt);
+  state.sessionTemplates = sessionTemplates.sort(
+    (a, b) => b.updatedAt - a.updatedAt
+  );
+  state.templateSessions = templateSessions.sort(
+    (a, b) => b.updatedAt - a.updatedAt
+  );
   state.history = historyEntries
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 500);
