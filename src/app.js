@@ -3818,7 +3818,7 @@ function renderModal() {
     modal.append(
       node("h2", { text: "New Pool" }),
       node("p", {
-        text: "One item per line. Duplicate labels are allowed and remain separate entries."
+        text: "Start with a quick pasted list. You can add tags, fields, weights, and Views after creation."
       })
     );
 
@@ -3827,11 +3827,21 @@ function renderModal() {
       placeholder: "Pool name",
       "aria-label": "Pool name"
     });
+    const description = node("input", {
+      class: "field",
+      placeholder: "Description (optional)",
+      "aria-label": "Pool description"
+    });
+    const kind = node("select", {
+      class: "field",
+      "aria-label": "Pool kind"
+    }, ["generic", "people", "choices", "tasks", "cards"].map((value) =>
+      node("option", { value, text: value[0].toUpperCase() + value.slice(1) })
+    ));
     const items = node("textarea", {
       class: "field",
       placeholder: "Anna\nBen\nDavid\nSarah",
-      "aria-label": "Pool items",
-      style: { marginTop: "10px" }
+      "aria-label": "Pool items"
     });
     const error = node("div", {
       class: "tool-error modal-error",
@@ -3839,7 +3849,15 @@ function renderModal() {
       hidden: "hidden"
     });
 
-    modal.append(name, items, error);
+    modal.append(
+      node("div", { class: "pool-create-grid" }, [
+        name,
+        kind,
+        description
+      ]),
+      items,
+      error
+    );
 
     modal.append(node("div", { class: "modal-actions" }, [
       node("button", {
@@ -3854,38 +3872,45 @@ function renderModal() {
         class: "primary",
         type: "button",
         onClick: async () => {
-          const labels = parseList(items.value);
-          if (!name.value.trim() || !labels.length) {
+          try {
+            const labels = parseList(items.value);
+            if (!labels.length) throw new Error("Add at least one item.");
+            const pool = createPool({
+              name: name.value,
+              description: description.value,
+              kind: kind.value,
+              labels
+            });
+            await put("pools", pool);
+            state.pools.unshift(pool);
+            requestPersistentStorage();
+            state.modal = null;
+            openPoolEditor(pool.id);
+          } catch (failure) {
             error.hidden = false;
             error.replaceChildren(
-              node("strong", { text: "Pool needs more information" }),
-              node("span", { text: "Add a Pool name and at least one item." })
+              node("strong", { text: "Could not create Pool" }),
+              node("span", { text: failure.message })
             );
-            return;
           }
-
-          const now = new Date().toISOString();
-          const pool = {
-            id: crypto.randomUUID(),
-            name: name.value.trim(),
-            items: labels.map((label) => ({
-              id: crypto.randomUUID(),
-              label,
-              active: true
-            })),
-            createdAt: now,
-            updatedAt: now,
-            revision: 1
-          };
-
-          await put("pools", pool);
-          state.pools.unshift(pool);
-          state.modal = null;
-          requestPersistentStorage();
-          render();
         }
-      }, "Save Pool")
+      }, "Create Pool")
     ]));
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "pool-editor"
+  ) {
+    renderPoolEditorModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "pool-import"
+  ) {
+    renderPoolImportModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "save-tool-pool"
+  ) {
+    renderSaveToolPoolModal(modal, state.modal);
   } else if (
     typeof state.modal === "object"
     && state.modal.type === "use-pool"
@@ -3913,8 +3938,8 @@ function renderModal() {
         type: "button",
         onClick: () => {
           const ts = ensureToolState(id);
-          ts.listText = pool.items.map((item) => item.label).join("\n");
-          invalidateTool(id, ts);
+          applyWorkingSetToTool(id, ts, createWorkingSet(pool));
+          ts.workingSetDirty = false;
           state.modal = null;
           openTool(id);
         }
