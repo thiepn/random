@@ -912,6 +912,137 @@ function toolCard(tool) {
   ]);
 }
 
+async function togglePresetFavorite(preset) {
+  const next = updatePreset(preset, { favorite: !preset.favorite });
+  await putWithRevision("presets", next, preset.revision);
+  state.presets = state.presets
+    .map((item) => item.id === next.id ? next : item)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  render();
+}
+
+async function deletePreset(preset) {
+  await remove("presets", preset.id);
+  state.presets = state.presets.filter((item) => item.id !== preset.id);
+  render();
+}
+
+function presetCard(preset) {
+  const tool = getTool(preset.toolId);
+  const binding = preset.inputBinding?.mode || "none";
+  const bindingLabel = ({
+    "live-pool": "Live Pool",
+    "live-view": "Live View",
+    frozen: "Frozen input",
+    prompt: "Prompt input",
+    none: "Tool config"
+  })[binding] || binding;
+
+  return node("article", {
+    class: "saved-setup-card accent-" + (tool?.accent || "cyan")
+  }, [
+    node("div", {
+      class: "saved-setup-icon",
+      text: tool?.icon || "✦"
+    }),
+    node("div", { class: "saved-setup-copy" }, [
+      node("div", { class: "saved-setup-title-row" }, [
+        node("strong", { text: preset.name }),
+        preset.favorite
+          ? node("span", {
+              class: "saved-favorite-badge",
+              text: "★"
+            })
+          : null
+      ]),
+      node("span", {
+        text: (tool?.name || preset.toolId) + " · " + bindingLabel
+      })
+    ]),
+    node("div", { class: "saved-setup-actions" }, [
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => applyPresetToTool(preset)
+      }, "Play"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        "aria-label": preset.favorite
+          ? "Remove Preset favorite"
+          : "Favorite Preset",
+        onClick: () => togglePresetFavorite(preset)
+      }, preset.favorite ? "★" : "☆"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => {
+          state.modal = {
+            type: "preset-detail",
+            presetId: preset.id
+          };
+          render();
+        }
+      }, "Manage")
+    ])
+  ]);
+}
+
+function templateCard(template) {
+  const active = state.templateSessions
+    .filter(
+      (session) =>
+        session.templateId === template.id
+        && session.status === "active"
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+
+  return node("article", {
+    class: "session-template-card"
+  }, [
+    node("div", {
+      class: "session-template-icon",
+      text: "◆",
+      "aria-hidden": "true"
+    }),
+    node("div", { class: "session-template-copy" }, [
+      node("strong", { text: template.name }),
+      node("span", {
+        text:
+          template.steps.length
+          + " steps"
+          + (template.builtinKey ? " · Built-in" : "")
+      }),
+      template.description
+        ? node("small", { text: template.description })
+        : null
+    ]),
+    node("div", { class: "saved-setup-actions" }, [
+      node("button", {
+        class: active ? "secondary" : "small-action",
+        type: "button",
+        onClick: () => {
+          if (active) openTemplateSession(active.id);
+          else startTemplateSession(template);
+        }
+      }, active ? "Resume" : "Start"),
+      !template.builtinKey
+        ? node("button", {
+            class: "small-action",
+            type: "button",
+            onClick: async () => {
+              await remove("sessionTemplates", template.id);
+              state.sessionTemplates = state.sessionTemplates.filter(
+                (item) => item.id !== template.id
+              );
+              render();
+            }
+          }, "Remove")
+        : null
+    ])
+  ]);
+}
+
 function topBar() {
   const seeded = state.settings.randomness.mode === "seeded";
   return node("header", { class: "topbar" }, [
@@ -1069,6 +1200,50 @@ function renderPlay() {
     "coin", "dice", "wheel", "picker",
     "teams", "elimination", "cards", "tournament"
   ].map(getTool).filter(Boolean);
+
+  const favoritePresets = state.presets.filter((preset) => preset.favorite);
+  const regularPresets = state.presets.filter((preset) => !preset.favorite);
+
+  if (state.presets.length) {
+    content.append(sectionHeader(
+      "Saved setups",
+      favoritePresets.length
+        ? favoritePresets.length + " favorite · " + state.presets.length + " total"
+        : state.presets.length + " Presets"
+    ));
+    content.append(node("div", { class: "saved-setup-grid" }, [
+      ...favoritePresets.map(presetCard),
+      ...regularPresets.slice(0, Math.max(0, 6 - favoritePresets.length)).map(presetCard)
+    ]));
+  }
+
+  const templates = allSessionTemplates();
+  content.append(node("div", { class: "section-head section template-section-head" }, [
+    node("div", {}, [
+      node("h2", { text: "Session Templates" }),
+      node("p", { text: "Linear reusable multi-step randomizer sessions." })
+    ]),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        state.modal = {
+          type: "new-session-template",
+          name: "",
+          description: "",
+          steps: [
+            { presetId: state.presets[0]?.id || "", inputKind: "preset" },
+            { presetId: state.presets[1]?.id || state.presets[0]?.id || "", inputKind: "previous" }
+          ],
+          error: null
+        };
+        render();
+      }
+    }, "+ New Template")
+  ]));
+  content.append(node("div", { class: "session-template-grid" },
+    templates.map(templateCard)
+  ));
 
   content.append(sectionHeader("Ready to play", "Fast, useful, no setup"));
   content.append(node("div", { class: "tool-grid" }, popular.map(toolCard)));
