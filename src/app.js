@@ -765,7 +765,7 @@ function frozenPresetItems(toolId, toolState) {
   return labels.map((label, index) => ({
     id: aligned
       ? String(workingItems[index].id)
-      : crypto.randomUUID(),
+      : "item:" + index,
     label,
     weight: Number(selection[index]?.weight ?? workingItems[index]?.weight ?? 1),
     tags: aligned && Array.isArray(workingItems[index].tags)
@@ -1323,13 +1323,13 @@ function presetCard(preset) {
 }
 
 function templateCard(template) {
-  const active = state.templateSessions
-    .filter(
-      (session) =>
-        session.templateId === template.id
-        && session.status === "active"
-    )
-    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  const relatedSessions = state.templateSessions
+    .filter((session) => session.templateId === template.id)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const active = relatedSessions.find(
+    (session) => session.status === "active"
+  ) || null;
+  const latest = relatedSessions[0] || null;
 
   return node("article", {
     class: "session-template-card"
@@ -1360,6 +1360,13 @@ function templateCard(template) {
           else startTemplateSession(template);
         }
       }, active ? "Resume" : "Start"),
+      !active && latest
+        ? node("button", {
+            class: "small-action",
+            type: "button",
+            onClick: () => openTemplateSession(latest.id)
+          }, "Open Last")
+        : null,
       !template.builtinKey
         ? node("button", {
             class: "small-action",
@@ -4938,19 +4945,21 @@ function buildControls(tool, ts) {
         type: "button",
         onClick: shareCurrentResult
       }, "Share"),
-      node("button", {
-        class: "secondary",
-        type: "button",
-        onClick: () => {
-          state.modal = {
-            type: "use-result",
-            sourceToolId: tool.id,
-            result: cloneData(ts.result),
-            error: null
-          };
-          render();
-        }
-      }, "Use Result In…")
+      tool.id !== "secret-santa"
+        ? node("button", {
+            class: "secondary",
+            type: "button",
+            onClick: () => {
+              state.modal = {
+                type: "use-result",
+                sourceToolId: tool.id,
+                result: cloneData(ts.result),
+                error: null
+              };
+              render();
+            }
+          }, "Use Result In…")
+        : null
     );
   }
 
