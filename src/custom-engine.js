@@ -35,19 +35,67 @@ function promptEntries(runtime = {}) {
     .filter((entry) => entry.label);
 }
 
-function entriesFor(config, runtime, overrideItems = null) {
-  if (Array.isArray(overrideItems)) {
-    return overrideItems.map((item, index) => ({
-      id: "derived:" + index,
-      label: String(item),
-      value: String(item),
-      weight: 1
-    }));
+function applyInputRules(entries, rules = {}) {
+  let output = [...entries];
+
+  const excluded = new Set(
+    (rules.excludedLabels || []).map((value) =>
+      rules.caseSensitiveExclusions
+        ? String(value)
+        : String(value).toLocaleLowerCase()
+    )
+  );
+
+  if (excluded.size) {
+    output = output.filter((entry) => {
+      const value = rules.caseSensitiveExclusions
+        ? String(entry.label)
+        : String(entry.label).toLocaleLowerCase();
+      return !excluded.has(value);
+    });
   }
 
-  return config.source === "prompt"
-    ? promptEntries(runtime)
-    : config.entries;
+  if (rules.deduplicate) {
+    const seen = new Set();
+    output = output.filter((entry) => {
+      const key = String(entry.label).toLocaleLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  const min = Number(rules.minItems || 1);
+  const max = Number(rules.maxItems || 500);
+  if (output.length < min) {
+    throw new CustomExecutionError(
+      "Input has fewer than the required " + min + " items after rules.",
+      "CUSTOM_INPUT_BELOW_MINIMUM"
+    );
+  }
+  if (output.length > max) {
+    throw new CustomExecutionError(
+      "Input exceeds the configured maximum of " + max + " items.",
+      "CUSTOM_INPUT_ABOVE_MAXIMUM"
+    );
+  }
+
+  return output;
+}
+
+function entriesFor(config, runtime, overrideItems = null, rules = {}) {
+  const entries = Array.isArray(overrideItems)
+    ? overrideItems.map((item, index) => ({
+        id: "derived:" + index,
+        label: String(item),
+        value: String(item),
+        weight: 1
+      }))
+    : config.source === "prompt"
+      ? promptEntries(runtime)
+      : config.entries;
+
+  return applyInputRules(entries, rules);
 }
 
 function requireEntries(entries, count = 1) {
@@ -85,9 +133,16 @@ function resultItems(result) {
   return [];
 }
 
-function executePrimitive(primitive, config, runtime, rng, overrideItems = null) {
+function executePrimitive(
+  primitive,
+  config,
+  runtime,
+  rng,
+  overrideItems = null,
+  rules = {}
+) {
   if (primitive === "pick") {
-    const entries = entriesFor(config, runtime, overrideItems);
+    const entries = entriesFor(config, runtime, overrideItems, rules);
     requireEntries(entries, 1);
     const chosen = weightedPick(
       entries,
@@ -115,7 +170,7 @@ function executePrimitive(primitive, config, runtime, rng, overrideItems = null)
   }
 
   if (primitive === "sample") {
-    const entries = entriesFor(config, runtime, overrideItems);
+    const entries = entriesFor(config, runtime, overrideItems, rules);
     requireEntries(entries, 1);
     const selected = weightedSample(
       entries,
@@ -140,7 +195,7 @@ function executePrimitive(primitive, config, runtime, rng, overrideItems = null)
   }
 
   if (primitive === "shuffle") {
-    const entries = entriesFor(config, runtime, overrideItems);
+    const entries = entriesFor(config, runtime, overrideItems, rules);
     requireEntries(entries, 2);
     const values = shuffle(entries.map(entryOutput), rng);
     return {
@@ -321,7 +376,8 @@ export function executeCustomExperience(definition, runtime = {}, rng) {
       step.config,
       runtime,
       rng,
-      overrideItems
+      overrideItems,
+      experience.rules
     );
     outputs.set(step.id, executed);
     detailSteps.push({
