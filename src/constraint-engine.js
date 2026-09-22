@@ -402,6 +402,27 @@ export function solveGrouping({
             diagnostics: { nodes: 0, solutions: 0 }
           };
         }
+
+        if (
+          hardHistoryAvoid
+          && historyPairs.has(
+            labelHistoryKey(
+              bundle.members[left].label,
+              bundle.members[right].label
+            )
+          )
+        ) {
+          return {
+            status: "impossible",
+            reason: "together-history",
+            errors: [{
+              code: "TOGETHER_HISTORY_CONFLICT",
+              message: "A required together-group contains a pairing that hard history avoidance forbids."
+            }],
+            warnings: validation.warnings,
+            diagnostics: { nodes: 0, solutions: 0 }
+          };
+        }
       }
     }
   }
