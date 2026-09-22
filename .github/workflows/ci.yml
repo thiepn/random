@@ -33,6 +33,8 @@ jobs:
           node --check src/constraint-engine.js
           node --check src/session-model.js
           node --check src/presentation-engine.js
+          node --check src/preset-model.js
+          node --check src/session-template-model.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -70,6 +72,12 @@ jobs:
 
       - name: Presentation registry certification
         run: node tests/presentation-registry.mjs
+
+      - name: Preset and Rule Set certification
+        run: node tests/preset-model.mjs
+
+      - name: Session Template certification
+        run: node tests/session-template-model.mjs
 
       - name: Guard decision randomness and unsafe execution
         run: |
