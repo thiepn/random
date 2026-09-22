@@ -12,6 +12,8 @@ import {
   getAll,
   put,
   putWithRevision,
+  commitRunAndSession,
+  commitSessionMutation,
   remove,
   clear,
   getSettings,
@@ -42,6 +44,24 @@ import {
   ruleStrengthLabel
 } from "./rule-model.js";
 import { historyPairKey } from "./constraint-engine.js";
+import {
+  createSession,
+  createRun,
+  createSessionEvent,
+  appendRunToSession,
+  undoSession,
+  redoSession,
+  completeSession,
+  abandonSession,
+  sessionCanUndo,
+  sessionCanRedo,
+  resumeSessionState,
+  fingerprintSetup,
+  isStatefulTool,
+  isSessionCompleteForTool,
+  legacyHistoryToRun,
+  groupHistoryRuns
+} from "./session-model.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -54,6 +74,9 @@ const state = {
   poolSearch: "",
   poolShowArchived: false,
   history: [],
+  runs: [],
+  sessions: [],
+  historyPins: new Set(),
   favorites: [],
   settings: null,
   search: "",
@@ -220,7 +243,9 @@ function ensureToolState(toolId) {
       dateStart: new Date().toISOString().slice(0, 10),
       dateEnd: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 
-      deck: null
+      deck: null,
+      activeSessionId: null,
+      replayRunId: null
     };
   }
   return state.tool[toolId];
@@ -281,6 +306,7 @@ function prepareRandomSource() {
   if (state.settings.randomness.mode !== "seeded") {
     return {
       source: createRng({ mode: "secure" }),
+      context: { mode: "secure" },
       commit: async () => {}
     };
   }
@@ -288,14 +314,16 @@ function prepareRandomSource() {
   const position = Number.isSafeInteger(state.settings.randomness.position)
     ? state.settings.randomness.position
     : 0;
+  const seed = state.settings.randomness.seed || "ARCADE-2026";
 
   const source = createRng({
     mode: "seeded",
-    seed: (state.settings.randomness.seed || "ARCADE-2026") + "::" + position
+    seed: seed + "::" + position
   });
 
   return {
     source,
+    context: { mode: "seeded", seed, position },
     commit: async () => {
       state.settings.randomness.position = position + 1;
       await saveSettings(state.settings);
@@ -304,10 +332,22 @@ function prepareRandomSource() {
 }
 
 async function loadData() {
-  const [pools, poolViews, historyEntries, favorites, settings] = await Promise.all([
+  const [
+    pools,
+    poolViews,
+    historyEntries,
+    runs,
+    sessions,
+    pins,
+    favorites,
+    settings
+  ] = await Promise.all([
     getAll("pools"),
     getAll("poolViews"),
     getAll("history"),
+    getAll("runs"),
+    getAll("sessions"),
+    getAll("historyPins"),
     getAll("favorites"),
     getSettings()
   ]);
@@ -319,6 +359,9 @@ async function loadData() {
   state.history = historyEntries
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 500);
+  state.runs = runs.sort((a, b) => b.timestamp - a.timestamp);
+  state.sessions = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+  state.historyPins = new Set(pins.map((entry) => entry.id));
   state.favorites = favorites.map((entry) => entry.id);
   state.settings = settings;
 }
