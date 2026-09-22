@@ -56,7 +56,9 @@ import {
     ]
   });
   assert.equal(activePoolItems(pool).length, 2);
-  assert.equal(createWorkingSet(pool).items.length, 2);
+  const working = createWorkingSet(pool);
+  assert.equal(working.items.length, 2);
+  assert.deepEqual(working.fields, [field]);
   assert.equal(filterPoolItems(pool, { tags: ["blue"], active: "all" }).length, 2);
   assert.equal(filterPoolItems(pool, { tags: ["blue"], active: "active" }).length, 1);
   assert.equal(filterPoolItems(pool, { search: "5" }).length, 1);
