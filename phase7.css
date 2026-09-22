@@ -106,7 +106,7 @@
     translateX(0)
     rotate(var(--particle-angle-neg));
   animation:particleBurst
-    min(var(--present-duration),900ms)
+    700ms
     cubic-bezier(.1,.7,.25,1)
     var(--particle-delay)
     both
@@ -465,4 +465,35 @@
 .tool-stage.is-reduced-reveal .ladder-path-segment{
   animation-name:reducedReveal!important;
   transform:none!important
+}
+
+.tool-stage.reveal-coin.is-presenting .stage-orb{
+  color:transparent
+}
+.tool-stage.reveal-coin.is-presenting .stage-orb::after{
+  content:"?";
+  color:#28200b;
+  font-size:58px;
+  font-weight:900
+}
+.tool-stage.reveal-dice.is-presenting .die{
+  color:transparent
+}
+.tool-stage.reveal-dice.is-presenting .die::after{
+  content:"•";
+  color:#11152a;
+  font-size:30px;
+  font-weight:950
+}
+.tool-stage.is-reduced-reveal.reveal-coin .stage-orb{
+  color:#28200b
+}
+.tool-stage.is-reduced-reveal.reveal-coin .stage-orb::after{
+  display:none
+}
+.tool-stage.is-reduced-reveal.reveal-dice .die{
+  color:#11152a
+}
+.tool-stage.is-reduced-reveal.reveal-dice .die::after{
+  display:none
 }
