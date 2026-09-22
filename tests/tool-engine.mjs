@@ -14,9 +14,60 @@ function run(tool, config = {}, seed = tool) {
 
 {
   const result = run("dice", { diceCount: 4, diceSides: 20 });
+  assert.equal(result.result.mode, "quick");
   assert.equal(result.result.values.length, 4);
   assert.ok(result.result.values.every((value) => value >= 1 && value <= 20));
   assert.equal(result.result.total, result.result.values.reduce((a, b) => a + b, 0));
+}
+
+{
+  const result = run("dice", {
+    diceMode: "expression",
+    diceExpression: "2d20kh1+3"
+  }, "dice-golden-v1");
+  assert.equal(result.result.mode, "expression");
+  assert.deepEqual(result.result.diceGroups[0].dice.map((die) => die.total), [10, 7]);
+  assert.equal(result.result.total, 13);
+  assert.equal(result.fairness.kind, "dice-expression");
+}
+
+{
+  assert.throws(
+    () => run("dice", {
+      diceMode: "expression",
+      diceExpression: "1d1!"
+    }, "bad-dice"),
+    (error) => error instanceof ToolValidationError
+      && error.code === "NON_TERMINATING_EXPLODE"
+  );
+}
+
+{
+  const source = new SeededRandom("number-tool-default");
+  const expected = source.int(1, 100);
+  const result = run("number", {
+    numberMode: "integer",
+    numberMin: 1,
+    numberMax: 100,
+    numberCount: 1,
+    numberUnique: false
+  }, "number-tool-default");
+  assert.equal(result.result.values[0], expected);
+  assert.equal(result.result.summary, String(expected));
+}
+
+{
+  const result = run("number", {
+    numberMode: "decimal",
+    numberMin: 0,
+    numberMax: 1,
+    numberPrecision: 2,
+    numberCount: 10,
+    numberUnique: true
+  }, "number-tool-decimal");
+  assert.equal(result.result.displayValues.length, 10);
+  assert.equal(new Set(result.result.displayValues).size, 10);
+  assert.equal(result.fairness.mode, "uniform-discrete-grid");
 }
 
 {
