@@ -77,6 +77,7 @@ const state = {
   runs: [],
   sessions: [],
   historyPins: new Set(),
+  historyFilter: "all",
   favorites: [],
   settings: null,
   search: "",
@@ -976,77 +977,208 @@ function renderPools() {
   content.append(list);
   return content;
 }
+function historyGroupPinKey(group) {
+  if (group.kind === "session") return "session:" + group.sessionId;
+  if (group.setupFingerprint) {
+    return "burst:" + group.toolId + ":" + group.setupFingerprint;
+  }
+  return "run:" + group.runs[0].id;
+}
+
+async function clearStandaloneHistory() {
+  const standalone = state.runs.filter((run) => !run.sessionId);
+  await Promise.all(standalone.map((run) => remove("runs", run.id)));
+  await clear("history");
+
+  for (const key of [...state.historyPins]) {
+    if (key.startsWith("burst:") || key.startsWith("run:")) {
+      await remove("historyPins", key);
+      state.historyPins.delete(key);
+    }
+  }
+
+  state.runs = state.runs.filter((run) => run.sessionId);
+  state.history = [];
+  render();
+}
+
 function renderHistory() {
+  const sessionsById = new Map(
+    state.sessions.map((session) => [session.id, session])
+  );
+  const legacyRuns = state.history.map(legacyHistoryToRun);
+  let groups = groupHistoryRuns(
+    [...state.runs, ...legacyRuns],
+    sessionsById
+  );
+
+  groups = groups.filter((group) => {
+    const pinKey = historyGroupPinKey(group);
+    if (state.historyFilter === "pinned") {
+      return state.historyPins.has(pinKey);
+    }
+    if (state.historyFilter === "sessions") {
+      return group.kind === "session";
+    }
+    return true;
+  });
+
+  groups.sort((a, b) => {
+    const aPin = state.historyPins.has(historyGroupPinKey(a)) ? 1 : 0;
+    const bPin = state.historyPins.has(historyGroupPinKey(b)) ? 1 : 0;
+    return bPin - aPin || b.timestamp - a.timestamp;
+  });
+
   const content = node("main", { class: "content" }, [
     node("h1", { class: "view-title", text: "History" }),
     node("p", {
       class: "view-subtitle",
-      text: "Recent committed random results stored locally on this device."
+      text: "Immutable Runs, resumable Sessions, exact Replay, and new-result Rerun."
     })
   ]);
 
-  if (state.history.length) {
-    content.append(node("div", {
-      class: "button-row",
-      style: { marginBottom: "16px" }
-    }, [
-      node("button", {
-        class: "secondary",
-        type: "button",
-        onClick: async () => {
-          if (!confirm("Clear local result history? Saved Pools and favorites will stay.")) return;
-          await clear("history");
-          state.history = [];
-          render();
-        }
-      }, "Clear history")
-    ]));
-  }
+  const tabs = node("div", {
+    class: "segmented history-tabs",
+    "aria-label": "History filter"
+  }, [
+    ["all", "All"],
+    ["sessions", "Sessions"],
+    ["pinned", "Pinned"]
+  ].map(([value, label]) =>
+    node("button", {
+      class: state.historyFilter === value ? "active" : "",
+      type: "button",
+      onClick: () => {
+        state.historyFilter = value;
+        render();
+      }
+    }, label)
+  ));
 
-  if (!state.history.length) {
+  content.append(node("div", { class: "history-toolbar" }, [
+    tabs,
+    (state.history.length || state.runs.some((run) => !run.sessionId))
+      ? node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: async () => {
+            if (!confirm(
+              "Clear standalone History? Stateful Session Runs are kept because they are required for exact Undo/Redo and resume."
+            )) return;
+            await clearStandaloneHistory();
+          }
+        }, "Clear standalone")
+      : null
+  ]));
+
+  if (!groups.length) {
     content.append(emptyState(
       "Nothing here yet",
-      "Run a randomizer and its committed result will appear here."
+      state.historyFilter === "all"
+        ? "Run a randomizer and its immutable Run will appear here."
+        : "No History groups match this filter."
     ));
     return content;
   }
 
-  const list = node("div", { class: "history-list" });
   const formatter = new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short"
   });
+  const list = node("div", { class: "history-group-list" });
 
-  for (const item of state.history) {
-    list.append(node("button", {
-      class: "history-item",
+  for (const group of groups) {
+    const pinKey = historyGroupPinKey(group);
+    const pinned = state.historyPins.has(pinKey);
+    const latest = group.runs[0];
+    const session = group.kind === "session"
+      ? sessionsById.get(group.sessionId)
+      : null;
+
+    const actions = node("div", { class: "history-group-actions" }, [
+      node("button", {
+        class: "small-action" + (pinned ? " is-pinned" : ""),
+        type: "button",
+        onClick: () => toggleHistoryPin(pinKey)
+      }, pinned ? "★" : "☆")
+    ]);
+
+    if (group.kind === "session" && session) {
+      actions.append(node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => resumeStoredSession(session)
+      }, session.status === "active" ? "Resume" : "Open"));
+    } else if (latest.origin !== "legacy" && latest.afterState) {
+      actions.append(
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => replayStoredRun(latest)
+        }, "Replay"),
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => rerunStoredRun(latest)
+        }, "Rerun")
+      );
+    }
+
+    actions.append(node("button", {
+      class: "small-action",
       type: "button",
-      style: {
-        textAlign: "left",
-        color: "inherit",
-        cursor: "pointer"
-      },
       onClick: () => {
-        if (item.toolId === "studio") setView("studio");
-        else openTool(item.toolId);
+        state.modal = { type: "run-detail", runId: latest.id };
+        render();
       }
+    }, "Details"));
+
+    const summaries = node("div", { class: "history-run-preview" },
+      group.runs.slice(0, 4).map((run) =>
+        node("div", { class: "history-run-preview-row" }, [
+          node("span", { text: run.summary || "Result" }),
+          node("time", { text: formatter.format(new Date(run.timestamp)) })
+        ])
+      )
+    );
+
+    list.append(node("article", {
+      class:
+        "history-group-card"
+        + (pinned ? " is-pinned" : "")
+        + (group.kind === "session" ? " is-session" : "")
     }, [
-      node("div", { class: "history-icon", text: item.icon || "✦" }),
-      node("div", { class: "history-copy" }, [
-        node("strong", {
-          text: item.toolName + " → " + item.resultSummary
-        }),
+      node("div", { class: "history-icon", text: group.icon || "✦" }),
+      node("div", { class: "history-group-copy" }, [
+        node("div", { class: "history-group-title-row" }, [
+          node("strong", {
+            text: group.kind === "session"
+              ? group.title
+              : group.toolName
+          }),
+          group.kind === "session"
+            ? node("span", {
+                class: "history-status history-status-" + (session?.status || "unknown"),
+                text: session?.status || "session"
+              })
+            : null
+        ]),
         node("span", {
-          text: formatter.format(new Date(item.timestamp))
-        })
-      ])
+          text:
+            group.runs.length
+            + (group.runs.length === 1 ? " Run" : " Runs")
+            + " · "
+            + formatter.format(new Date(group.timestamp))
+        }),
+        summaries
+      ]),
+      actions
     ]));
   }
 
   content.append(list);
   return content;
 }
-
 function studioNode(index, title, copy) {
   return node("div", { class: "studio-node" }, [
     node("strong", { text: index + ". " + title }),
@@ -1483,8 +1615,25 @@ function historyPairsForTool(tool, ts) {
   const depth = Math.max(
     ...active.map((rule) => Number(rule.params?.depth) || 5)
   );
-  const relevant = state.history
+
+  const canonical = state.runs
+    .filter((run) => run.toolId === tool.id)
+    .map((run) => ({
+      toolId: run.toolId,
+      detail: run.detail,
+      timestamp: run.timestamp
+    }));
+
+  const legacy = state.history
     .filter((entry) => entry.toolId === tool.id)
+    .map((entry) => ({
+      toolId: entry.toolId,
+      detail: entry.detail,
+      timestamp: entry.timestamp
+    }));
+
+  const relevant = [...canonical, ...legacy]
+    .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, depth);
 
   const output = new Set();
@@ -1519,7 +1668,6 @@ function historyPairsForTool(tool, ts) {
 
   return output;
 }
-
 function constraintValidation(tool, ts) {
   const context = constraintContext(tool, ts);
   return {
