@@ -124,3 +124,100 @@ assert.equal(
 }
 
 console.log("Party model certification tests passed.");
+
+
+{
+  const party = createPartySession({
+    toolId: "teams",
+    toolName: "Teams"
+  });
+  const run = {
+    result: [["Anna", "Ben"], ["Cara", "Dan"]],
+    detail: {
+      privatePoolValues: ["never", "broadcast"]
+    },
+    inputSnapshot: {
+      items: ["private", "source"]
+    },
+    configSnapshot: {
+      rules: ["private"]
+    },
+    beforeState: {
+      secret: "before"
+    },
+    afterState: {
+      secret: "after"
+    },
+    randomContext: {
+      seed: "PRIVATE-SEED"
+    },
+    fairness: {
+      kind: "constrained",
+      mode: "random-valid-search",
+      hardRuleCount: 2,
+      softRuleCount: 1,
+      diagnostics: {
+        exploredPrivateCandidates: ["A", "B"]
+      }
+    }
+  };
+  const audience = makeAudienceState({
+    party,
+    tool: {
+      id: "teams",
+      name: "Teams",
+      icon: "◆",
+      accent: "blue"
+    },
+    run,
+    stage: "result"
+  });
+  const json = JSON.stringify(audience);
+  assert.equal(json.includes("privatePoolValues"), false);
+  assert.equal(json.includes("PRIVATE-SEED"), false);
+  assert.equal(json.includes("inputSnapshot"), false);
+  assert.equal(json.includes("beforeState"), false);
+  assert.equal(json.includes("exploredPrivateCandidates"), false);
+  assert.deepEqual(audience.result, [["Anna", "Ben"], ["Cara", "Dan"]]);
+}
+
+{
+  const party = createPartySession({
+    toolId: "picker",
+    toolName: "Pick One"
+  });
+  const audience = makeAudienceState({
+    party,
+    tool: {
+      id: "picker",
+      name: "Pick One",
+      icon: "✦",
+      accent: "cyan"
+    },
+    run: {
+      result: "Anna",
+      fairness: null
+    },
+    privateReveal: true
+  });
+  assert.equal(audience.private, true);
+  assert.equal(audience.result, null);
+}
+
+{
+  const party = createPartySession({
+    toolId: "wheel",
+    toolName: "Wheel"
+  });
+  const ended = makeAudienceState({
+    party,
+    tool: {
+      id: "wheel",
+      name: "Wheel",
+      icon: "◉",
+      accent: "rainbow"
+    },
+    stage: "ended"
+  });
+  assert.equal(ended.statusText, "Party ended");
+}
