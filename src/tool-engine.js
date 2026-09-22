@@ -190,12 +190,17 @@ export function executeTool(toolId, config, rng) {
       requireItems(items, 1, "sources");
       const targets = Array.isArray(config.targets) ? config.targets : [];
       requireItems(targets, 1, "targets");
-      const orderedSources = shuffle(items, rng);
+      const orderedSources = shuffle(
+        items.map((source, originalIndex) => ({ source, originalIndex })),
+        rng
+      );
       const orderedTargets = shuffle(targets, rng);
-      const result = orderedSources.map((source, index) => ({
-        source,
+      const assigned = orderedSources.map((entry, index) => ({
+        ...entry,
         target: orderedTargets[index % orderedTargets.length]
       }));
+      assigned.sort((a, b) => a.originalIndex - b.originalIndex);
+      const result = assigned.map(({ source, target }) => ({ source, target }));
       return { result, summary: `${result.length} assignments`, detail: { assignments: result } };
     }
 
