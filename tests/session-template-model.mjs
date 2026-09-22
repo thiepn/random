@@ -63,7 +63,15 @@ const template = createSessionTemplate({
 
 assert.deepEqual(
   resultToItems("teams", [["A", "B"], ["C", "D"]]),
-  ["A", "B", "C", "D"]
+  ["Team 1 · A, B", "Team 2 · C, D"]
+);
+assert.deepEqual(
+  resultToItems("groups", [["A", "B"], ["C"]]),
+  ["Group 1 · A, B", "Group 2 · C"]
+);
+assert.deepEqual(
+  resultToItems("pairs", [["A", "B"], ["C"]]),
+  ["A & B", "C"]
 );
 assert.deepEqual(
   resultToItems("assignment", [
@@ -82,6 +90,14 @@ assert.deepEqual(
 
 assert.ok(BUILTIN_SESSION_TEMPLATES.length >= 3);
 assert.ok(BUILTIN_SESSION_TEMPLATES.every((item) => item.steps.length >= 2));
+assert.deepEqual(
+  BUILTIN_SESSION_TEMPLATES.map((item) => item.id),
+  [
+    "builtin:game-night",
+    "builtin:classroom-mixer",
+    "builtin:tournament-night"
+  ]
+);
 
 assert.throws(
   () => createSessionTemplate({
