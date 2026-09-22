@@ -143,3 +143,27 @@ import {
 }
 
 console.log("Custom Experience engine certification tests passed.");
+
+
+{
+  const ruled = createCustomExperience({
+    name: "Ruled Picker",
+    primitive: "pick",
+    config: { source: "prompt" },
+    rules: {
+      deduplicate: true,
+      excludedLabels: ["Skip"],
+      minItems: 2,
+      maxItems: 5
+    }
+  });
+  const result = executeCustomExperience(
+    ruled,
+    {
+      inputItems: ["Anna", "Anna", "Skip", "Ben"]
+    },
+    new SeededRandom("ruled")
+  );
+  assert.ok(["Anna", "Ben"].includes(result.result));
+  assert.equal(result.fairness.candidateCount, 2);
+}
