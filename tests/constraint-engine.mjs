@@ -105,6 +105,28 @@ function targetOf(result, itemId) {
 }
 
 {
+  const history = new Set([historyPairKey("Anna", "Ben")]);
+  const result = solveGrouping({
+    toolId: "pairs",
+    items,
+    targets,
+    fields,
+    rules: [
+      createRule("historyAvoid", { depth: 5 }, { strength: "hard" })
+    ],
+    historyPairs: history,
+    effort: "thorough",
+    rng: new SeededRandom("solver-history-hard")
+  });
+  assert.equal(result.status, "ok");
+  const together = result.groups.some((group) => {
+    const labels = group.items.map((item) => item.label);
+    return labels.includes("Anna") && labels.includes("Ben");
+  });
+  assert.equal(together, false);
+}
+
+{
   const result = solveGrouping({
     toolId: "teams",
     items,
