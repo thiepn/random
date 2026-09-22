@@ -1518,7 +1518,10 @@ function renderTool() {
 
 function resultList(items) {
   return node("div", { class: "result-list" }, items.map((item, index) =>
-    node("div", { class: "result-row" }, [
+    node("div", {
+      class: "result-row",
+      style: { "--reveal-index": String(index) }
+    }, [
       node("span", { class: "rank", text: String(index + 1) }),
       node("strong", { text: String(item) })
     ])
@@ -1541,7 +1544,10 @@ function teamsResult(groups, prefix = "Team") {
 
 function tournamentResult(matches) {
   return node("div", { class: "bracket-list" }, matches.map((match, index) =>
-    node("div", { class: "match-card" }, [
+    node("div", {
+      class: "match-card",
+      style: { "--reveal-index": String(index) }
+    }, [
       node("span", { class: "match-number", text: "Match " + (index + 1) }),
       node("strong", { text: match.a || "TBD" }),
       node("span", {
@@ -1578,6 +1584,7 @@ function ladderBoard(items, outcomes, ladder) {
     tracks.append(node("span", {
       class: "ladder-rung",
       style: {
+        "--reveal-index": String(index),
         top: ((index + 1) / (rungCount + 1) * 100) + "%",
         left: (rung.left / (items.length - 1) * 100) + "%",
         width: (100 / (items.length - 1)) + "%"
@@ -1866,8 +1873,13 @@ function renderRuleStrip(tool, ts) {
     && (ts.rules || []).some((rule) => rule.enabled !== false)
   ) {
     const activeRules = ts.rules.filter((rule) => rule.enabled !== false);
-    const required = activeRules.filter((rule) => rule.strength !== "soft").length;
-    const preferred = activeRules.filter((rule) => rule.strength === "soft").length;
+    const required = activeRules.filter(
+      (rule) => rule.strength !== "soft"
+    ).length;
+    const preferred = activeRules.filter(
+      (rule) => rule.strength === "soft"
+    ).length;
+
     panel.querySelector(".fairness-body").append(
       node("div", { class: "fairness-method" }, [
         node("strong", { text: "Constrained randomization" }),
@@ -1884,14 +1896,24 @@ function renderRuleStrip(tool, ts) {
                 text: "Search nodes " + ts.lastSolverDiagnostics.nodes
               }),
               node("span", {
-                text: "Valid candidates " + ts.lastSolverDiagnostics.solutions
+                text:
+                  "Valid candidates "
+                  + ts.lastSolverDiagnostics.solutions
               }),
               node("span", {
-                text: "Preference score "
-                  + (ts.lastConstraintScore == null ? "—" : ts.lastConstraintScore.toFixed?.(2) ?? ts.lastConstraintScore)
+                text:
+                  "Preference score "
+                  + (
+                    ts.lastConstraintScore == null
+                      ? "—"
+                      : Number(ts.lastConstraintScore).toFixed(2)
+                  )
               }),
               ts.lastSolverDiagnostics.hitLimit
-                ? node("span", { class: "warning", text: "Search budget reached" })
+                ? node("span", {
+                    class: "warning",
+                    text: "Search budget reached"
+                  })
                 : null
             ])
           : null
@@ -1905,7 +1927,9 @@ function renderRuleStrip(tool, ts) {
       multi: tool.id === "sampler"
     });
   } else if (tool.id === "dice" && ts.diceMode === "expression") {
-    const expression = String(ts.diceExpression || "").replace(/\s+/g, "").toLowerCase();
+    const expression = String(ts.diceExpression || "")
+      .replace(/\s+/g, "")
+      .toLowerCase();
     rules.push("Expression");
     if (/(kh|kl|dh|dl)\d+/.test(expression)) rules.push("Keep/drop");
     if (/r(?:<=|>=|!=|=|<|>)?\d+/.test(expression)) rules.push("Reroll");
@@ -1913,7 +1937,9 @@ function renderRuleStrip(tool, ts) {
     if (expression === "2d20kh1") rules.unshift("Advantage");
     if (expression === "2d20kl1") rules.unshift("Disadvantage");
   } else if (tool.id === "number") {
-    if (ts.numberMode === "decimal") rules.push(ts.numberPrecision + " decimals");
+    if (ts.numberMode === "decimal") {
+      rules.push(ts.numberPrecision + " decimals");
+    }
     if (ts.numberCount > 1) rules.push(ts.numberCount + " values");
     if (ts.numberUnique && ts.numberCount > 1) rules.push("Unique");
   } else if (constraintTools.has(tool.id)) {
@@ -1922,10 +1948,10 @@ function renderRuleStrip(tool, ts) {
     const preferred = active.filter((rule) => rule.strength === "soft").length;
     if (required) rules.push(required + " required");
     if (preferred) rules.push(preferred + " prefer");
-    if (active.length) rules.push(
-      (ts.solverEffort || "automatic")[0].toUpperCase()
-      + (ts.solverEffort || "automatic").slice(1)
-    );
+    if (active.length) {
+      const effort = ts.solverEffort || "automatic";
+      rules.push(effort[0].toUpperCase() + effort.slice(1));
+    }
   }
 
   if (!rules.length) return null;
@@ -1937,7 +1963,6 @@ function renderRuleStrip(tool, ts) {
     node("span", { class: "rule-chip", text: rule })
   ));
 }
-
 function dieTrace(die) {
   const parts = die.chain.map((part) => {
     if (part.attempts.length <= 1) return String(part.value);
@@ -2127,9 +2152,61 @@ function diceHistoryPanel(ts) {
   ]);
 }
 
+function presentationStageClasses(tool, ts) {
+  const p = ts.presentation;
+  if (!p) return "";
+
+  return [
+    " is-presenting",
+    " reveal-" + p.kind,
+    " presentation-" + p.mode,
+    " effects-" + p.effects,
+    p.celebration ? " is-celebration" : "",
+    p.reducedMotion ? " is-reduced-reveal" : ""
+  ].join("");
+}
+
+function presentationStageStyle(ts) {
+  const p = ts.presentation;
+  if (!p) return {};
+  return {
+    "--present-duration": p.duration + "ms",
+    "--reveal-stagger": p.staggerMs + "ms"
+  };
+}
+
+function particleField(presentation) {
+  if (!presentation || presentation.particles <= 0) return null;
+
+  return node("div", {
+    class: "fx-particles",
+    "aria-hidden": "true"
+  }, Array.from(
+    { length: presentation.particles },
+    (_, index) => {
+      const angle = (index * 137.508) % 360;
+      const distance = 52 + (index % 6) * 14;
+      const delay = (index % 7) * 24;
+      return node("span", {
+        class: "fx-particle",
+        style: {
+          "--particle-angle": angle + "deg",
+          "--particle-distance": distance + "px",
+          "--particle-delay": delay + "ms",
+          "--particle-index": String(index)
+        }
+      });
+    }
+  ));
+}
+
 function buildStage(tool, ts) {
   const stage = node("div", {
-    class: "tool-stage accent-" + tool.accent
+    class:
+      "tool-stage accent-"
+      + tool.accent
+      + presentationStageClasses(tool, ts),
+    style: presentationStageStyle(ts)
   });
   const wrap = node("div", { class: "stage-content" });
   const result = ts.result;
@@ -2219,7 +2296,9 @@ function buildStage(tool, ts) {
       class: "wheel",
       style: {
         background: makeWheelGradient(model),
-        transform: "rotate(" + (ts.previousWheelRotation || 0) + "deg)"
+        transform: "rotate(" + (ts.previousWheelRotation || 0) + "deg)",
+        transitionDuration:
+          (ts.presentation?.duration || 0) + "ms"
       }
     });
     const labels = wheelLabels(model);
@@ -2427,6 +2506,8 @@ function buildStage(tool, ts) {
     );
   }
 
+  const particles = particleField(ts.presentation);
+  if (particles) stage.append(particles);
   stage.append(wrap);
   return stage;
 }
