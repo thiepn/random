@@ -492,7 +492,7 @@ async function runStudio() {
   if (items.length < 2) return alert("Add at least two options.");
   if (!Number.isSafeInteger(count) || count < 2 || count > items.length) return alert("Finalist count must be between 2 and the number of options.");
   const source = rng();
-  const finalists = sample(items, count, random());
+  const finalists = sample(items, count, source);
   const winner = pick(finalists, source);
   state.studioResult = { finalists, winner };
   await record({ id: "studio", name: "Decision Studio", icon: "◆" }, winner, { finalists });
