@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Syntax check
+        run: |
+          node --check src/random-core.js
+          node --check src/storage.js
+          node --check src/registry.js
+          node --check src/app.js
+          node --check sw.js
+
+      - name: Random Core certification
+        run: node tests/random-core.mjs
+
+      - name: Guard decision randomness
+        run: |
+          if grep -R "Math\.random" --include="*.js" src sw.js; then
+            echo "Math.random is forbidden in production JavaScript."
+            exit 1
+          fi
