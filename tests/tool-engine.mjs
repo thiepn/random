@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { SeededRandom, pick } from "../src/random-core.js";
+import { createRule } from "../src/rule-model.js";
 import {
   executeTool,
   buildLadder,
@@ -150,6 +151,117 @@ function run(tool, config = {}, seed = tool) {
   const result = run("groups", { items: ["A", "B", "C", "D", "E"], groupCount: 2 });
   assert.equal(result.result.flat().length, 5);
   assert.ok(Math.max(...result.result.map((group) => group.length)) - Math.min(...result.result.map((group) => group.length)) <= 1);
+}
+
+{
+  const config = {
+    items: ["Anna", "Ben", "Cara", "Dan"],
+    teamCount: 2,
+    constraintItems: [
+      { id: "a", label: "Anna", tags: ["leader"], values: { skill: 5 } },
+      { id: "b", label: "Ben", tags: ["member"], values: { skill: 2 } },
+      { id: "c", label: "Cara", tags: ["leader"], values: { skill: 4 } },
+      { id: "d", label: "Dan", tags: ["member"], values: { skill: 1 } }
+    ],
+    constraintFields: [{ id: "skill", name: "Skill", type: "number" }],
+    rules: [
+      createRule("together", { itemIds: ["a", "b"] }),
+      createRule("apart", { itemIds: ["a", "c"] }),
+      createRule("requiredTag", { tag: "leader", count: 1 }),
+      createRule("balanceField", { fieldId: "skill" }, { strength: "soft", priority: 20 })
+    ],
+    solverEffort: "thorough"
+  };
+  const result = run("teams", config, "constrained-teams");
+  assert.equal(result.fairness.kind, "constrained");
+  const teamWithAnna = result.result.find((group) => group.includes("Anna"));
+  assert.ok(teamWithAnna.includes("Ben"));
+  assert.ok(!teamWithAnna.includes("Cara"));
+  assert.ok(result.result.every((group) =>
+    group.some((name) => ["Anna", "Cara"].includes(name))
+  ));
+}
+
+{
+  const result = run("assignment", {
+    items: ["Anna", "Ben", "Cara", "Dan"],
+    targets: ["Setup", "Cleanup"],
+    constraintItems: [
+      { id: "a", label: "Anna", tags: [], values: {} },
+      { id: "b", label: "Ben", tags: [], values: {} },
+      { id: "c", label: "Cara", tags: [], values: {} },
+      { id: "d", label: "Dan", tags: [], values: {} }
+    ],
+    rules: [
+      createRule("fixed", { itemId: "a", targetId: "target:1" })
+    ]
+  }, "constrained-assignment");
+  assert.equal(
+    result.result.find((entry) => entry.source === "Anna").target,
+    "Cleanup"
+  );
+}
+
+{
+  const result = run("tournament", {
+    items: ["A", "B", "C", "D"],
+    constraintItems: ["A", "B", "C", "D"].map((label, index) => ({
+      id: "i" + index,
+      label,
+      tags: [],
+      values: {}
+    })),
+    rules: [
+      createRule("apart", { itemIds: ["i0", "i1"] })
+    ]
+  }, "constrained-tournament");
+  assert.ok(!result.result.some((match) =>
+    [match.a, match.b].includes("A")
+    && [match.a, match.b].includes("B")
+  ));
+}
+
+{
+  const result = run("secret-santa", {
+    items: ["A", "B", "C", "D"],
+    constraintItems: ["A", "B", "C", "D"].map((label, index) => ({
+      id: "i" + index,
+      label,
+      tags: [],
+      values: {}
+    })),
+    rules: [
+      createRule("apart", { itemIds: ["i0", "i1"] }),
+      createRule("fixed", { itemId: "i2", targetId: "i3" })
+    ]
+  }, "constrained-santa");
+  const map = new Map(
+    result.statePatch.secretAssignments.map((entry) => [entry.source, entry.target])
+  );
+  assert.notEqual(map.get("A"), "B");
+  assert.notEqual(map.get("B"), "A");
+  assert.equal(map.get("C"), "D");
+}
+
+{
+  assert.throws(
+    () => run("teams", {
+      items: ["A", "B", "C", "D"],
+      teamCount: 2,
+      constraintItems: ["A", "B", "C", "D"].map((label, index) => ({
+        id: "i" + index,
+        label,
+        tags: [],
+        values: {}
+      })),
+      rules: [
+        createRule("together", { itemIds: ["i0", "i1"] }),
+        createRule("apart", { itemIds: ["i0", "i1"] })
+      ]
+    }, "impossible-tool"),
+    (error) => error instanceof ToolValidationError
+      && error.code === "CONSTRAINTS_IMPOSSIBLE"
+  );
 }
 
 {
