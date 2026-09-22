@@ -596,6 +596,7 @@ export function createWorkflowSession(workflow, {
     workflowId: value.id,
     workflowRevision: value.revision,
     workflowName: value.name,
+    workflowSnapshot: clone(value),
     status: prompt.status,
     pauseReason: prompt.pauseReason,
     pauseNodeId: prompt.pauseNodeId,
