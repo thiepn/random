@@ -3664,6 +3664,42 @@ function sessionControlBar(tool, ts) {
   ]);
 }
 
+async function updatePresentationSetting(key, value) {
+  state.settings = normalizeExperienceSettings(state.settings);
+  state.settings.presentation[key] = value;
+  state.settings.sound = state.settings.presentation.sound;
+  state.settings.motion = state.settings.presentation.motion;
+  await saveSettings(state.settings);
+}
+
+function presentationModeControl() {
+  const settings = normalizeExperienceSettings(state.settings);
+  const current = settings.presentation.mode;
+
+  return node("div", {
+    class: "presentation-mode-row",
+    "aria-label": "Reveal style"
+  }, [
+    node("span", { class: "presentation-mode-label", text: "Reveal" }),
+    node("div", { class: "segmented presentation-mode-segment" },
+      [
+        ["instant", "Instant"],
+        ["normal", "Normal"],
+        ["showtime", "Showtime"]
+      ].map(([value, label]) =>
+        node("button", {
+          class: current === value ? "active" : "",
+          type: "button",
+          onClick: async () => {
+            await updatePresentationSetting("mode", value);
+            render();
+          }
+        }, label)
+      )
+    )
+  ]);
+}
+
 function configSetter(toolId, ts, key, value, rerender = false) {
   ts[key] = value;
   invalidateTool(toolId, ts);
@@ -3894,6 +3930,8 @@ function buildControls(tool, ts) {
     );
     controls.append(grid);
   }
+
+  controls.append(presentationModeControl());
 
   const actions = node("div", { class: "button-row" });
   const primary = node("button", {
@@ -5667,6 +5705,8 @@ function renderModal() {
   ) {
     renderRunDetailModal(modal, state.modal);
   } else if (state.modal === "settings") {
+    state.settings = normalizeExperienceSettings(state.settings);
+
     modal.append(
       node("h2", { text: "Randomness" }),
       node("p", {
@@ -5707,6 +5747,103 @@ function renderModal() {
 
       modal.append(seed);
     }
+
+    modal.append(
+      node("h3", {
+        class: "settings-section-title",
+        text: "Presentation"
+      }),
+      node("p", {
+        class: "settings-section-copy",
+        text: "Game feel is presentation only. Results are already committed before reveal effects start."
+      })
+    );
+
+    const revealModes = node("div", {
+      class: "segmented settings-reveal-modes"
+    }, [
+      ["instant", "Instant"],
+      ["normal", "Normal"],
+      ["showtime", "Showtime"]
+    ].map(([value, label]) =>
+      node("button", {
+        class:
+          state.settings.presentation.mode === value
+            ? "active"
+            : "",
+        type: "button",
+        onClick: async () => {
+          await updatePresentationSetting("mode", value);
+          render();
+        }
+      }, label)
+    ));
+    modal.append(revealModes);
+
+    const effects = node("select", {
+      class: "field",
+      "aria-label": "Effects quality"
+    }, [
+      node("option", { value: "auto", text: "Effects · Auto" }),
+      node("option", { value: "low", text: "Effects · Low" }),
+      node("option", { value: "high", text: "Effects · High" })
+    ]);
+    effects.value = state.settings.presentation.effects;
+    effects.addEventListener("change", async () => {
+      await updatePresentationSetting("effects", effects.value);
+    });
+
+    const haptics = node("select", {
+      class: "field",
+      "aria-label": "Haptic strength"
+    }, [
+      node("option", { value: "off", text: "Haptics · Off" }),
+      node("option", { value: "light", text: "Haptics · Light" }),
+      node("option", { value: "standard", text: "Haptics · Standard" }),
+      node("option", { value: "strong", text: "Haptics · Strong" })
+    ]);
+    haptics.value = state.settings.presentation.haptics;
+    haptics.addEventListener("change", async () => {
+      await updatePresentationSetting("haptics", haptics.value);
+    });
+
+    const motion = node("select", {
+      class: "field",
+      "aria-label": "Motion preference"
+    }, [
+      node("option", { value: "system", text: "Motion · System" }),
+      node("option", { value: "reduced", text: "Motion · Reduced" }),
+      node("option", { value: "full", text: "Motion · Full" })
+    ]);
+    motion.value = state.settings.presentation.motion;
+    motion.addEventListener("change", async () => {
+      await updatePresentationSetting("motion", motion.value);
+    });
+
+    const sound = node("input", {
+      type: "checkbox",
+      checked: state.settings.presentation.sound,
+      "aria-label": "Enable game sounds"
+    });
+    sound.addEventListener("change", async () => {
+      await updatePresentationSetting("sound", sound.checked);
+    });
+
+    modal.append(
+      node("div", { class: "settings-presentation-grid" }, [
+        effects,
+        haptics,
+        motion,
+        node("label", { class: "settings-sound-toggle" }, [
+          sound,
+          node("span", { text: "Game sounds" })
+        ])
+      ]),
+      node("div", {
+        class: "notice settings-performance-note",
+        text: "Auto effects reduce particles and secondary effects on lower-end devices or when Reduced Motion is active."
+      })
+    );
 
     modal.append(node("div", { class: "modal-actions" }, [
       node("button", {
