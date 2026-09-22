@@ -66,4 +66,10 @@ const fields = [{ id: "skill", name: "Skill", type: "number" }];
   assert.match(summarizeRule(rule, { items, targets, fields }), /Balance Skill/);
 }
 
+{
+  const rule = createRule("balanceField", { fieldId: "skill" }, { strength: "hard" });
+  const result = validateRules({ toolId: "teams", rules: [rule], items, targets, fields });
+  assert.ok(result.errors.some((error) => error.code === "BALANCE_IS_SOFT_ONLY"));
+}
+
 console.log("Rule model certification tests passed.");
