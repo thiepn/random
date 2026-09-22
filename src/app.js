@@ -843,6 +843,33 @@ function broadcastPartyAudience({
   const channel = partyChannelFor(party.id);
   if (!channel) return;
 
+  channel.onmessage = (event) => {
+    const message = event.data;
+    if (
+      message?.type === "party-state-request"
+      && message.partyId === party.id
+      && state.view === "party"
+      && state.activePartySessionId === party.id
+    ) {
+      broadcastPartyAudience({
+        party: activePartySession(),
+        run: latestPartyRun(activePartySession()),
+        stage:
+          state.partyCountdown != null
+            ? "countdown"
+            : activePartySession()?.options?.paused
+              ? "paused"
+              : latestPartyRun(activePartySession())
+                ? "result"
+                : "ready",
+        countdown: state.partyCountdown || 0,
+        privateReveal:
+          isPrivatePartyTool(party.toolId)
+          && ensureToolState(party.toolId).secretReveal != null
+      });
+    }
+  };
+
   const payload = makeAudienceState({
     party,
     tool,
@@ -8691,38 +8718,51 @@ function render() {
 }
 
 async function init() {
-  await loadData();
-
   const params = new URLSearchParams(location.search);
   const requestedAudience = params.get("audience");
+
+  if (requestedAudience) {
+    state.settings = normalizeExperienceSettings({});
+    state.audiencePartyId = requestedAudience;
+    state.view = "audience";
+    state.toolId = null;
+
+    const channel = partyChannelFor(requestedAudience);
+    if (channel) {
+      channel.onmessage = (event) => {
+        const payload = event.data;
+        if (
+          payload
+          && payload.schemaVersion === 1
+          && payload.partyId === requestedAudience
+          && payload.tool
+        ) {
+          state.audienceState = cloneData(payload);
+          render();
+        }
+      };
+
+      channel.postMessage({
+        type: "party-state-request",
+        partyId: requestedAudience
+      });
+    }
+
+    render();
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    }
+    return;
+  }
+
+  await loadData();
+
   const requestedParty = params.get("party");
   const requestedTemplateSession = params.get("templateSession");
   const requestedTool = params.get("tool");
 
   if (
-    requestedAudience
-    && partySessionById(requestedAudience)
-  ) {
-    const party = partySessionById(requestedAudience);
-    const tool = getTool(party.toolId);
-    state.audiencePartyId = party.id;
-    state.view = "audience";
-    state.toolId = null;
-    state.audienceState = makeAudienceState({
-      party,
-      tool,
-      run: latestPartyRun(party),
-      stage: latestPartyRun(party) ? "result" : "ready"
-    });
-
-    const channel = partyChannelFor(party.id);
-    if (channel) {
-      channel.onmessage = (event) => {
-        state.audienceState = cloneData(event.data);
-        render();
-      };
-    }
-  } else if (
     requestedParty
     && partySessionById(requestedParty)?.status === "active"
   ) {
@@ -8738,6 +8778,14 @@ async function init() {
     }
     maybeResumeLatestSession(party.toolId);
     if (party.options.wakeLock) requestPartyWakeLock(party);
+    broadcastPartyAudience({
+      party,
+      stage: party.options.paused
+        ? "paused"
+        : latest
+          ? "result"
+          : "ready"
+    });
   } else if (
     requestedTemplateSession
     && templateSessionById(requestedTemplateSession)
@@ -8760,7 +8808,10 @@ async function init() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.modal) {
-      if (typeof state.modal === "object" && state.modal.type === "pool-editor") {
+      if (
+        typeof state.modal === "object"
+        && state.modal.type === "pool-editor"
+      ) {
         announce("Use Save Pool or Cancel to close the Pool editor.");
         return;
       }
@@ -8795,13 +8846,14 @@ async function init() {
       }
       broadcastPartyAudience({
         party,
-        stage: "ready",
-        privateReveal: isPrivatePartyTool(party?.toolId)
+        stage: party?.options?.paused ? "paused" : "ready",
+        privateReveal:
+          isPrivatePartyTool(party?.toolId)
+          && ensureToolState(party?.toolId).secretReveal != null
       });
     }
   });
 }
-
 init().catch((error) => {
   root.replaceChildren(node("div", { class: "boot-screen" }, [
     node("div", { class: "brand-mark", text: "!" }),
