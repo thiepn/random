@@ -1209,6 +1209,155 @@ function stageLabel(id) {
   })[id] || "Result";
 }
 
+function constraintItemsForTool(ts) {
+  const labels = parseList(ts.listText);
+  const workingItems = ts.workingSet?.items || [];
+  const aligned = workingItems.length === labels.length;
+
+  return labels.map((label, index) => ({
+    id: aligned ? String(workingItems[index].id) : "item:" + index,
+    label,
+    tags: aligned && Array.isArray(workingItems[index].tags)
+      ? [...workingItems[index].tags]
+      : [],
+    values: aligned && workingItems[index].values
+      ? { ...workingItems[index].values }
+      : {}
+  }));
+}
+
+function balancedTargetModels(itemCount, count, prefix) {
+  if (!Number.isSafeInteger(count) || count < 1) return [];
+  const base = Math.floor(itemCount / count);
+  const remainder = itemCount % count;
+  return Array.from({ length: count }, (_, index) => ({
+    id: "target:" + index,
+    label: prefix + " " + (index + 1),
+    capacity: base + (index < remainder ? 1 : 0)
+  }));
+}
+
+function constraintTargetsForTool(tool, ts, items) {
+  if (tool.id === "teams") {
+    return balancedTargetModels(items.length, Number(ts.teamCount), "Team");
+  }
+
+  if (tool.id === "groups") {
+    return balancedTargetModels(items.length, Number(ts.groupCount), "Group");
+  }
+
+  if (tool.id === "pairs") {
+    const count = Math.ceil(items.length / 2);
+    return Array.from({ length: count }, (_, index) => ({
+      id: "target:" + index,
+      label: "Pair " + (index + 1),
+      capacity: index === count - 1 && items.length % 2 === 1 ? 1 : 2
+    }));
+  }
+
+  if (tool.id === "assignment") {
+    const labels = parseList(ts.targetText);
+    return balancedTargetModels(items.length, labels.length, "Target")
+      .map((target, index) => ({
+        ...target,
+        label: labels[index] || target.label
+      }));
+  }
+
+  if (tool.id === "secret-santa") {
+    return items.map((item) => ({
+      id: String(item.id),
+      label: item.label,
+      capacity: 1
+    }));
+  }
+
+  if (tool.id === "tournament") {
+    if (items.length < 2) return [];
+    const bracketSize = 2 ** Math.ceil(Math.log2(items.length));
+    const matchCount = bracketSize / 2;
+    const byeCount = bracketSize - items.length;
+    return Array.from({ length: matchCount }, (_, index) => ({
+      id: "target:" + index,
+      label: "Match " + (index + 1),
+      capacity: index < byeCount ? 1 : 2
+    }));
+  }
+
+  return [];
+}
+
+function constraintContext(tool, ts) {
+  const items = constraintItemsForTool(ts);
+  return {
+    items,
+    targets: constraintTargetsForTool(tool, ts, items),
+    fields: Array.isArray(ts.workingSet?.fields)
+      ? ts.workingSet.fields.map((field) => ({ ...field }))
+      : []
+  };
+}
+
+function historyPairsForTool(tool, ts) {
+  const active = (ts.rules || []).filter(
+    (rule) => rule.enabled !== false && rule.type === "historyAvoid"
+  );
+  if (!active.length) return new Set();
+
+  const depth = Math.max(
+    ...active.map((rule) => Number(rule.params?.depth) || 5)
+  );
+  const relevant = state.history
+    .filter((entry) => entry.toolId === tool.id)
+    .slice(0, depth);
+
+  const output = new Set();
+  const addGroupPairs = (group) => {
+    const labels = (group || []).map((value) =>
+      typeof value === "string"
+        ? value
+        : value?.label || value?.source || String(value || "")
+    );
+    for (let left = 0; left < labels.length; left += 1) {
+      for (let right = left + 1; right < labels.length; right += 1) {
+        output.add(historyPairKey(labels[left], labels[right]));
+      }
+    }
+  };
+
+  for (const entry of relevant) {
+    if (Array.isArray(entry.detail?.groups)) {
+      entry.detail.groups.forEach(addGroupPairs);
+    }
+    if (Array.isArray(entry.detail?.pairs)) {
+      entry.detail.pairs.forEach(addGroupPairs);
+    }
+    if (Array.isArray(entry.detail?.matches)) {
+      for (const match of entry.detail.matches) {
+        if (match?.a && match?.b) {
+          output.add(historyPairKey(match.a, match.b));
+        }
+      }
+    }
+  }
+
+  return output;
+}
+
+function constraintValidation(tool, ts) {
+  const context = constraintContext(tool, ts);
+  return {
+    context,
+    validation: validateRules({
+      toolId: tool.id,
+      rules: ts.rules || [],
+      items: context.items,
+      targets: context.targets,
+      fields: context.fields
+    })
+  };
+}
+
 function renderRuleStrip(tool, ts) {
   let rules = [];
 
@@ -1231,6 +1380,16 @@ function renderRuleStrip(tool, ts) {
     if (ts.numberMode === "decimal") rules.push(ts.numberPrecision + " decimals");
     if (ts.numberCount > 1) rules.push(ts.numberCount + " values");
     if (ts.numberUnique && ts.numberCount > 1) rules.push("Unique");
+  } else if (constraintTools.has(tool.id)) {
+    const active = (ts.rules || []).filter((rule) => rule.enabled !== false);
+    const required = active.filter((rule) => rule.strength !== "soft").length;
+    const preferred = active.filter((rule) => rule.strength === "soft").length;
+    if (required) rules.push(required + " required");
+    if (preferred) rules.push(preferred + " prefer");
+    if (active.length) rules.push(
+      (ts.solverEffort || "automatic")[0].toUpperCase()
+      + (ts.solverEffort || "automatic").slice(1)
+    );
   }
 
   if (!rules.length) return null;
