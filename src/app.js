@@ -1278,7 +1278,7 @@ function renderModal() {
   } else if (typeof state.modal === "object" && state.modal.type === "use-pool") {
     const pool = state.pools.find((item) => item.id === state.modal.poolId);
     modal.append(node("h2", { text: pool ? pool.name : "Pool" }), node("p", { text: "Choose a compatible randomizer." }));
-    const choices = ["picker", "wheel", "shuffle", "teams", "pairs"];
+    const choices = ["picker", "sampler", "wheel", "shuffle", "teams", "groups", "pairs", "elimination", "tournament", "secret-santa"];
     modal.append(node("div", { class: "tool-grid" }, choices.map((id) => {
       const tool = getTool(id);
       return node("button", {
