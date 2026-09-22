@@ -859,6 +859,310 @@ async function applyPresetToTool(preset, {
 }
 
 
+async function startTemplateSession(template) {
+  const session = createTemplateSession(template);
+  await put("templateSessions", session);
+  replaceTemplateSession(session);
+  openTemplateSession(session.id);
+}
+
+function openTemplateSession(sessionId) {
+  const session = templateSessionById(sessionId);
+  if (!session) return;
+
+  if (state.toolId) finishPresentation(state.toolId, null, false);
+  state.activeTemplateSessionId = session.id;
+  state.view = "template-session";
+  state.toolId = null;
+  state.modal = null;
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?templateSession=" + encodeURIComponent(session.id)
+  );
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function openTemplateStep(session, stepIndex) {
+  const template = sessionTemplateById(session.templateId);
+  const definition = template?.steps?.[stepIndex];
+  const runtimeStep = session?.steps?.[stepIndex];
+
+  if (!template || !definition || !runtimeStep) {
+    announce("This Session step is unavailable.");
+    return;
+  }
+
+  if (runtimeStep.locked && runtimeStep.status === "complete") {
+    const run = runById(runtimeStep.runId);
+    if (run) replayStoredRun(run);
+    return;
+  }
+
+  const tool = getTool(definition.toolId);
+  if (!tool) {
+    announce("This Session step uses a tool that is no longer available.");
+    return;
+  }
+
+  const preset = definition.presetId
+    ? presetById(definition.presetId)
+    : null;
+
+  if (preset) {
+    await applyPresetToTool(preset, {
+      open: false,
+      preserveTemplateContext: true
+    });
+  } else {
+    if (ensureToolState(tool.id).activeSessionId && isStatefulTool(tool.id)) {
+      await endActiveSession(tool.id, "abandoned", true);
+    }
+    state.tool[tool.id] = null;
+    ensureToolState(tool.id);
+  }
+
+  const ts = ensureToolState(tool.id);
+
+  if (definition.input.kind === "previous") {
+    const items = previousStepItems(session, template, stepIndex);
+    ts.listText = items.join("\n");
+    ts.workingSet = null;
+    ts.workingSetDirty = false;
+    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
+  } else if (definition.input.kind === "frozen") {
+    ts.listText = (definition.input.items || []).join("\n");
+    ts.workingSet = null;
+    ts.workingSetDirty = false;
+    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
+  } else if (definition.input.kind === "prompt" && !preset) {
+    ts.listText = "";
+    ts.workingSet = null;
+    ts.workingSetDirty = false;
+  }
+
+  ts.templateSessionId = session.id;
+  ts.templateStepIndex = stepIndex;
+  ts.templateStepId = definition.id;
+  ts.result = null;
+  ts.replayRunId = null;
+
+  state.activeTemplateSessionId = session.id;
+  state.view = "tool";
+  state.toolId = tool.id;
+  state.modal = null;
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?tool=" + encodeURIComponent(tool.id)
+  );
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function toggleTemplateStepLock(session, stepIndex) {
+  try {
+    const next = setTemplateStepLocked(
+      session,
+      stepIndex,
+      !session.steps[stepIndex].locked
+    );
+    await putWithRevision(
+      "templateSessions",
+      next,
+      session.revision
+    );
+    replaceTemplateSession(next);
+    render();
+  } catch (error) {
+    announce(error?.message || "Could not change step lock.");
+  }
+}
+
+async function rerunTemplateSessionFrom(session, stepIndex) {
+  try {
+    const next = rerunTemplateFrom(session, stepIndex);
+    await putWithRevision(
+      "templateSessions",
+      next,
+      session.revision
+    );
+    replaceTemplateSession(next);
+    await openTemplateStep(next, stepIndex);
+  } catch (error) {
+    announce(error?.message || "Could not rerun from this step.");
+  }
+}
+
+async function abandonCurrentTemplateSession(session) {
+  try {
+    const next = abandonTemplateSession(session);
+    await putWithRevision(
+      "templateSessions",
+      next,
+      session.revision
+    );
+    replaceTemplateSession(next);
+    state.activeTemplateSessionId = null;
+    setView("play");
+  } catch (error) {
+    announce(error?.message || "Could not end Session.");
+  }
+}
+
+function renderTemplateSession() {
+  const session = templateSessionById(state.activeTemplateSessionId);
+  const template = session ? sessionTemplateById(session.templateId) : null;
+
+  if (!session || !template) {
+    return node("main", { class: "content" }, [
+      node("h1", { class: "view-title", text: "Session unavailable" }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => setView("play")
+      }, "Back to Play")
+    ]);
+  }
+
+  const content = node("main", { class: "content template-session-view" }, [
+    node("div", { class: "template-session-heading" }, [
+      node("button", {
+        class: "icon-button",
+        type: "button",
+        "aria-label": "Back to Play",
+        onClick: () => setView("play")
+      }, "←"),
+      node("div", {}, [
+        node("div", { class: "kicker", text: "Session Template" }),
+        node("h1", { class: "view-title", text: template.name }),
+        node("p", {
+          class: "view-subtitle",
+          text:
+            session.status === "completed"
+              ? "Completed · rerun any unlocked step to branch from there."
+              : (session.currentIndex + 1)
+                + " of "
+                + session.steps.length
+                + " steps"
+        })
+      ])
+    ])
+  ]);
+
+  const progress = session.steps.length
+    ? Math.round(
+        session.steps.filter((step) => step.status === "complete").length
+        / session.steps.length
+        * 100
+      )
+    : 0;
+
+  content.append(node("div", { class: "template-progress" }, [
+    node("span", {
+      style: { width: progress + "%" }
+    }),
+    node("strong", { text: progress + "%" })
+  ]));
+
+  const list = node("div", { class: "template-step-list" });
+
+  template.steps.forEach((definition, index) => {
+    const step = session.steps[index];
+    const tool = getTool(definition.toolId);
+    const complete = step.status === "complete";
+    const current = session.status === "active" && session.currentIndex === index;
+    const sourceLabel = definition.input.kind === "previous"
+      ? "Previous result"
+      : definition.presetId
+        ? "Preset"
+        : definition.input.kind === "prompt"
+          ? "Prompt input"
+          : definition.input.kind;
+
+    list.append(node("article", {
+      class:
+        "template-step-card"
+        + (complete ? " is-complete" : "")
+        + (current ? " is-current" : "")
+        + (step.locked ? " is-locked" : "")
+    }, [
+      node("div", {
+        class: "template-step-number",
+        text: complete ? "✓" : String(index + 1)
+      }),
+      node("div", { class: "template-step-copy" }, [
+        node("strong", { text: definition.name }),
+        node("span", {
+          text:
+            (tool?.name || definition.toolId)
+            + " · "
+            + sourceLabel
+        }),
+        complete && step.resultItems.length
+          ? node("small", {
+              text:
+                step.resultItems.slice(0, 4).join(", ")
+                + (step.resultItems.length > 4 ? "…" : "")
+            })
+          : null
+      ]),
+      node("div", { class: "template-step-actions" }, [
+        complete
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: () => toggleTemplateStepLock(session, index)
+            }, step.locked ? "Unlock" : "Lock")
+          : null,
+        complete && !step.locked
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: () => rerunTemplateSessionFrom(session, index)
+            }, "Rerun from here")
+          : null,
+        (!complete || current)
+          ? node("button", {
+              class: current ? "primary" : "secondary",
+              type: "button",
+              disabled:
+                session.status === "abandoned"
+                || index > session.currentIndex
+                  ? "disabled"
+                  : null,
+              onClick: () => openTemplateStep(session, index)
+            }, current ? "Run step" : "Open")
+          : null
+      ])
+    ]));
+  });
+
+  content.append(list);
+
+  if (session.status === "active") {
+    content.append(node("div", { class: "template-session-footer" }, [
+      node("button", {
+        class: "danger",
+        type: "button",
+        onClick: () => abandonCurrentTemplateSession(session)
+      }, "End Session")
+    ]));
+  } else if (session.status === "completed") {
+    content.append(node("div", { class: "template-session-footer" }, [
+      node("strong", { text: "Session complete" }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => setView("play")
+      }, "Back to Play")
+    ]));
+  }
+
+  return content;
+}
+
 function setView(view) {
   if (state.toolId) finishPresentation(state.toolId, null, false);
   state.view = view;
@@ -6491,6 +6795,7 @@ function render() {
   else if (state.view === "pools") layout.append(renderPools());
   else if (state.view === "history") layout.append(renderHistory());
   else if (state.view === "studio") layout.append(renderStudio());
+  else if (state.view === "template-session") layout.append(renderTemplateSession());
   else if (state.view === "tool") layout.append(renderTool());
 
   layout.append(bottomNav());
