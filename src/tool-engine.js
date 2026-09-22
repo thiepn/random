@@ -18,6 +18,10 @@ import {
   NumberEngineError,
   generateRandomNumbers
 } from "./number-engine.js";
+import {
+  solveGrouping,
+  solveSecretSanta
+} from "./constraint-engine.js";
 
 const MAX_UINT32_RANGE = 0x100000000;
 
@@ -97,6 +101,115 @@ function selectionFairness(model, {
       eligible: entry.eligible,
       probability: entry.probability
     }))
+  };
+}
+
+function enabledRules(config) {
+  return (Array.isArray(config.rules) ? config.rules : [])
+    .filter((rule) => rule && rule.enabled !== false);
+}
+
+function hasConstraintRules(config) {
+  return enabledRules(config).length > 0;
+}
+
+function constraintItems(items, config) {
+  const supplied = Array.isArray(config.constraintItems)
+    ? config.constraintItems
+    : [];
+
+  return items.map((label, index) => {
+    const source = supplied[index];
+    return {
+      id: String(source?.id || ("item:" + index)),
+      label: String(label),
+      tags: Array.isArray(source?.tags) ? [...source.tags] : [],
+      values: source?.values && typeof source.values === "object"
+        ? { ...source.values }
+        : {}
+    };
+  });
+}
+
+function balancedCapacities(itemCount, targetCount) {
+  const base = Math.floor(itemCount / targetCount);
+  const remainder = itemCount % targetCount;
+  return Array.from(
+    { length: targetCount },
+    (_, index) => base + (index < remainder ? 1 : 0)
+  );
+}
+
+function groupingTargets(itemCount, targetCount, prefix) {
+  const capacities = balancedCapacities(itemCount, targetCount);
+  return capacities.map((capacity, index) => ({
+    id: "target:" + index,
+    label: prefix + " " + (index + 1),
+    capacity
+  }));
+}
+
+function assignmentTargets(itemCount, labels) {
+  const capacities = balancedCapacities(itemCount, labels.length);
+  return labels.map((label, index) => ({
+    id: "target:" + index,
+    label,
+    capacity: capacities[index]
+  }));
+}
+
+function pairTargets(itemCount) {
+  const count = Math.ceil(itemCount / 2);
+  return Array.from({ length: count }, (_, index) => ({
+    id: "target:" + index,
+    label: "Pair " + (index + 1),
+    capacity: index === count - 1 && itemCount % 2 === 1 ? 1 : 2
+  }));
+}
+
+function tournamentTargets(itemCount) {
+  const bracketSize = 2 ** Math.ceil(Math.log2(itemCount));
+  const matchCount = bracketSize / 2;
+  const byeCount = bracketSize - itemCount;
+  const targets = Array.from({ length: matchCount }, (_, index) => ({
+    id: "target:" + index,
+    label: "Match " + (index + 1),
+    capacity: index < byeCount ? 1 : 2
+  }));
+  return { targets, bracketSize, byeCount };
+}
+
+function historyPairs(config) {
+  return new Set(Array.isArray(config.historyPairs) ? config.historyPairs : []);
+}
+
+function solverFailure(result) {
+  if (result.status === "search_limit") {
+    throw new ToolValidationError(
+      "Search limit reached before a valid result was found. Try Thorough mode or relax a rule.",
+      "SOLVER_SEARCH_LIMIT"
+    );
+  }
+
+  const first = result.errors?.[0]?.message;
+  throw new ToolValidationError(
+    first || "No valid result satisfies the required rules.",
+    "CONSTRAINTS_IMPOSSIBLE"
+  );
+}
+
+function constrainedFairness(toolId, config, solved) {
+  const rules = enabledRules(config);
+  return {
+    kind: "constrained",
+    operation: toolId,
+    mode: "random-valid-search",
+    uniformOverValidResults: false,
+    hardRuleCount: rules.filter((rule) => rule.strength !== "soft").length,
+    softRuleCount: rules.filter((rule) => rule.strength === "soft").length,
+    solverEffort: config.solverEffort || "automatic",
+    score: solved.score ?? null,
+    diagnostics: solved.diagnostics || null
   };
 }
 
@@ -434,27 +547,167 @@ export function executeTool(toolId, config, rng) {
     case "teams": {
       requireItems(items, 2, "people");
       const count = requireInteger(config.teamCount, "Team count", 2, Math.min(12, items.length));
+
+      if (hasConstraintRules(config)) {
+        const modelItems = constraintItems(items, config);
+        const targets = groupingTargets(items.length, count, "Team");
+        const solved = solveGrouping({
+          toolId: "teams",
+          items: modelItems,
+          targets,
+          rules: config.rules,
+          fields: config.constraintFields || [],
+          historyPairs: historyPairs(config),
+          effort: config.solverEffort,
+          rng
+        });
+        if (solved.status !== "ok") solverFailure(solved);
+
+        const result = solved.groups.map((group) =>
+          group.items.map((item) => item.label)
+        );
+        const fairness = constrainedFairness("teams", config, solved);
+        return {
+          result,
+          summary: count + " teams",
+          detail: {
+            groups: result,
+            solver: solved.diagnostics,
+            score: solved.score,
+            fairness
+          },
+          fairness
+        };
+      }
+
       const result = partition(items, count, rng);
-      return { result, summary: `${count} teams`, detail: { groups: result } };
+      return { result, summary: count + " teams", detail: { groups: result } };
     }
 
     case "groups": {
       requireItems(items, 2);
       const count = requireInteger(config.groupCount, "Group count", 2, Math.min(20, items.length));
+
+      if (hasConstraintRules(config)) {
+        const modelItems = constraintItems(items, config);
+        const targets = groupingTargets(items.length, count, "Group");
+        const solved = solveGrouping({
+          toolId: "groups",
+          items: modelItems,
+          targets,
+          rules: config.rules,
+          fields: config.constraintFields || [],
+          historyPairs: historyPairs(config),
+          effort: config.solverEffort,
+          rng
+        });
+        if (solved.status !== "ok") solverFailure(solved);
+
+        const result = solved.groups.map((group) =>
+          group.items.map((item) => item.label)
+        );
+        const fairness = constrainedFairness("groups", config, solved);
+        return {
+          result,
+          summary: count + " groups",
+          detail: {
+            groups: result,
+            solver: solved.diagnostics,
+            score: solved.score,
+            fairness
+          },
+          fairness
+        };
+      }
+
       const result = partition(items, count, rng);
-      return { result, summary: `${count} groups`, detail: { groups: result } };
+      return { result, summary: count + " groups", detail: { groups: result } };
     }
 
     case "pairs": {
       requireItems(items, 2, "people");
+
+      if (hasConstraintRules(config)) {
+        const modelItems = constraintItems(items, config);
+        const targets = pairTargets(items.length);
+        const solved = solveGrouping({
+          toolId: "pairs",
+          items: modelItems,
+          targets,
+          rules: config.rules,
+          fields: config.constraintFields || [],
+          historyPairs: historyPairs(config),
+          effort: config.solverEffort,
+          rng
+        });
+        if (solved.status !== "ok") solverFailure(solved);
+
+        const result = solved.groups.map((group) =>
+          group.items.map((item) => item.label)
+        );
+        const fairness = constrainedFairness("pairs", config, solved);
+        return {
+          result,
+          summary: result.length + " groups",
+          detail: {
+            pairs: result,
+            solver: solved.diagnostics,
+            score: solved.score,
+            fairness
+          },
+          fairness
+        };
+      }
+
       const result = pairs(items, rng);
-      return { result, summary: `${result.length} groups`, detail: { pairs: result } };
+      return { result, summary: result.length + " groups", detail: { pairs: result } };
     }
 
     case "assignment": {
       requireItems(items, 1, "sources");
       const targets = Array.isArray(config.targets) ? config.targets : [];
       requireItems(targets, 1, "targets");
+
+      if (hasConstraintRules(config)) {
+        const modelItems = constraintItems(items, config);
+        const solverTargets = assignmentTargets(items.length, targets);
+        const solved = solveGrouping({
+          toolId: "assignment",
+          items: modelItems,
+          targets: solverTargets,
+          rules: config.rules,
+          fields: config.constraintFields || [],
+          historyPairs: historyPairs(config),
+          effort: config.solverEffort,
+          rng
+        });
+        if (solved.status !== "ok") solverFailure(solved);
+
+        const targetByItem = new Map();
+        for (const group of solved.groups) {
+          for (const item of group.items) {
+            targetByItem.set(String(item.id), group.target.label);
+          }
+        }
+
+        const result = modelItems.map((item) => ({
+          source: item.label,
+          target: targetByItem.get(String(item.id))
+        }));
+        const fairness = constrainedFairness("assignment", config, solved);
+        return {
+          result,
+          summary: result.length + " assignments",
+          detail: {
+            assignments: result,
+            solver: solved.diagnostics,
+            score: solved.score,
+            fairness
+          },
+          fairness
+        };
+      }
+
       const orderedSources = shuffle(
         items.map((source, originalIndex) => ({ source, originalIndex })),
         rng
@@ -466,7 +719,7 @@ export function executeTool(toolId, config, rng) {
       }));
       assigned.sort((a, b) => a.originalIndex - b.originalIndex);
       const result = assigned.map(({ source, target }) => ({ source, target }));
-      return { result, summary: `${result.length} assignments`, detail: { assignments: result } };
+      return { result, summary: result.length + " assignments", detail: { assignments: result } };
     }
 
     case "ladder": {
@@ -492,11 +745,49 @@ export function executeTool(toolId, config, rng) {
     }
 
     case "tournament": {
+      requireItems(items, 2, "entrants");
+
+      if (hasConstraintRules(config)) {
+        const modelItems = constraintItems(items, config);
+        const tournament = tournamentTargets(items.length);
+        const solved = solveGrouping({
+          toolId: "tournament",
+          items: modelItems,
+          targets: tournament.targets,
+          rules: config.rules,
+          fields: config.constraintFields || [],
+          historyPairs: historyPairs(config),
+          effort: config.solverEffort,
+          rng
+        });
+        if (solved.status !== "ok") solverFailure(solved);
+
+        const result = solved.groups.map((group) => ({
+          a: group.items[0]?.label || null,
+          b: group.items[1]?.label || null,
+          bye: group.items.length === 1
+        }));
+        const fairness = constrainedFairness("tournament", config, solved);
+        return {
+          result,
+          summary: result.length + " first-round slots",
+          detail: {
+            matches: result,
+            bracketSize: tournament.bracketSize,
+            byeCount: tournament.byeCount,
+            solver: solved.diagnostics,
+            score: solved.score,
+            fairness
+          },
+          fairness
+        };
+      }
+
       const draw = createTournamentDraw(items, rng);
       const result = draw.matches;
       return {
         result,
-        summary: `${draw.matches.length} first-round slots`,
+        summary: draw.matches.length + " first-round slots",
         detail: draw
       };
     }
@@ -509,14 +800,52 @@ export function executeTool(toolId, config, rng) {
           "DUPLICATE_NAMES"
         );
       }
+
+      if (hasConstraintRules(config)) {
+        const modelItems = constraintItems(items, config);
+        const solved = solveSecretSanta({
+          items: modelItems,
+          rules: config.rules,
+          effort: config.solverEffort,
+          rng
+        });
+        if (solved.status !== "ok") solverFailure(solved);
+
+        const receiverByGiver = new Map(
+          solved.assignments.map((entry) => [
+            String(entry.giver.id),
+            entry.receiver.label
+          ])
+        );
+        const assignments = modelItems.map((item) => ({
+          source: item.label,
+          target: receiverByGiver.get(String(item.id))
+        }));
+        const fairness = constrainedFairness("secret-santa", config, solved);
+        return {
+          result: {
+            summary: "ASSIGNMENTS READY",
+            sub: items.length + " private matches"
+          },
+          summary: items.length + " private assignments generated",
+          detail: {
+            solver: solved.diagnostics,
+            score: solved.score,
+            fairness
+          },
+          fairness,
+          statePatch: { secretAssignments: assignments, secretReveal: null }
+        };
+      }
+
       const receivers = derangement(items, rng);
       const assignments = items.map((source, index) => ({
         source,
         target: receivers[index]
       }));
       return {
-        result: { summary: "ASSIGNMENTS READY", sub: `${items.length} private matches` },
-        summary: `${items.length} private assignments generated`,
+        result: { summary: "ASSIGNMENTS READY", sub: items.length + " private matches" },
+        summary: items.length + " private assignments generated",
         detail: null,
         statePatch: { secretAssignments: assignments, secretReveal: null }
       };
