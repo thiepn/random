@@ -5554,7 +5554,10 @@ function openWorkflowSession(sessionId) {
   if (!session) return;
   state.workflowEditor = null;
   state.activeWorkflowSessionId = session.id;
-  state.workflowInputText = (session.inputItems || []).join("\n");
+  const promptItems = session.pauseReason === "input"
+    ? session.nodeInputs?.[session.currentNodeId] || []
+    : [];
+  state.workflowInputText = promptItems.join("\n");
   state.view = "studio";
   state.toolId = null;
   history.replaceState(
@@ -5601,7 +5604,11 @@ async function persistWorkflowSessionTransition(current, next) {
 async function submitWorkflowInput(session) {
   try {
     const items = parseList(state.workflowInputText);
-    const next = provideWorkflowInput(session, items);
+    const next = provideWorkflowInput(
+      session,
+      items,
+      session.currentNodeId
+    );
     await persistWorkflowSessionTransition(session, next);
     render();
 
@@ -5748,10 +5755,13 @@ async function advanceWorkflowSession(sessionId, {
     if (
       nodeDef.type === "input"
       && nodeDef.config.mode === "prompt"
-      && !(session.inputItems || []).length
+      && !(session.nodeInputs?.[nodeDef.id] || []).length
     ) {
       const paused = pauseWorkflowSession(session, "input", nodeDef.id);
       await persistWorkflowSessionTransition(session, paused);
+      state.workflowInputText = (
+        paused.nodeInputs?.[nodeDef.id] || []
+      ).join("\n");
       render();
       return;
     }
@@ -5770,7 +5780,7 @@ async function advanceWorkflowSession(sessionId, {
     } else if (nodeDef.type === "input") {
       const items = nodeDef.config.mode === "fixed"
         ? nodeDef.config.fixedItems
-        : session.inputItems;
+        : (session.nodeInputs?.[nodeDef.id] || []);
       next = recordWorkflowNode(session, workflow, nodeDef.id, {
         resultItems: items,
         summary: items.join(", ")
