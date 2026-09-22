@@ -6213,7 +6213,7 @@ function renderWorkflowLibrary() {
     content.append(node("div", {
       class: "workflow-active-grid"
     }, activeSessions.slice(0, 6).map((session) => {
-      const workflow = workflowById(session.workflowId);
+      const workflow = workflowForSession(session);
       return node("button", {
         class: "workflow-active-card",
         type: "button",
@@ -9544,7 +9544,7 @@ async function runTool(id) {
       ? workflowSessionById(ts.workflowSessionId)
       : null;
     let workflow = workflowSession
-      ? workflowById(workflowSession.workflowId)
+      ? workflowForSession(workflowSession)
       : null;
     let expectedWorkflowSessionRevision = workflowSession?.revision ?? null;
 
