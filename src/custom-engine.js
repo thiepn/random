@@ -310,7 +310,7 @@ function executePrimitive(
   }
 
   if (primitive === "table") {
-    const rows = config.rows;
+    const rows = applyInputRules(config.rows, rules);
     requireEntries(rows, 1);
     const row = weightedPick(
       rows,
