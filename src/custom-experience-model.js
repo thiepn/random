@@ -547,6 +547,38 @@ function normalizePrimitiveConfig(primitive, config = {}, {
   );
 }
 
+function normalizeCustomRules(rules = {}) {
+  const minItems = Number(rules.minItems == null ? 1 : rules.minItems);
+  const maxItems = Number(rules.maxItems == null ? MAX_ENTRIES : rules.maxItems);
+
+  if (
+    !Number.isSafeInteger(minItems)
+    || !Number.isSafeInteger(maxItems)
+    || minItems < 1
+    || maxItems < minItems
+    || maxItems > MAX_ENTRIES
+  ) {
+    throw new CustomExperienceError(
+      "Input rule bounds must be whole numbers with 1 ≤ minimum ≤ maximum ≤ 500.",
+      "INVALID_CUSTOM_INPUT_RULE_BOUNDS"
+    );
+  }
+
+  const excludedLabels = Array.from(new Set(
+    (Array.isArray(rules.excludedLabels) ? rules.excludedLabels : [])
+      .map((value) => cleanText(value, "Excluded label", 120))
+      .filter(Boolean)
+  )).slice(0, 100);
+
+  return {
+    deduplicate: Boolean(rules.deduplicate),
+    excludedLabels,
+    caseSensitiveExclusions: Boolean(rules.caseSensitiveExclusions),
+    minItems,
+    maxItems
+  };
+}
+
 function normalizeAppearance(appearance = {}) {
   const accent = CUSTOM_ACCENTS.includes(appearance.accent)
     ? appearance.accent
@@ -612,6 +644,7 @@ export function normalizeCustomExperience(definition, {
     icon: cleanText(definition?.icon || "✦", "Icon", 8) || "✦",
     primitive,
     config: normalizePrimitiveConfig(primitive, definition?.config || {}),
+    rules: normalizeCustomRules(definition?.rules || {}),
     appearance: normalizeAppearance(definition?.appearance || {}),
     tags: Array.from(new Set(
       (Array.isArray(definition?.tags) ? definition.tags : [])
