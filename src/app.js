@@ -100,6 +100,24 @@ import {
   makeAudienceState,
   isPrivatePartyTool
 } from "./party-model.js";
+import {
+  CUSTOM_PRIMITIVES,
+  CUSTOM_ACCENTS,
+  CUSTOM_LAYOUTS,
+  createCustomExperience,
+  updateCustomExperience,
+  publishCustomExperience,
+  validateCustomExperience,
+  exportCustomExperience,
+  importCustomExperience,
+  customToolId,
+  customIdFromToolId,
+  experienceAsTool
+} from "./custom-experience-model.js";
+import {
+  executeCustomExperience,
+  customResultItems
+} from "./custom-engine.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -118,6 +136,9 @@ const state = {
   activeTemplateSessionId: null,
   partySessions: [],
   activePartySessionId: null,
+  customExperiences: [],
+  creationFilter: "all",
+  builder: null,
   partyCountdown: null,
   audiencePartyId: null,
   audienceState: null,
@@ -138,6 +159,56 @@ const palette = [
   "#7c5cff", "#2ee5ff", "#ffca3a", "#ff5577",
   "#40e38b", "#4d8dff", "#ff63c3", "#ff923e"
 ];
+
+function customExperienceById(id) {
+  return state.customExperiences.find(
+    (experience) => experience.id === id
+  ) || null;
+}
+
+function customExperienceFromToolId(toolId) {
+  const id = customIdFromToolId(toolId);
+  return id ? customExperienceById(id) : null;
+}
+
+function resolveTool(id) {
+  const builtin = getTool(id);
+  if (builtin) return builtin;
+
+  const experience = customExperienceFromToolId(id);
+  if (!experience || experience.status !== "published") return null;
+  return experienceAsTool(experience);
+}
+
+function customExperienceNeedsPromptInput(experience) {
+  if (!experience) return false;
+
+  if (
+    ["pick", "sample", "shuffle"].includes(experience.primitive)
+  ) {
+    return experience.config?.source === "prompt";
+  }
+
+  if (experience.primitive === "compound") {
+    return experience.config.steps.some(
+      (step) =>
+        step.input?.kind === "prompt"
+        || (
+          ["pick", "sample", "shuffle"].includes(step.primitive)
+          && step.config?.source === "prompt"
+          && step.input?.kind !== "step"
+        )
+    );
+  }
+
+  return false;
+}
+
+function toolAcceptsListInput(toolId) {
+  if (listInputTools.has(toolId)) return true;
+  const experience = customExperienceFromToolId(toolId);
+  return customExperienceNeedsPromptInput(experience);
+}
 
 const selectionTools = new Set(["wheel", "picker", "sampler"]);
 const listInputTools = new Set([
@@ -314,6 +385,8 @@ function ensureToolState(toolId) {
       dateEnd: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 
       deck: null,
+      customInputText: "Option A\nOption B\nOption C",
+      customTestInput: "Option A\nOption B\nOption C",
       presentation: null,
       activePresetId: null,
       templateSessionId: null,
@@ -548,6 +621,7 @@ async function loadData() {
     sessionTemplates,
     templateSessions,
     partySessions,
+    customExperiences,
     historyEntries,
     runs,
     sessions,
@@ -562,6 +636,7 @@ async function loadData() {
     getAll("sessionTemplates"),
     getAll("templateSessions"),
     getAll("partySessions"),
+    getAll("customExperiences"),
     getAll("history"),
     getAll("runs"),
     getAll("sessions"),
@@ -583,6 +658,9 @@ async function loadData() {
     (a, b) => b.updatedAt - a.updatedAt
   );
   state.partySessions = partySessions.sort(
+    (a, b) => b.updatedAt - a.updatedAt
+  );
+  state.customExperiences = customExperiences.sort(
     (a, b) => b.updatedAt - a.updatedAt
   );
   state.history = historyEntries
@@ -723,8 +801,13 @@ function maybeResumeLatestSession(toolId) {
 }
 
 function runInputSnapshot(toolId, toolState) {
+  const experience = customExperienceFromToolId(toolId);
   return {
-    items: parseList(toolState.listText),
+    items: parseList(
+      experience && customExperienceNeedsPromptInput(experience)
+        ? toolState.customInputText
+        : toolState.listText
+    ),
     workingSetSource: cloneData(toolState.workingSet?.source || null)
   };
 }
@@ -837,7 +920,7 @@ function broadcastPartyAudience({
   privateReveal = false
 } = {}) {
   if (!party?.options?.audienceEnabled) return;
-  const tool = getTool(party.toolId);
+  const tool = resolveTool(party.toolId);
   if (!tool) return;
 
   const channel = partyChannelFor(party.id);
@@ -937,7 +1020,7 @@ async function persistPartyOptions(party, patch) {
 }
 
 async function startPartyMode(toolId) {
-  const tool = getTool(toolId);
+  const tool = resolveTool(toolId);
   if (!tool) return;
 
   const party = createPartySession({
@@ -1083,7 +1166,12 @@ function presetConfigSnapshot(toolId, toolState) {
 }
 
 function frozenPresetItems(toolId, toolState) {
-  const labels = parseList(toolState.listText);
+  const experience = customExperienceFromToolId(toolId);
+  const labels = parseList(
+    experience && customExperienceNeedsPromptInput(experience)
+      ? toolState.customInputText
+      : toolState.listText
+  );
   const selection = selectionTools.has(toolId)
     ? reconcileSelectionEntries(labels, toolState.selectionEntries || [])
     : labels.map((label, index) => ({
@@ -1116,7 +1204,7 @@ async function applyPresetToTool(preset, {
   preserveTemplateContext = false
 } = {}) {
   if (!preset) return null;
-  const tool = getTool(preset.toolId);
+  const tool = resolveTool(preset.toolId);
   if (!tool) throw new Error("Preset tool is no longer available.");
 
   const previous = ensureToolState(tool.id);
@@ -1151,12 +1239,17 @@ async function applyPresetToTool(preset, {
   });
 
   if (resolved.mode === "prompt") {
-    next.listText = "";
+    if (tool.custom) next.customInputText = "";
+    else next.listText = "";
     next.workingSet = null;
     next.workingSetDirty = false;
   } else if (resolved.workingSet) {
     next.workingSet = resolved.workingSet;
-    next.listText = workingSetLabels(resolved.workingSet).join("\n");
+    if (tool.custom) {
+      next.customInputText = workingSetLabels(resolved.workingSet).join("\n");
+    } else {
+      next.listText = workingSetLabels(resolved.workingSet).join("\n");
+    }
     next.workingSetDirty = false;
   }
 
@@ -1501,7 +1594,7 @@ function partyPrivateControls(tool, ts, party) {
 
 function renderParty() {
   const party = activePartySession();
-  const tool = party ? getTool(party.toolId) : null;
+  const tool = party ? resolveTool(party.toolId) : null;
 
   if (!party || !tool) {
     return node("main", { class: "party-shell party-error" }, [
@@ -1903,7 +1996,7 @@ async function openTemplateStep(session, stepIndex) {
     return;
   }
 
-  const tool = getTool(definition.toolId);
+  const tool = resolveTool(definition.toolId);
   if (!tool) {
     announce("This Session step uses a tool that is no longer available.");
     return;
@@ -1930,17 +2023,21 @@ async function openTemplateStep(session, stepIndex) {
 
   if (definition.input.kind === "previous") {
     const items = previousStepItems(session, template, stepIndex);
-    ts.listText = items.join("\n");
+    if (tool.custom) ts.customInputText = items.join("\n");
+    else ts.listText = items.join("\n");
     ts.workingSet = null;
     ts.workingSetDirty = false;
     if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
   } else if (definition.input.kind === "frozen") {
-    ts.listText = (definition.input.items || []).join("\n");
+    const text = (definition.input.items || []).join("\n");
+    if (tool.custom) ts.customInputText = text;
+    else ts.listText = text;
     ts.workingSet = null;
     ts.workingSetDirty = false;
     if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
   } else if (definition.input.kind === "prompt") {
-    ts.listText = "";
+    if (tool.custom) ts.customInputText = "";
+    else ts.listText = "";
     ts.workingSet = null;
     ts.workingSetDirty = false;
     if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
@@ -2074,7 +2171,7 @@ function renderTemplateSession() {
 
   template.steps.forEach((definition, index) => {
     const step = session.steps[index];
-    const tool = getTool(definition.toolId);
+    const tool = resolveTool(definition.toolId);
     const complete = step.status === "complete";
     const current = session.status === "active" && session.currentIndex === index;
     const sourceLabel = definition.input.kind === "previous"
@@ -2181,7 +2278,7 @@ function openTool(id) {
   if (state.toolId && state.toolId !== id) {
     finishPresentation(state.toolId, null, false);
   }
-  const tool = getTool(id);
+  const tool = resolveTool(id);
   if (!tool) return;
   state.view = "tool";
   state.toolId = id;
@@ -2251,7 +2348,7 @@ async function deletePreset(preset) {
 }
 
 function presetCard(preset) {
-  const tool = getTool(preset.toolId);
+  const tool = resolveTool(preset.toolId);
   const binding = preset.inputBinding?.mode || "none";
   const bindingLabel = ({
     "live-pool": "Live Pool",
@@ -3204,7 +3301,7 @@ async function runStudio() {
   }
 }
 function currentTool() {
-  return getTool(state.toolId);
+  return resolveTool(state.toolId);
 }
 
 function renderTool() {
@@ -5263,7 +5360,7 @@ async function undoActiveSession(toolId) {
     restoreToolSnapshot(toolId, next.currentState, {
       sessionId: next.id
     });
-    announce("Undid the last " + getTool(toolId).name + " action.");
+    announce("Undid the last " + resolveTool(toolId).name + " action.");
     if (state.view === "party") {
       const party = activePartySession();
       const restored = ensureToolState(toolId);
@@ -5312,7 +5409,7 @@ async function redoActiveSession(toolId) {
     restoreToolSnapshot(toolId, next.currentState, {
       sessionId: next.id
     });
-    announce("Redid the stored " + getTool(toolId).name + " result.");
+    announce("Redid the stored " + resolveTool(toolId).name + " result.");
     if (state.view === "party") {
       const party = activePartySession();
       const restored = ensureToolState(toolId);
@@ -5643,7 +5740,7 @@ function buildControls(tool, ts) {
 
   if (ts.error) controls.append(toolError(ts.error));
 
-  if (listInputTools.has(tool.id)) {
+  if (toolAcceptsListInput(tool.id)) {
     controls.append(listControls(tool, ts));
 
     if (tool.id === "teams") {
@@ -6099,7 +6196,7 @@ async function abandonSessionForSetupChange(toolId, toolState, fingerprint) {
 }
 
 async function runTool(id) {
-  const tool = getTool(id);
+  const tool = resolveTool(id);
   let ts = ensureToolState(id);
 
   if (ts.animating || ts.presentation) {
@@ -7279,7 +7376,7 @@ function renderPoolImportModal(modal, importer) {
 
 function renderSaveToolPoolModal(modal, config) {
   const ts = ensureToolState(config.toolId);
-  const tool = getTool(config.toolId);
+  const tool = resolveTool(config.toolId);
   const name = node("input", {
     class: "field",
     placeholder: "Pool name",
@@ -7359,7 +7456,7 @@ function renderSaveToolPoolModal(modal, config) {
 }
 
 function renderAddRuleModal(modal, config) {
-  const tool = getTool(config.toolId);
+  const tool = resolveTool(config.toolId);
   const ts = ensureToolState(config.toolId);
   const { context } = constraintValidation(tool, ts);
   const types = ruleTypesForTool(tool.id);
@@ -7623,7 +7720,7 @@ function renderAddRuleModal(modal, config) {
 }
 
 function renderSavePresetModal(modal, config) {
-  const tool = getTool(config.toolId);
+  const tool = resolveTool(config.toolId);
   const ts = ensureToolState(config.toolId);
   const source = ts.workingSet?.source || null;
 
@@ -7801,7 +7898,7 @@ function renderPresetDetailModal(modal, config) {
     return;
   }
 
-  const tool = getTool(preset.toolId);
+  const tool = resolveTool(preset.toolId);
   modal.append(
     node("h2", { text: preset.name }),
     node("p", {
@@ -7852,7 +7949,7 @@ function renderPresetDetailModal(modal, config) {
 }
 
 function renderSaveRuleSetModal(modal, config) {
-  const tool = getTool(config.toolId);
+  const tool = resolveTool(config.toolId);
   const ts = ensureToolState(config.toolId);
   const source = ts.workingSet?.source || null;
 
@@ -7958,7 +8055,8 @@ function renderUseResultModal(modal, config) {
             }
 
             const next = ensureToolState(tool.id);
-            next.listText = items.join("\n");
+            if (tool.custom) next.customInputText = items.join("\n");
+            else next.listText = items.join("\n");
             next.workingSet = null;
             next.workingSetDirty = false;
             next.activePresetId = null;
@@ -8044,7 +8142,7 @@ function renderNewSessionTemplateModal(modal, config) {
         text:
           preset.name
           + " · "
-          + (getTool(preset.toolId)?.name || preset.toolId)
+          + (resolveTool(preset.toolId)?.name || preset.toolId)
       })
     ));
     presetSelect.value = step.presetId;
@@ -8657,7 +8755,7 @@ function renderModal() {
     modal.append(node("div", {
       class: "tool-grid modal-tool-grid"
     }, choices.map((id) => {
-      const tool = getTool(id);
+      const tool = resolveTool(id);
       return node("button", {
         class: "tool-card accent-" + tool.accent,
         type: "button",
@@ -8793,7 +8891,7 @@ async function init() {
     state.activeTemplateSessionId = requestedTemplateSession;
     state.view = "template-session";
     state.toolId = null;
-  } else if (getTool(requestedTool)) {
+  } else if (resolveTool(requestedTool)) {
     state.view = "tool";
     state.toolId = requestedTool;
     ensureToolState(requestedTool);
