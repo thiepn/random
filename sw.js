@@ -1,14 +1,16 @@
-const CACHE = "randomizer-shell-v3";
+const CACHE = "randomizer-shell-v4";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./phase1.css",\n  "./phase2.css",
+  "./phase1.css",
+  "./phase2.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./src/app.js",
   "./src/random-core.js",
-  "./src/tool-engine.js",\n  "./src/selection-model.js",
+  "./src/tool-engine.js",
+  "./src/selection-model.js",
   "./src/storage.js",
   "./src/registry.js"
 ];
@@ -37,7 +39,9 @@ self.addEventListener("fetch", (event) => {
       fetch(event.request)
         .then((response) => {
           if (response && response.status === 200) {
-            caches.open(CACHE).then((cache) => cache.put("./index.html", response.clone()));
+            caches.open(CACHE).then((cache) =>
+              cache.put("./index.html", response.clone())
+            );
           }
           return response;
         })
@@ -51,7 +55,9 @@ self.addEventListener("fetch", (event) => {
       const network = fetch(event.request)
         .then((response) => {
           if (response && response.status === 200 && response.type !== "opaque") {
-            caches.open(CACHE).then((cache) => cache.put(event.request, response.clone()));
+            caches.open(CACHE).then((cache) =>
+              cache.put(event.request, response.clone())
+            );
           }
           return response;
         })
