@@ -13,6 +13,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Arcade-style responsive UI
 - Pools 2.0 stored in IndexedDB: revisioned editing, active/inactive items, tags, structured fields, default weights, weight profiles, saved Views, WorkingSets, archive-first lifecycle, and CSV/TSV import
 - Constraint solver with required/preferred together/apart/fixed/capacity/tag rules, numeric balancing, recent-pair avoidance, bounded Fast/Automatic/Thorough search, and explicit impossible-vs-search-limit handling
+- Immutable Runs and persistent Sessions with exact Undo/Redo, crash recovery, Replay vs Rerun, grouped/pinned History, and stateful Cards/Elimination persistence
 - History and favorites
 - Offline service worker + web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -37,6 +38,7 @@ Then open `http://localhost:8080`.
 - `src/pool-model.js` — Pool schema v2, WorkingSets, Views, filters, CSV import, duplicate detection, and compatibility normalization
 - `src/rule-model.js` — typed constraint rules, compatibility matrix, validation, summaries, and contradiction checks
 - `src/constraint-engine.js` — bounded grouping/assignment and Secret Santa solvers with hard constraints and soft optimization
+- `src/session-model.js` — immutable Run records, stateful Session timelines, branching Undo/Redo, completion/abandonment, and History grouping
 - `src/storage.js` — IndexedDB persistence
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
@@ -46,3 +48,7 @@ Then open `http://localhost:8080`.
 ## Pool data compatibility
 
 Legacy Pool records are normalized to schema v2 when loaded and are only persisted in the new shape when edited. Pool edits use revisions to prevent silent stale overwrites. Tools copy active Pool/View items into a WorkingSet, so editing a run does not mutate the source Pool.
+
+## Run and Session persistence
+
+IndexedDB schema v3 adds `runs`, `sessions`, `sessionEvents`, and `historyPins`. New random results commit as immutable Runs. Cards and Elimination automatically create persistent Sessions; Undo/Redo changes the Session cursor and restores stored snapshots rather than mutating Runs or consuming randomness. Seeded sequence advancement is committed in the same transaction as each Run.
