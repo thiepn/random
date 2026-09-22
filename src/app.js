@@ -2529,14 +2529,19 @@ function constraintRulesControl(tool, ts) {
       render();
     });
 
+    const softOnly = rule.type === "balanceField";
     const strength = node("select", {
       class: "constraint-strength",
-      "aria-label": "Rule strength"
-    }, [
-      node("option", { value: "hard", text: "Required" }),
-      node("option", { value: "soft", text: "Prefer" })
-    ]);
-    strength.value = rule.strength === "soft" ? "soft" : "hard";
+      "aria-label": "Rule strength",
+      disabled: softOnly ? "disabled" : null
+    }, softOnly
+      ? [node("option", { value: "soft", text: "Prefer" })]
+      : [
+          node("option", { value: "hard", text: "Required" }),
+          node("option", { value: "soft", text: "Prefer" })
+        ]
+    );
+    strength.value = softOnly ? "soft" : (rule.strength === "soft" ? "soft" : "hard");
     strength.addEventListener("change", () => {
       rule.strength = strength.value;
       invalidateTool(tool.id, ts);
@@ -4257,6 +4262,270 @@ function renderSaveToolPoolModal(modal, config) {
   if (config.error) modal.prepend(toolError(config.error));
 }
 
+function renderAddRuleModal(modal, config) {
+  const tool = getTool(config.toolId);
+  const ts = ensureToolState(config.toolId);
+  const { context } = constraintValidation(tool, ts);
+  const types = ruleTypesForTool(tool.id);
+
+  modal.classList.add("rule-builder-modal");
+  modal.append(
+    node("h2", { text: "Add rule" }),
+    node("p", {
+      text: "Required rules must always be satisfied. Prefer rules only rank otherwise-valid results."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  const typeSelect = node("select", {
+    class: "field",
+    "aria-label": "Rule type"
+  }, types.map((type) =>
+    node("option", { value: type, text: ruleTypeLabel(type) })
+  ));
+  typeSelect.value = config.ruleType;
+  typeSelect.addEventListener("change", () => {
+    config.ruleType = typeSelect.value;
+    if (config.ruleType === "balanceField" || config.ruleType === "historyAvoid") {
+      config.strength = "soft";
+    }
+    config.error = null;
+    render();
+  });
+
+  const softOnly = config.ruleType === "balanceField";
+  const strength = node("select", {
+    class: "field",
+    "aria-label": "Rule strength",
+    disabled: softOnly ? "disabled" : null
+  }, softOnly
+    ? [node("option", { value: "soft", text: "Prefer" })]
+    : [
+        node("option", { value: "hard", text: "Required" }),
+        node("option", { value: "soft", text: "Prefer" })
+      ]
+  );
+  strength.value = softOnly ? "soft" : config.strength;
+  strength.addEventListener("change", () => {
+    config.strength = strength.value;
+    render();
+  });
+
+  modal.append(node("div", { class: "rule-builder-grid" }, [
+    node("div", { class: "control" }, [
+      node("label", { text: "Rule" }),
+      typeSelect
+    ]),
+    node("div", { class: "control" }, [
+      node("label", { text: "Strength" }),
+      strength
+    ])
+  ]));
+
+  const body = node("div", { class: "rule-builder-body" });
+
+  const itemSelect = (label, current, onChange) => {
+    const select = node("select", {
+      class: "field",
+      "aria-label": label
+    }, context.items.map((item) =>
+      node("option", { value: item.id, text: item.label })
+    ));
+    select.value = current || context.items[0]?.id || "";
+    select.addEventListener("change", () => onChange(select.value));
+    return node("div", { class: "control" }, [
+      node("label", { text: label }),
+      select
+    ]);
+  };
+
+  if (config.ruleType === "together" || config.ruleType === "apart") {
+    body.append(
+      itemSelect("Item A", config.itemA, (value) => { config.itemA = value; }),
+      itemSelect("Item B", config.itemB, (value) => { config.itemB = value; })
+    );
+  } else if (config.ruleType === "fixed") {
+    body.append(
+      itemSelect("Item", config.itemA, (value) => { config.itemA = value; })
+    );
+    const target = node("select", {
+      class: "field",
+      "aria-label": "Target"
+    }, context.targets.map((item) =>
+      node("option", { value: item.id, text: item.label })
+    ));
+    target.value = config.targetId || context.targets[0]?.id || "";
+    target.addEventListener("change", () => { config.targetId = target.value; });
+    body.append(node("div", { class: "control" }, [
+      node("label", { text: "Target" }),
+      target
+    ]));
+  } else if (config.ruleType === "capacity") {
+    const max = node("input", {
+      class: "field",
+      type: "number",
+      min: "1",
+      value: String(config.max || 1),
+      "aria-label": "Maximum items per target"
+    });
+    max.addEventListener("input", () => { config.max = Number(max.value); });
+    body.append(node("div", { class: "control" }, [
+      node("label", { text: "Maximum per target" }),
+      max
+    ]));
+  } else if (config.ruleType === "requiredTag" || config.ruleType === "maxTag") {
+    const tags = Array.from(new Set(context.items.flatMap((item) => item.tags || []))).sort();
+    const tag = node("input", {
+      class: "field",
+      list: "rule-tags",
+      value: config.tag,
+      placeholder: tags[0] || "leader",
+      "aria-label": "Tag"
+    });
+    tag.addEventListener("input", () => { config.tag = tag.value; });
+
+    const data = node("datalist", { id: "rule-tags" },
+      tags.map((value) => node("option", { value }))
+    );
+
+    const count = node("input", {
+      class: "field",
+      type: "number",
+      min: "0",
+      value: String(config.count ?? 1),
+      "aria-label": "Tag count"
+    });
+    count.addEventListener("input", () => { config.count = Number(count.value); });
+
+    body.append(
+      node("div", { class: "control" }, [
+        node("label", { text: "Tag" }),
+        tag,
+        data
+      ]),
+      node("div", { class: "control" }, [
+        node("label", {
+          text: config.ruleType === "requiredTag"
+            ? "Minimum per target"
+            : "Maximum per target"
+        }),
+        count
+      ])
+    );
+  } else if (config.ruleType === "balanceField") {
+    const numericFields = context.fields.filter((field) => field.type === "number");
+    if (!numericFields.length) {
+      body.append(node("div", { class: "constraint-validation is-warning" }, [
+        node("strong", { text: "No numeric Pool fields" }),
+        node("span", {
+          text: "Add a Number field to the source Pool, refresh this WorkingSet, then add a balance rule."
+        })
+      ]));
+    } else {
+      const field = node("select", {
+        class: "field",
+        "aria-label": "Numeric field"
+      }, numericFields.map((item) =>
+        node("option", { value: item.id, text: item.name })
+      ));
+      field.value = config.fieldId || numericFields[0].id;
+      field.addEventListener("change", () => { config.fieldId = field.value; });
+      body.append(node("div", { class: "control" }, [
+        node("label", { text: "Field to balance" }),
+        field
+      ]));
+    }
+  } else if (config.ruleType === "historyAvoid") {
+    const depth = node("input", {
+      class: "field",
+      type: "number",
+      min: "1",
+      max: "100",
+      value: String(config.depth || 5),
+      "aria-label": "Recent run depth"
+    });
+    depth.addEventListener("input", () => { config.depth = Number(depth.value); });
+    body.append(node("div", { class: "control" }, [
+      node("label", { text: "Look back this many runs" }),
+      depth
+    ]));
+  }
+
+  if (config.strength === "soft" || softOnly) {
+    const priority = node("input", {
+      class: "field",
+      type: "number",
+      min: "1",
+      max: "100",
+      value: String(config.priority || 10),
+      "aria-label": "Preference priority"
+    });
+    priority.addEventListener("input", () => {
+      config.priority = Number(priority.value);
+    });
+    body.append(node("div", { class: "control" }, [
+      node("label", { text: "Preference priority" }),
+      priority
+    ]));
+  }
+
+  modal.append(body);
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: () => {
+        try {
+          let params = {};
+
+          if (config.ruleType === "together" || config.ruleType === "apart") {
+            if (!config.itemA || !config.itemB || config.itemA === config.itemB) {
+              throw new Error("Choose two different items.");
+            }
+            params = { itemIds: [config.itemA, config.itemB] };
+          } else if (config.ruleType === "fixed") {
+            if (!config.itemA || !config.targetId) {
+              throw new Error("Choose both an item and a target.");
+            }
+            params = { itemId: config.itemA, targetId: config.targetId };
+          } else if (config.ruleType === "capacity") {
+            params = { max: Number(config.max) };
+          } else if (config.ruleType === "requiredTag" || config.ruleType === "maxTag") {
+            params = { tag: String(config.tag || "").trim(), count: Number(config.count) };
+          } else if (config.ruleType === "balanceField") {
+            if (!config.fieldId) throw new Error("Choose a numeric field.");
+            params = { fieldId: config.fieldId };
+          } else if (config.ruleType === "historyAvoid") {
+            params = { depth: Number(config.depth) };
+          }
+
+          const rule = createRule(config.ruleType, params, {
+            strength: softOnly ? "soft" : config.strength,
+            priority: config.priority
+          });
+          ts.rules.push(rule);
+          invalidateTool(tool.id, ts);
+          state.modal = null;
+          render();
+        } catch (error) {
+          config.error = error?.message || "Could not add rule.";
+          render();
+        }
+      }
+    }, "Add rule")
+  ]));
+}
+
 function renderModal() {
   if (!state.modal) return null;
 
@@ -4331,6 +4600,11 @@ function renderModal() {
         }
       }, "Done")
     ]));
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "add-rule"
+  ) {
+    renderAddRuleModal(modal, state.modal);
   } else if (
     typeof state.modal === "object"
     && state.modal.type === "pool-editor"
