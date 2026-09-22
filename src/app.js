@@ -3847,6 +3847,9 @@ function renderModal() {
     class: "modal-backdrop",
     onClick: (event) => {
       if (event.target === backdrop) {
+        if (typeof state.modal === "object" && state.modal.type === "pool-editor") {
+          return;
+        }
         state.modal = null;
         render();
       }
@@ -4096,6 +4099,10 @@ async function init() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.modal) {
+      if (typeof state.modal === "object" && state.modal.type === "pool-editor") {
+        announce("Use Save Pool or Cancel to close the Pool editor.");
+        return;
+      }
       state.modal = null;
       render();
     }
