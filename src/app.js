@@ -90,6 +90,16 @@ import {
   resultToItems,
   BUILTIN_SESSION_TEMPLATES
 } from "./session-template-model.js";
+import {
+  createPartySession,
+  updatePartyOptions,
+  appendPartyRun,
+  completePartySession,
+  partyPresentationMode,
+  countdownSeconds,
+  makeAudienceState,
+  isPrivatePartyTool
+} from "./party-model.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -106,6 +116,11 @@ const state = {
   sessionTemplates: [],
   templateSessions: [],
   activeTemplateSessionId: null,
+  partySessions: [],
+  activePartySessionId: null,
+  partyCountdown: null,
+  audiencePartyId: null,
+  audienceState: null,
   history: [],
   runs: [],
   sessions: [],
@@ -150,6 +165,9 @@ const constraintTools = new Set([
 
 const presentationTimers = new Map();
 const wheelTickTimers = new Map();
+let partyCountdownTimer = null;
+let wakeLockSentinel = null;
+let audienceChannel = null;
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
@@ -516,6 +534,7 @@ async function loadData() {
     ruleSets,
     sessionTemplates,
     templateSessions,
+    partySessions,
     historyEntries,
     runs,
     sessions,
@@ -529,6 +548,7 @@ async function loadData() {
     getAll("ruleSets"),
     getAll("sessionTemplates"),
     getAll("templateSessions"),
+    getAll("partySessions"),
     getAll("history"),
     getAll("runs"),
     getAll("sessions"),
@@ -547,6 +567,9 @@ async function loadData() {
     (a, b) => b.updatedAt - a.updatedAt
   );
   state.templateSessions = templateSessions.sort(
+    (a, b) => b.updatedAt - a.updatedAt
+  );
+  state.partySessions = partySessions.sort(
     (a, b) => b.updatedAt - a.updatedAt
   );
   state.history = historyEntries
@@ -737,6 +760,244 @@ function replaceTemplateSession(next) {
     next,
     ...state.templateSessions.filter((session) => session.id !== next.id)
   ].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function partySessionById(id) {
+  return state.partySessions.find((session) => session.id === id) || null;
+}
+
+function replacePartySession(next) {
+  state.partySessions = [
+    next,
+    ...state.partySessions.filter((session) => session.id !== next.id)
+  ].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function activePartySession() {
+  return partySessionById(state.activePartySessionId);
+}
+
+function closeAudienceChannel() {
+  if (audienceChannel) {
+    try {
+      audienceChannel.close();
+    } catch {
+      // Channel cleanup is best effort.
+    }
+    audienceChannel = null;
+  }
+}
+
+function partyChannelFor(partyId) {
+  if (typeof BroadcastChannel === "undefined") return null;
+  if (
+    audienceChannel
+    && audienceChannel.name === "randomizer-party:" + partyId
+  ) {
+    return audienceChannel;
+  }
+  closeAudienceChannel();
+  audienceChannel = new BroadcastChannel("randomizer-party:" + partyId);
+  return audienceChannel;
+}
+
+function latestPartyRun(party) {
+  if (!party?.runIds?.length) return null;
+  return runById(party.runIds[party.runIds.length - 1]);
+}
+
+function broadcastPartyAudience({
+  party = activePartySession(),
+  run = null,
+  stage = "ready",
+  countdown = 0,
+  privateReveal = false
+} = {}) {
+  if (!party?.options?.audienceEnabled) return;
+  const tool = getTool(party.toolId);
+  if (!tool) return;
+
+  const channel = partyChannelFor(party.id);
+  if (!channel) return;
+
+  const payload = makeAudienceState({
+    party,
+    tool,
+    run: run || latestPartyRun(party),
+    stage,
+    countdown,
+    privateReveal
+  });
+
+  channel.postMessage(payload);
+}
+
+async function requestPartyWakeLock(party = activePartySession()) {
+  if (!party?.options?.wakeLock || !navigator.wakeLock?.request) return false;
+  if (wakeLockSentinel && !wakeLockSentinel.released) return true;
+
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request("screen");
+    wakeLockSentinel.addEventListener("release", () => {
+      wakeLockSentinel = null;
+    }, { once: true });
+    return true;
+  } catch {
+    wakeLockSentinel = null;
+    return false;
+  }
+}
+
+async function releasePartyWakeLock() {
+  if (!wakeLockSentinel) return;
+  try {
+    await wakeLockSentinel.release();
+  } catch {
+    // Ignore already-released wake locks.
+  }
+  wakeLockSentinel = null;
+}
+
+async function requestPartyFullscreen() {
+  const target = document.documentElement;
+  if (!document.fullscreenElement && target.requestFullscreen) {
+    try {
+      await target.requestFullscreen();
+    } catch {
+      // Installed PWAs or platform restrictions may already be immersive.
+    }
+  }
+}
+
+async function exitPartyFullscreen() {
+  if (document.fullscreenElement && document.exitFullscreen) {
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Ignore platform fullscreen exit failures.
+    }
+  }
+}
+
+async function persistPartyOptions(party, patch) {
+  const next = updatePartyOptions(party, patch);
+  await putWithRevision("partySessions", next, party.revision);
+  replacePartySession(next);
+  return next;
+}
+
+async function startPartyMode(toolId) {
+  const tool = getTool(toolId);
+  if (!tool) return;
+
+  const party = createPartySession({
+    toolId,
+    toolName: tool.name,
+    icon: tool.icon,
+    options: {
+      pace: "standard",
+      countdown: "short",
+      fullscreen: true,
+      wakeLock: true
+    }
+  });
+
+  await put("partySessions", party);
+  replacePartySession(party);
+  state.activePartySessionId = party.id;
+  state.view = "party";
+  state.toolId = toolId;
+  state.modal = null;
+  state.partyCountdown = null;
+
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?party=" + encodeURIComponent(party.id)
+  );
+
+  if (party.options.fullscreen) await requestPartyFullscreen();
+  await requestPartyWakeLock(party);
+  broadcastPartyAudience({ party, stage: "ready" });
+  render();
+}
+
+async function openPartySession(partyId) {
+  const party = partySessionById(partyId);
+  if (!party || party.status !== "active") return false;
+
+  state.activePartySessionId = party.id;
+  state.view = "party";
+  state.toolId = party.toolId;
+  state.modal = null;
+  state.partyCountdown = null;
+  ensureToolState(party.toolId);
+  maybeResumeLatestSession(party.toolId);
+
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?party=" + encodeURIComponent(party.id)
+  );
+
+  if (party.options.fullscreen) await requestPartyFullscreen();
+  await requestPartyWakeLock(party);
+  broadcastPartyAudience({ party, stage: "ready" });
+  render();
+  return true;
+}
+
+async function endPartyMode() {
+  const party = activePartySession();
+
+  if (partyCountdownTimer) {
+    clearInterval(partyCountdownTimer);
+    partyCountdownTimer = null;
+  }
+  state.partyCountdown = null;
+
+  if (party && party.status === "active") {
+    const next = completePartySession(party);
+    await putWithRevision("partySessions", next, party.revision);
+    replacePartySession(next);
+  }
+
+  closeAudienceChannel();
+  await releasePartyWakeLock();
+  await exitPartyFullscreen();
+
+  state.activePartySessionId = null;
+  state.view = "tool";
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?tool=" + encodeURIComponent(state.toolId)
+  );
+  render();
+}
+
+async function openAudienceWindow(party = activePartySession()) {
+  if (!party) return;
+
+  let current = party;
+  if (!current.options.audienceEnabled) {
+    current = await persistPartyOptions(current, {
+      audienceEnabled: true
+    });
+  }
+
+  broadcastPartyAudience({ party: current, stage: "ready" });
+
+  const url =
+    location.origin
+    + location.pathname
+    + "?audience="
+    + encodeURIComponent(current.id);
+
+  const popup = window.open(url, "_blank");
+  if (!popup) {
+    announce("Audience window was blocked by the browser.");
+  }
 }
 
 function presetConfigSnapshot(toolId, toolState) {
