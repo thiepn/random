@@ -3128,6 +3128,77 @@ function renderPoolEditorModal(modal, editor) {
   ]));
   modal.append(fieldsBox);
 
+  const profileName = node("input", {
+    class: "field",
+    placeholder: "Weight profile name",
+    "aria-label": "Weight profile name"
+  });
+
+  const profilesBox = node("section", { class: "pool-profiles-box" }, [
+    node("div", { class: "pool-section-head" }, [
+      node("strong", { text: "Weight profiles" }),
+      node("span", {
+        text: "Save reusable default-weight sets without changing other item data."
+      })
+    ]),
+    node("div", { class: "pool-profile-create" }, [
+      profileName,
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => {
+          const name = profileName.value.trim();
+          if (!name) {
+            editor.error = "Weight profile name is required.";
+            render();
+            return;
+          }
+          draft.weightProfiles.push({
+            id: crypto.randomUUID(),
+            name,
+            weights: Object.fromEntries(
+              draft.items.map((item) => [item.id, item.weight])
+            )
+          });
+          render();
+        }
+      }, "Save weights")
+    ])
+  ]);
+
+  if (draft.weightProfiles.length) {
+    profilesBox.append(node("div", { class: "pool-profile-list" },
+      draft.weightProfiles.map((profile) =>
+        node("div", { class: "pool-profile-item" }, [
+          node("span", { text: profile.name }),
+          node("button", {
+            class: "small-action",
+            type: "button",
+            onClick: () => {
+              draft.items.forEach((item) => {
+                const value = Number(profile.weights?.[item.id]);
+                if (Number.isFinite(value) && value >= 0) item.weight = value;
+              });
+              render();
+            }
+          }, "Apply"),
+          node("button", {
+            class: "small-action",
+            type: "button",
+            onClick: () => {
+              draft.weightProfiles = draft.weightProfiles.filter(
+                (item) => item.id !== profile.id
+              );
+              render();
+            }
+          }, "Remove")
+        ])
+      )
+    ));
+  }
+
+  modal.append(profilesBox);
+
   const visible = filterPoolItems(draft, {
     search: editor.search,
     active: editor.active,
