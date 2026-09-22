@@ -555,6 +555,7 @@ function restoreToolSnapshot(toolId, snapshot, {
     ...cloneData(snapshot),
     error: null,
     animating: false,
+    presentation: null,
     pendingWheelRotation: null,
     activeSessionId: sessionId,
     replayRunId
