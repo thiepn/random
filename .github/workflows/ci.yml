@@ -24,17 +24,25 @@ jobs:
       - name: Syntax check
         run: |
           node --check src/random-core.js
+          node --check src/tool-engine.js
           node --check src/storage.js
           node --check src/registry.js
-          node --check src/app.js
+          node --check src/app-v2.js
           node --check sw.js
 
       - name: Random Core certification
         run: node tests/random-core.mjs
 
-      - name: Guard decision randomness
+      - name: Tool engine certification
+        run: node tests/tool-engine.mjs
+
+      - name: Guard decision randomness and unsafe execution
         run: |
           if grep -R "Math\.random" --include="*.js" src sw.js; then
             echo "Math.random is forbidden in production JavaScript."
+            exit 1
+          fi
+          if grep -R -E "eval\(|new Function\(|document\.write\(" --include="*.js" src sw.js; then
+            echo "Unsafe dynamic execution is forbidden."
             exit 1
           fi
