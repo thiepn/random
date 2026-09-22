@@ -1,4 +1,4 @@
-const CACHE = "randomizer-shell-v8";
+const CACHE = "randomizer-shell-v9";
 const SHELL = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const SHELL = [
   "./phase4.css",
   "./phase5.css",
   "./phase6.css",
+  "./phase7.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./src/app.js",
@@ -21,6 +22,7 @@ const SHELL = [
   "./src/rule-model.js",
   "./src/constraint-engine.js",
   "./src/session-model.js",
+  "./src/presentation-engine.js",
   "./src/storage.js",
   "./src/registry.js"
 ];
@@ -64,7 +66,11 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request)
         .then((response) => {
-          if (response && response.status === 200 && response.type !== "opaque") {
+          if (
+            response
+            && response.status === 200
+            && response.type !== "opaque"
+          ) {
             caches.open(CACHE).then((cache) =>
               cache.put(event.request, response.clone())
             );
