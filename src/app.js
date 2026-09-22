@@ -9734,7 +9734,6 @@ async function runTool(id) {
     if (nextWorkflowSession) replaceWorkflowSession(nextWorkflowSession);
 
     const committedTemplateStepIndex = Number(ts.templateStepIndex);
-    const committedWorkflowNodeId = ts.workflowNodeId;
 
     ts = restoreToolSnapshot(id, afterState, {
       sessionId: nextSession?.id || null
