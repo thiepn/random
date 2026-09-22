@@ -4852,7 +4852,9 @@ function workflowPresetChoices() {
 
 function workflowValidation(workflow, allowDraft = false) {
   return validateWorkflow(workflow, {
-    presetIds: new Set(state.presets.map((preset) => preset.id)),
+    presetIds: new Set(
+      workflowPresetChoices().map((preset) => preset.id)
+    ),
     allowDraft
   });
 }
@@ -5584,8 +5586,13 @@ async function submitWorkflowInput(session) {
     render();
 
     const workflow = workflowById(next.workflowId);
-    if (workflow?.automation.mode === "auto") {
-      setTimeout(() => advanceWorkflowSession(next.id), 0);
+    if (workflow) {
+      setTimeout(
+        () => advanceWorkflowSession(next.id, {
+          singleStep: workflow.automation.mode === "step"
+        }),
+        0
+      );
     }
   } catch (error) {
     announce(error?.message || "Could not apply workflow input.");
