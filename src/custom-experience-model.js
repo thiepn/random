@@ -407,6 +407,16 @@ function normalizePrimitiveConfig(primitive, config = {}, {
         );
       }
 
+      if (
+        input.kind !== "config"
+        && !["pick", "sample", "shuffle"].includes(stepPrimitive)
+      ) {
+        throw new CustomExperienceError(
+          "Only pick, sample, and shuffle steps can consume prompt or previous-step items.",
+          "INVALID_COMPOUND_INPUT_TYPE"
+        );
+      }
+
       normalized.push({
         id,
         name: cleanText(
