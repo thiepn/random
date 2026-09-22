@@ -440,9 +440,21 @@ function beginPresentation(toolId, ts, result) {
 
   const settings = normalizeExperienceSettings(state.settings);
   state.settings = settings;
+
+  const effectiveSettings = cloneData(settings);
+  const party = activePartySession();
+  if (
+    state.view === "party"
+    && party
+    && party.toolId === toolId
+  ) {
+    effectiveSettings.presentation.mode =
+      partyPresentationMode(party.options.pace);
+  }
+
   const plan = presentationPlan({
     toolId,
-    settings,
+    settings: effectiveSettings,
     capabilities: presentationCapabilities(),
     result
   });
@@ -5391,6 +5403,16 @@ async function runTool(id) {
       ? templateSessionById(ts.templateSessionId)
       : null;
     let expectedTemplateSessionRevision = templateSession?.revision ?? null;
+    let partySession =
+      state.view === "party"
+      && state.activePartySessionId
+        ? partySessionById(state.activePartySessionId)
+        : null;
+    let expectedPartySessionRevision = partySession?.revision ?? null;
+
+    if (partySession && partySession.toolId !== id) {
+      throw new Error("Party Session tool no longer matches this Stage.");
+    }
 
     if (
       templateSession
@@ -5443,6 +5465,7 @@ async function runTool(id) {
       sessionId: session?.id || null,
       templateSessionId: templateSession?.id || null,
       templateStepId: ts.templateStepId || null,
+      partySessionId: partySession?.id || null,
       setupFingerprint: fingerprint,
       inputSnapshot,
       configSnapshot,
@@ -5457,6 +5480,7 @@ async function runTool(id) {
 
     let nextSession = null;
     let nextTemplateSession = null;
+    let nextPartySession = null;
     let event = null;
 
     if (session) {
@@ -5482,14 +5506,20 @@ async function runTool(id) {
       );
     }
 
+    if (partySession) {
+      nextPartySession = appendPartyRun(partySession, run.id);
+    }
+
     await commitRunAndSession({
       run,
       session: nextSession,
       event,
       templateSession: nextTemplateSession,
+      partySession: nextPartySession,
       settingsRecord: prepared.settingsRecord,
       expectedSessionRevision,
-      expectedTemplateSessionRevision
+      expectedTemplateSessionRevision,
+      expectedPartySessionRevision
     });
 
     if (prepared.nextSettings) state.settings = prepared.nextSettings;
@@ -5501,6 +5531,7 @@ async function runTool(id) {
 
     if (nextSession) replaceSession(nextSession);
     if (nextTemplateSession) replaceTemplateSession(nextTemplateSession);
+    if (nextPartySession) replacePartySession(nextPartySession);
 
     const committedTemplateStepIndex = Number(ts.templateStepIndex);
 
@@ -5516,6 +5547,14 @@ async function runTool(id) {
     }
 
     const plan = beginPresentation(id, ts, result);
+
+    if (nextPartySession) {
+      broadcastPartyAudience({
+        party: nextPartySession,
+        run,
+        stage: "result"
+      });
+    }
 
     if (id === "wheel") {
       const index = output.detail.selectedIndex;
@@ -7465,6 +7504,10 @@ function renderRunDetailModal(modal, config) {
     [
       "Template Step",
       run.templateStepId || "None"
+    ],
+    [
+      "Party Session",
+      run.partySessionId || "None"
     ],
     ["Setup", run.setupFingerprint || "Legacy / unavailable"],
     [
