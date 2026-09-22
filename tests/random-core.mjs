@@ -5,6 +5,8 @@ import {
   shuffle,
   sample,
   weightedPick,
+  weightedIndex,
+  weightedSample,
   partition,
   pairs,
   derangement
@@ -54,7 +56,32 @@ for (const sides of [1, 2, 3, 6, 10, 37, 100, 255, 256, 257, 1000, 65535, 65536,
   const source = new SeededRandom("weighted");
   for (let i = 0; i < 100; i += 1) {
     assert.equal(weightedPick(["A", "B", "C"], [0, 0, 1], source), "C");
+    assert.equal(weightedIndex([0, 0, 1], source), 2);
   }
+}
+
+{
+  const result = weightedSample(
+    ["A", "B", "C", "D"],
+    [0, 1, 3, 6],
+    3,
+    new SeededRandom("weighted-unique"),
+    { replacement: false }
+  );
+  assert.equal(result.length, 3);
+  assert.equal(new Set(result.map((entry) => entry.item)).size, 3);
+  assert.ok(result.every((entry) => entry.item !== "A"));
+}
+
+{
+  const result = weightedSample(
+    ["A", "B"],
+    [1, 0],
+    5,
+    new SeededRandom("weighted-repeat"),
+    { replacement: true }
+  );
+  assert.deepEqual(result.map((entry) => entry.item), ["A", "A", "A", "A", "A"]);
 }
 
 {
