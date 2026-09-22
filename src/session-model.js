@@ -187,13 +187,17 @@ export function appendRunToSession(session, run) {
 }
 
 export function sessionCanUndo(session) {
-  return Boolean(session && session.status === "active" && session.cursor > 0);
+  return Boolean(
+    session
+    && (session.status === "active" || session.status === "completed")
+    && session.cursor > 0
+  );
 }
 
 export function sessionCanRedo(session) {
   return Boolean(
     session
-    && session.status === "active"
+    && (session.status === "active" || session.status === "completed")
     && session.cursor < session.runIds.length
   );
 }
@@ -204,6 +208,8 @@ export function undoSession(session, runsById) {
   }
 
   const next = clone(session);
+  next.status = "active";
+  next.completedAt = null;
   next.cursor -= 1;
 
   if (next.cursor === 0) {
