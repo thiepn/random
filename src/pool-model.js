@@ -191,6 +191,7 @@ export function createWorkingSet(pool, options = {}) {
       revision: normalized.revision,
       name: normalized.name
     },
+    fields: normalized.fields.map((field) => ({ ...field })),
     items,
     exclusions: [],
     localOverrides: {}
