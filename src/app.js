@@ -2990,6 +2990,247 @@ function numberPresetRow(tool, ts) {
   );
 }
 
+async function undoActiveSession(toolId) {
+  const ts = ensureToolState(toolId);
+  const current = sessionById(ts.activeSessionId);
+  if (!current) return;
+
+  try {
+    const next = undoSession(current, runsByIdMap());
+    const event = createSessionEvent(current.id, "undo", {
+      fromCursor: current.cursor,
+      toCursor: next.cursor
+    });
+
+    await commitSessionMutation({
+      session: next,
+      event,
+      expectedRevision: current.revision
+    });
+
+    replaceSession(next);
+    restoreToolSnapshot(toolId, next.currentState, {
+      sessionId: next.id
+    });
+    announce("Undid the last " + getTool(toolId).name + " action.");
+    render();
+  } catch (error) {
+    ts.error = error?.message || "Could not undo.";
+    render();
+  }
+}
+
+async function redoActiveSession(toolId) {
+  const ts = ensureToolState(toolId);
+  const current = sessionById(ts.activeSessionId);
+  if (!current) return;
+
+  try {
+    let next = redoSession(current, runsByIdMap());
+
+    if (isSessionCompleteForTool(toolId, next.currentState)) {
+      next = completeSession(next);
+    }
+
+    const event = createSessionEvent(current.id, "redo", {
+      fromCursor: current.cursor,
+      toCursor: next.cursor,
+      status: next.status
+    });
+
+    await commitSessionMutation({
+      session: next,
+      event,
+      expectedRevision: current.revision
+    });
+
+    replaceSession(next);
+    restoreToolSnapshot(toolId, next.currentState, {
+      sessionId: next.id
+    });
+    announce("Redid the stored " + getTool(toolId).name + " result.");
+    render();
+  } catch (error) {
+    ts.error = error?.message || "Could not redo.";
+    render();
+  }
+}
+
+async function endActiveSession(toolId, status = "abandoned", resetTool = false) {
+  const ts = ensureToolState(toolId);
+  const current = sessionById(ts.activeSessionId);
+
+  if (current) {
+    try {
+      const next = status === "completed"
+        ? completeSession(current)
+        : abandonSession(current);
+      const event = createSessionEvent(current.id, status === "completed" ? "closed" : "abandoned");
+
+      await commitSessionMutation({
+        session: next,
+        event,
+        expectedRevision: current.revision
+      });
+
+      replaceSession(next);
+    } catch (error) {
+      ts.error = error?.message || "Could not close session.";
+      render();
+      return;
+    }
+  }
+
+  if (resetTool) {
+    invalidateTool(toolId, ts, true);
+  }
+  ts.activeSessionId = null;
+  ts.replayRunId = null;
+  render();
+}
+
+function replayStoredRun(run) {
+  if (!run?.afterState) return;
+  state.view = "tool";
+  state.toolId = run.toolId;
+  state.modal = null;
+  restoreToolSnapshot(run.toolId, run.afterState, {
+    replayRunId: run.id
+  });
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?tool=" + encodeURIComponent(run.toolId)
+  );
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  announce("Replaying stored result. No randomness was used.");
+}
+
+async function rerunStoredRun(run) {
+  if (!run?.beforeState) return;
+  state.view = "tool";
+  state.toolId = run.toolId;
+  state.modal = null;
+  restoreToolSnapshot(run.toolId, run.beforeState);
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?tool=" + encodeURIComponent(run.toolId)
+  );
+  render();
+  await runTool(run.toolId);
+}
+
+function resumeStoredSession(session) {
+  if (!session) return;
+  state.view = "tool";
+  state.toolId = session.toolId;
+  state.modal = null;
+  resumeSessionInTool(session);
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?tool=" + encodeURIComponent(session.toolId)
+  );
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  announce("Session resumed.");
+}
+
+async function toggleHistoryPin(key) {
+  if (state.historyPins.has(key)) {
+    await remove("historyPins", key);
+    state.historyPins.delete(key);
+  } else {
+    await put("historyPins", {
+      id: key,
+      createdAt: Date.now()
+    });
+    state.historyPins.add(key);
+  }
+  render();
+}
+
+function sessionControlBar(tool, ts) {
+  if (ts.replayRunId) {
+    const run = runById(ts.replayRunId);
+    if (!run) return null;
+
+    return node("section", { class: "session-bar replay-bar" }, [
+      node("div", { class: "session-bar-copy" }, [
+        node("strong", { text: "Replay — stored result" }),
+        node("span", {
+          text: "No randomness was consumed. Rerun creates a new Run from the saved setup."
+        })
+      ]),
+      node("div", { class: "session-bar-actions" }, [
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: () => rerunStoredRun(run)
+        }, "Rerun"),
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            ts.replayRunId = null;
+            ts.result = null;
+            render();
+          }
+        }, "Exit replay")
+      ])
+    ]);
+  }
+
+  if (!isStatefulTool(tool.id) || !ts.activeSessionId) return null;
+
+  const session = sessionById(ts.activeSessionId);
+  if (!session) return null;
+
+  return node("section", {
+    class: "session-bar session-status-" + session.status
+  }, [
+    node("div", { class: "session-bar-copy" }, [
+      node("strong", {
+        text: session.status === "completed"
+          ? "Session complete"
+          : "Active session"
+      }),
+      node("span", {
+        text:
+          session.cursor
+          + " applied · "
+          + (session.runIds.length - session.cursor)
+          + " redo"
+      })
+    ]),
+    node("div", { class: "session-bar-actions" }, [
+      node("button", {
+        class: "small-action",
+        type: "button",
+        disabled: sessionCanUndo(session) ? null : "disabled",
+        onClick: () => undoActiveSession(tool.id)
+      }, "Undo"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        disabled: sessionCanRedo(session) ? null : "disabled",
+        onClick: () => redoActiveSession(tool.id)
+      }, "Redo"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => endActiveSession(
+          tool.id,
+          session.status === "completed" ? "completed" : "abandoned",
+          true
+        )
+      }, session.status === "completed" ? "Close" : "End")
+    ])
+  ]);
+}
+
 function configSetter(toolId, ts, key, value, rerender = false) {
   ts[key] = value;
   invalidateTool(toolId, ts);
@@ -2999,6 +3240,9 @@ function configSetter(toolId, ts, key, value, rerender = false) {
 function buildControls(tool, ts) {
   const controls = node("div", { class: "controls" });
   const grid = node("div", { class: "control-grid" });
+
+  const sessionBar = sessionControlBar(tool, ts);
+  if (sessionBar) controls.append(sessionBar);
 
   if (ts.error) controls.append(toolError(ts.error));
 
@@ -3225,30 +3469,43 @@ function buildControls(tool, ts) {
     onClick: () => runTool(tool.id)
   }, actionLabel(tool.id, ts));
 
-  if (tool.id === "cards" && Array.isArray(ts.deck) && ts.deck.length === 0) {
+  if (
+    ts.replayRunId
+    || (tool.id === "cards" && Array.isArray(ts.deck) && ts.deck.length === 0)
+  ) {
     primary.disabled = true;
   }
 
   actions.append(primary);
 
-  if (tool.id === "cards" && ts.deck) {
+  if (tool.id === "cards" && ts.deck && !ts.replayRunId) {
     actions.append(node("button", {
       class: "secondary",
       type: "button",
       onClick: () => {
-        invalidateTool(tool.id, ts, true);
-        render();
+        if (ts.activeSessionId) endActiveSession(tool.id, "abandoned", true);
+        else {
+          invalidateTool(tool.id, ts, true);
+          render();
+        }
       }
     }, "Reset deck"));
   }
 
-  if (tool.id === "elimination" && ts.eliminationRemaining) {
+  if (
+    tool.id === "elimination"
+    && ts.eliminationRemaining
+    && !ts.replayRunId
+  ) {
     actions.append(node("button", {
       class: "secondary",
       type: "button",
       onClick: () => {
-        invalidateTool(tool.id, ts, true);
-        render();
+        if (ts.activeSessionId) endActiveSession(tool.id, "abandoned", true);
+        else {
+          invalidateTool(tool.id, ts, true);
+          render();
+        }
       }
     }, "Reset elimination"));
   }
