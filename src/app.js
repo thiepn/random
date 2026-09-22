@@ -2644,58 +2644,7 @@ function constraintValidation(tool, ts) {
 function renderRuleStrip(tool, ts) {
   let rules = [];
 
-  if (
-    constraintTools.has(tool.id)
-    && (ts.rules || []).some((rule) => rule.enabled !== false)
-  ) {
-    const activeRules = ts.rules.filter((rule) => rule.enabled !== false);
-    const required = activeRules.filter(
-      (rule) => rule.strength !== "soft"
-    ).length;
-    const preferred = activeRules.filter(
-      (rule) => rule.strength === "soft"
-    ).length;
-
-    panel.querySelector(".fairness-body").append(
-      node("div", { class: "fairness-method" }, [
-        node("strong", { text: "Constrained randomization" }),
-        node("p", {
-          text:
-            "The solver searches randomly among configurations that satisfy required rules, then uses preferences to rank valid candidates. "
-            + "This is not guaranteed to be uniform over every mathematically valid arrangement. "
-            + required + " required and " + preferred + " preferred rules are active. "
-            + "Search effort: " + (ts.solverEffort || "automatic") + "."
-        }),
-        ts.lastSolverDiagnostics
-          ? node("div", { class: "solver-diagnostics" }, [
-              node("span", {
-                text: "Search nodes " + ts.lastSolverDiagnostics.nodes
-              }),
-              node("span", {
-                text:
-                  "Valid candidates "
-                  + ts.lastSolverDiagnostics.solutions
-              }),
-              node("span", {
-                text:
-                  "Preference score "
-                  + (
-                    ts.lastConstraintScore == null
-                      ? "—"
-                      : Number(ts.lastConstraintScore).toFixed(2)
-                  )
-              }),
-              ts.lastSolverDiagnostics.hitLimit
-                ? node("span", {
-                    class: "warning",
-                    text: "Search budget reached"
-                  })
-                : null
-            ])
-          : null
-      ])
-    );
-  } else if (selectionTools.has(tool.id)) {
+  if (selectionTools.has(tool.id)) {
     const model = currentSelectionModel(tool.id, ts);
     if (!model) return null;
     rules = selectionRuleSummary(model, {
@@ -3837,16 +3786,69 @@ function constraintRulesControl(tool, ts) {
     invalidateTool(tool.id, ts);
   });
 
+  const sourcePoolId = ts.workingSet?.source?.poolId || null;
+  const compatibleRuleSets = state.ruleSets.filter((ruleSet) =>
+    ruleSetCompatible(ruleSet, {
+      toolId: tool.id,
+      sourcePoolId
+    })
+  );
+
+  const ruleSetSelect = node("select", {
+    class: "field rule-set-select",
+    "aria-label": "Saved Rule Set"
+  }, [
+    node("option", { value: "", text: "Saved Rule Sets" }),
+    ...compatibleRuleSets.map((ruleSet) =>
+      node("option", {
+        value: ruleSet.id,
+        text:
+          ruleSet.name
+          + (ruleSet.scope === "pool" ? " · Pool" : " · Portable")
+      })
+    )
+  ]);
+
   section.append(node("div", { class: "constraint-toolbar" }, [
     node("div", { class: "constraint-effort" }, [
       node("span", { text: "Search effort" }),
       effort
     ]),
+    compatibleRuleSets.length ? ruleSetSelect : null,
+    compatibleRuleSets.length
+      ? node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            const saved = ruleSetById(ruleSetSelect.value);
+            if (!saved) return;
+            ts.rules = applyRuleSet(saved);
+            invalidateTool(tool.id, ts);
+            render();
+          }
+        }, "Apply Set")
+      : null,
     node("button", {
       class: "secondary",
       type: "button",
       onClick: () => openAddRuleModal(tool, ts)
     }, "+ Add rule"),
+    ts.rules.length
+      ? node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            state.modal = {
+              type: "save-rule-set",
+              toolId: tool.id,
+              name: "",
+              favorite: false,
+              error: null
+            };
+            render();
+          }
+        }, "Save Set")
+      : null,
     ts.rules.length
       ? node("button", {
           class: "small-action",
