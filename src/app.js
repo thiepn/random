@@ -1,6 +1,7 @@
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import { executeTool } from "./tool-engine.js";
+import { describeDiceExpression } from "./dice-engine.js";
 import {
   normalizeSelection,
   reconcileSelectionEntries,
@@ -129,6 +130,10 @@ function ensureToolState(toolId) {
 
       diceCount: 2,
       diceSides: 6,
+      diceMode: "quick",
+      diceExpression: "2d6",
+      diceHistory: [],
+      diceHelpOpen: false,
 
       numberMin: 1,
       numberMax: 100,
