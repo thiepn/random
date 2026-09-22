@@ -246,15 +246,14 @@ export function createWorkflow({
     description,
     automation,
     nodes: Array.isArray(nodes) && nodes.length ? nodes : [input, output],
-    edges: Array.isArray(edges) ? edges : [],
+    edges: Array.isArray(edges)
+      ? edges
+      : [createWorkflowEdge(input.id, output.id)],
     startNodeId: startNodeId || (Array.isArray(nodes) && nodes.length ? nodes[0].id : input.id),
     createdAt: timestamp,
     updatedAt: timestamp
   });
 
-  if (!Array.isArray(nodes) || !nodes.length) {
-    workflow.edges = [];
-  }
   return workflow;
 }
 
