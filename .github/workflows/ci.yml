@@ -35,6 +35,7 @@ jobs:
           node --check src/presentation-engine.js
           node --check src/preset-model.js
           node --check src/session-template-model.js
+          node --check src/party-model.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -78,6 +79,9 @@ jobs:
 
       - name: Session Template certification
         run: node tests/session-template-model.mjs
+
+      - name: Party privacy and progression certification
+        run: node tests/party-model.mjs
 
       - name: Guard decision randomness and unsafe execution
         run: |
