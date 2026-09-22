@@ -2533,6 +2533,1420 @@ function templateCard(template) {
   ]);
 }
 
+
+function starterCustomDefinition(kind = "wheel") {
+  if (kind === "dice") {
+    return {
+      name: "My Custom Dice",
+      description: "Roll custom text faces.",
+      icon: "⬡",
+      primitive: "faces",
+      config: {
+        faces: ["Success", "Mixed", "Fail", "Bonus", "Twist", "Wild"],
+        count: 1
+      },
+      appearance: {
+        accent: "red",
+        layout: "dice",
+        resultLabel: "Roll",
+        actionLabel: "ROLL"
+      }
+    };
+  }
+
+  if (kind === "deck") {
+    return {
+      name: "My Custom Deck",
+      description: "Draw from a custom card list.",
+      icon: "▰",
+      primitive: "deck",
+      config: {
+        cards: ["Fire", "Water", "Earth", "Air"],
+        drawCount: 1,
+        replacement: false
+      },
+      appearance: {
+        accent: "purple",
+        layout: "card",
+        resultLabel: "Draw",
+        actionLabel: "DRAW"
+      }
+    };
+  }
+
+  if (kind === "table") {
+    return {
+      name: "Random Table",
+      description: "Weighted lookup table.",
+      icon: "▦",
+      primitive: "table",
+      config: {
+        rows: [
+          { label: "Common", value: "1 coin", weight: 6 },
+          { label: "Uncommon", value: "3 coins", weight: 3 },
+          { label: "Rare", value: "10 coins", weight: 1 }
+        ]
+      },
+      appearance: {
+        accent: "gold",
+        layout: "table",
+        resultLabel: "Result",
+        actionLabel: "ROLL TABLE"
+      }
+    };
+  }
+
+  if (kind === "number") {
+    return {
+      name: "Custom Number",
+      description: "Generate numbers from your own range.",
+      icon: "#",
+      primitive: "number",
+      config: {
+        mode: "integer",
+        min: 1,
+        max: 20,
+        count: 1,
+        precision: 2,
+        unique: false
+      },
+      appearance: {
+        accent: "cyan",
+        layout: "number",
+        resultLabel: "Number",
+        actionLabel: "GENERATE"
+      }
+    };
+  }
+
+  if (kind === "compound") {
+    return {
+      name: "Adventure Generator",
+      description: "A bounded multi-step generator.",
+      icon: "◇",
+      primitive: "compound",
+      config: {
+        steps: [
+          {
+            id: "place",
+            name: "Place",
+            primitive: "pick",
+            input: { kind: "config" },
+            config: {
+              entries: ["Forest", "Ruins", "Harbor"]
+            }
+          },
+          {
+            id: "danger",
+            name: "Danger",
+            primitive: "pick",
+            input: { kind: "config" },
+            config: {
+              entries: ["Low", "Medium", "High"]
+            }
+          }
+        ],
+        finalStepId: "danger"
+      },
+      appearance: {
+        accent: "orange",
+        layout: "list",
+        resultLabel: "Generated",
+        actionLabel: "GENERATE"
+      }
+    };
+  }
+
+  if (kind === "picker") {
+    return {
+      name: "My Picker",
+      description: "Pick one from a custom or fresh list.",
+      icon: "✦",
+      primitive: "pick",
+      config: {
+        source: "prompt"
+      },
+      appearance: {
+        accent: "cyan",
+        layout: "text",
+        resultLabel: "Selected",
+        actionLabel: "PICK"
+      }
+    };
+  }
+
+  return {
+    name: "My Wheel",
+    description: "A custom weighted wheel.",
+    icon: "◉",
+    primitive: "pick",
+    config: {
+      entries: [
+        { label: "Pizza", weight: 1 },
+        { label: "Sushi", weight: 1 },
+        { label: "Tacos", weight: 1 },
+        { label: "Korean", weight: 1 }
+      ]
+    },
+    appearance: {
+      accent: "gold",
+      layout: "wheel",
+      resultLabel: "Result",
+      actionLabel: "SPIN"
+    }
+  };
+}
+
+function weightedRowsText(entries = []) {
+  return entries.map((entry) =>
+    String(entry.label || "")
+    + " | "
+    + String(entry.weight == null ? 1 : entry.weight)
+    + (
+      entry.value != null && String(entry.value) !== String(entry.label)
+        ? " | " + String(entry.value)
+        : ""
+    )
+  ).join("\n");
+}
+
+function parseWeightedRowsText(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const parts = line.split("|").map((part) => part.trim());
+      return {
+        id: "entry:" + index,
+        label: parts[0],
+        weight: parts[1] === "" || parts[1] == null
+          ? 1
+          : Number(parts[1]),
+        value: parts[2] || parts[0]
+      };
+    });
+}
+
+function simpleLinesText(items = []) {
+  return items.map(String).join("\n");
+}
+
+function parseSimpleLines(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function defaultCustomConfig(primitive) {
+  return starterCustomDefinition(
+    primitive === "faces"
+      ? "dice"
+      : primitive === "deck"
+        ? "deck"
+        : primitive === "table"
+          ? "table"
+          : primitive === "number"
+            ? "number"
+            : primitive === "compound"
+              ? "compound"
+              : primitive === "pick"
+                ? "wheel"
+                : "picker"
+  ).config;
+}
+
+function replaceCustomExperience(next) {
+  state.customExperiences = [
+    next,
+    ...state.customExperiences.filter((item) => item.id !== next.id)
+  ].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function openBuilder(experienceId = null, starter = "wheel") {
+  const source = experienceId
+    ? customExperienceById(experienceId)
+    : null;
+  const draft = source
+    ? cloneData(source)
+    : createCustomExperience({
+        ...starterCustomDefinition(starter),
+        status: "draft"
+      });
+
+  state.builder = {
+    draft,
+    baseRevision: source?.revision ?? null,
+    isNew: !source,
+    testIndex: 0,
+    testInput: "Option A\nOption B\nOption C",
+    testResult: null,
+    error: null
+  };
+  state.view = "builder";
+  state.toolId = null;
+  state.modal = null;
+  history.replaceState({}, "", location.pathname + "?builder=" + encodeURIComponent(draft.id));
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function persistBuilder(status = "draft") {
+  const builder = state.builder;
+  if (!builder) return null;
+
+  const existing = customExperienceById(builder.draft.id);
+  let next;
+
+  if (existing) {
+    next = updateCustomExperience(existing, {
+      ...cloneData(builder.draft),
+      status
+    });
+    await putWithRevision("customExperiences", next, existing.revision);
+  } else {
+    next = createCustomExperience({
+      ...cloneData(builder.draft),
+      id: builder.draft.id,
+      status
+    });
+    await put("customExperiences", next);
+  }
+
+  replaceCustomExperience(next);
+  builder.draft = cloneData(next);
+  builder.baseRevision = next.revision;
+  builder.isNew = false;
+  builder.error = null;
+  announce(status === "published" ? "Creation published." : "Draft saved.");
+  render();
+  return next;
+}
+
+function testBuilder() {
+  const builder = state.builder;
+  if (!builder) return;
+
+  const validation = validateCustomExperience(builder.draft);
+  if (!validation.valid) {
+    builder.error = validation.errors[0]?.message || "Creation is invalid.";
+    builder.testResult = null;
+    render();
+    return;
+  }
+
+  try {
+    const rng = createRng({
+      mode: "seeded",
+      seed:
+        "builder-test:"
+        + builder.draft.id
+        + "::"
+        + builder.testIndex
+    });
+    builder.testIndex += 1;
+    builder.testResult = executeCustomExperience(
+      validation.value,
+      {
+        inputItems: parseList(builder.testInput)
+      },
+      rng
+    );
+    builder.error = null;
+    render();
+  } catch (error) {
+    builder.error = error?.message || "Test failed.";
+    builder.testResult = null;
+    render();
+  }
+}
+
+function downloadCustomExperience(experience) {
+  const text = exportCustomExperience(experience);
+  const blob = new Blob([text], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const safeName = experience.name
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "custom-experience";
+  link.href = url;
+  link.download = safeName + ".randomizer.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function toggleCustomFavorite(experience) {
+  const next = updateCustomExperience(experience, {
+    favorite: !experience.favorite
+  });
+  await putWithRevision(
+    "customExperiences",
+    next,
+    experience.revision
+  );
+  replaceCustomExperience(next);
+  render();
+}
+
+async function deleteCustomExperience(experience) {
+  const toolId = customToolId(experience.id);
+  const presetRefs = state.presets.filter(
+    (preset) => preset.toolId === toolId
+  );
+  const templateRefs = state.sessionTemplates.filter((template) =>
+    template.steps.some((step) => step.toolId === toolId)
+  );
+  const partyRefs = state.partySessions.filter(
+    (party) =>
+      party.toolId === toolId
+      && party.status === "active"
+  );
+
+  if (presetRefs.length || templateRefs.length || partyRefs.length) {
+    announce(
+      "This creation is still referenced by a Preset, Session Template, or active Party."
+    );
+    return false;
+  }
+
+  await remove("customExperiences", experience.id);
+  state.customExperiences = state.customExperiences.filter(
+    (item) => item.id !== experience.id
+  );
+  state.favorites = state.favorites.filter(
+    (id) => id !== toolId
+  );
+  await remove("favorites", toolId);
+  render();
+  return true;
+}
+
+function customCreationCard(experience) {
+  const tool = experienceAsTool(experience);
+  return node("article", {
+    class:
+      "creation-card accent-"
+      + tool.accent
+      + (experience.status === "draft" ? " is-draft" : "")
+  }, [
+    node("div", {
+      class: "creation-icon",
+      text: experience.icon
+    }),
+    node("div", { class: "creation-copy" }, [
+      node("div", { class: "creation-title-row" }, [
+        node("strong", { text: experience.name }),
+        node("span", {
+          class:
+            "creation-status "
+            + (
+              experience.status === "published"
+                ? "published"
+                : "draft"
+            ),
+          text: experience.status
+        }),
+        experience.favorite
+          ? node("span", {
+              class: "saved-favorite-badge",
+              text: "★"
+            })
+          : null
+      ]),
+      node("span", {
+        text:
+          experience.primitive
+          + " · "
+          + experience.appearance.layout
+          + " · revision "
+          + experience.revision
+      }),
+      experience.description
+        ? node("small", { text: experience.description })
+        : null
+    ]),
+    node("div", { class: "creation-actions" }, [
+      experience.status === "published"
+        ? node("button", {
+            class: "primary",
+            type: "button",
+            onClick: () => openTool(customToolId(experience.id))
+          }, "Play")
+        : null,
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => openBuilder(experience.id)
+      }, "Edit"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => toggleCustomFavorite(experience)
+      }, experience.favorite ? "★" : "☆"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => downloadCustomExperience(experience)
+      }, "Export"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: async () => {
+          const copy = createCustomExperience({
+            ...cloneData(experience),
+            id: undefined,
+            name: experience.name + " Copy",
+            status: "draft",
+            favorite: false
+          });
+          await put("customExperiences", copy);
+          replaceCustomExperience(copy);
+          openBuilder(copy.id);
+        }
+      }, "Duplicate"),
+      node("button", {
+        class: "small-action danger-lite",
+        type: "button",
+        onClick: async () => {
+          if (!confirm("Delete “" + experience.name + "”? Existing Runs stay in History.")) {
+            return;
+          }
+          await deleteCustomExperience(experience);
+        }
+      }, "Delete")
+    ])
+  ]);
+}
+
+function renderCreations() {
+  const filtered = state.customExperiences.filter((experience) => {
+    if (state.creationFilter === "drafts") {
+      return experience.status === "draft";
+    }
+    if (state.creationFilter === "published") {
+      return experience.status === "published";
+    }
+    if (state.creationFilter === "favorites") {
+      return experience.favorite;
+    }
+    return true;
+  });
+
+  const content = node("main", {
+    class: "content creations-view"
+  }, [
+    node("div", { class: "creation-page-head" }, [
+      node("div", {}, [
+        node("div", {
+          class: "kicker",
+          text: "Safe declarative builder"
+        }),
+        node("h1", {
+          class: "view-title",
+          text: "My Creations"
+        }),
+        node("p", {
+          class: "view-subtitle",
+          text:
+            "Build randomizers from approved primitives. No custom JavaScript, HTML, or CSS."
+        })
+      ]),
+      node("div", { class: "button-row" }, [
+        node("button", {
+          class: "primary",
+          type: "button",
+          onClick: () => openBuilder(null, "wheel")
+        }, "+ New Creation"),
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: () => {
+            state.modal = {
+              type: "import-custom-experience",
+              text: "",
+              error: null
+            };
+            render();
+          }
+        }, "Import")
+      ])
+    ])
+  ]);
+
+  content.append(node("div", {
+    class: "builder-starters"
+  }, [
+    ["wheel", "◉", "Wheel"],
+    ["picker", "✦", "Picker"],
+    ["dice", "⬡", "Custom Dice"],
+    ["deck", "▰", "Deck"],
+    ["table", "▦", "Random Table"],
+    ["number", "#", "Number"],
+    ["compound", "◇", "Compound"]
+  ].map(([kind, icon, label]) =>
+    node("button", {
+      class: "starter-card",
+      type: "button",
+      onClick: () => openBuilder(null, kind)
+    }, [
+      node("span", { text: icon }),
+      node("strong", { text: label })
+    ])
+  )));
+
+  content.append(node("div", {
+    class: "segmented creation-filter"
+  }, [
+    ["all", "All"],
+    ["published", "Published"],
+    ["drafts", "Drafts"],
+    ["favorites", "Favorites"]
+  ].map(([value, label]) =>
+    node("button", {
+      class: state.creationFilter === value ? "active" : "",
+      type: "button",
+      onClick: () => {
+        state.creationFilter = value;
+        render();
+      }
+    }, label)
+  )));
+
+  if (!filtered.length) {
+    content.append(emptyState(
+      "No creations here",
+      "Start from a Wheel, Dice, Deck, Table, Number, Picker, or Compound template."
+    ));
+    return content;
+  }
+
+  content.append(node("div", {
+    class: "creation-grid"
+  }, filtered.map(customCreationCard)));
+
+  return content;
+}
+
+function builderField(label, control) {
+  return node("div", { class: "control" }, [
+    node("label", { text: label }),
+    control
+  ]);
+}
+
+function builderTextInput(label, value, onChange, options = {}) {
+  const input = node("input", {
+    class: "field",
+    type: options.type || "text",
+    value: value == null ? "" : String(value),
+    placeholder: options.placeholder || "",
+    min: options.min,
+    max: options.max,
+    step: options.step
+  });
+  input.addEventListener("input", () => {
+    onChange(
+      options.type === "number"
+        ? Number(input.value)
+        : input.value
+    );
+  });
+  return builderField(label, input);
+}
+
+function builderSelect(label, value, options, onChange) {
+  const select = node("select", {
+    class: "field"
+  }, options.map(([optionValue, optionLabel]) =>
+    node("option", {
+      value: optionValue,
+      text: optionLabel
+    })
+  ));
+  select.value = value;
+  select.addEventListener("change", () => {
+    onChange(select.value);
+    render();
+  });
+  return builderField(label, select);
+}
+
+function builderTextarea(label, value, onChange, placeholder = "") {
+  const area = node("textarea", {
+    class: "field builder-textarea",
+    placeholder
+  });
+  area.value = value || "";
+  area.addEventListener("input", () => onChange(area.value));
+  return builderField(label, area);
+}
+
+function markBuilderDirty() {
+  if (!state.builder) return;
+  state.builder.error = null;
+  state.builder.testResult = null;
+}
+
+function renderBuilderSimpleConfig(builder, panel) {
+  const draft = builder.draft;
+  const config = draft.config;
+
+  if (["pick", "sample", "shuffle"].includes(draft.primitive)) {
+    panel.append(builderSelect(
+      "Input source",
+      config.source || "embedded",
+      [
+        ["embedded", "Configured entries"],
+        ["prompt", "Fresh list at runtime"]
+      ],
+      (value) => {
+        config.source = value;
+        if (value === "embedded" && !config.entries?.length) {
+          config.entries = parseWeightedRowsText("Option A | 1\nOption B | 1");
+        }
+        markBuilderDirty();
+      }
+    ));
+
+    if ((config.source || "embedded") === "embedded") {
+      panel.append(builderTextarea(
+        "Entries · label | weight | optional value",
+        weightedRowsText(config.entries || []),
+        (value) => {
+          config.entries = parseWeightedRowsText(value);
+          markBuilderDirty();
+        },
+        "Pizza | 1\nSushi | 2"
+      ));
+    }
+
+    if (draft.primitive === "sample") {
+      panel.append(
+        builderTextInput(
+          "Draw count",
+          config.count || 2,
+          (value) => {
+            config.count = value;
+            markBuilderDirty();
+          },
+          { type: "number", min: 1, max: 100 }
+        )
+      );
+      const replacement = node("input", {
+        type: "checkbox",
+        checked: Boolean(config.replacement)
+      });
+      replacement.addEventListener("change", () => {
+        config.replacement = replacement.checked;
+        markBuilderDirty();
+      });
+      panel.append(node("label", {
+        class: "settings-sound-toggle builder-check"
+      }, [
+        replacement,
+        node("span", { text: "Allow repeated draws" })
+      ]));
+    }
+    return;
+  }
+
+  if (draft.primitive === "number") {
+    panel.append(node("div", { class: "builder-grid" }, [
+      builderSelect(
+        "Mode",
+        config.mode || "integer",
+        [
+          ["integer", "Integer"],
+          ["decimal", "Decimal"]
+        ],
+        (value) => {
+          config.mode = value;
+          markBuilderDirty();
+        }
+      ),
+      builderTextInput("Minimum", config.min, (value) => {
+        config.min = value;
+        markBuilderDirty();
+      }, { type: "number" }),
+      builderTextInput("Maximum", config.max, (value) => {
+        config.max = value;
+        markBuilderDirty();
+      }, { type: "number" }),
+      builderTextInput("How many", config.count || 1, (value) => {
+        config.count = value;
+        markBuilderDirty();
+      }, { type: "number", min: 1, max: 100 }),
+      config.mode === "decimal"
+        ? builderTextInput(
+            "Decimal places",
+            config.precision || 2,
+            (value) => {
+              config.precision = value;
+              markBuilderDirty();
+            },
+            { type: "number", min: 1, max: 6 }
+          )
+        : null
+    ]));
+    const unique = node("input", {
+      type: "checkbox",
+      checked: Boolean(config.unique)
+    });
+    unique.addEventListener("change", () => {
+      config.unique = unique.checked;
+      markBuilderDirty();
+    });
+    panel.append(node("label", {
+      class: "settings-sound-toggle builder-check"
+    }, [
+      unique,
+      node("span", { text: "Unique values" })
+    ]));
+    return;
+  }
+
+  if (draft.primitive === "dice") {
+    panel.append(builderTextInput(
+      "Safe dice expression",
+      config.expression || "1d6",
+      (value) => {
+        config.expression = value;
+        markBuilderDirty();
+      },
+      { placeholder: "4d6kh3+2" }
+    ));
+    return;
+  }
+
+  if (draft.primitive === "faces") {
+    panel.append(
+      builderTextarea(
+        "Faces · one per line",
+        simpleLinesText(config.faces || []),
+        (value) => {
+          config.faces = parseSimpleLines(value);
+          markBuilderDirty();
+        }
+      ),
+      builderTextInput(
+        "Dice count",
+        config.count || 1,
+        (value) => {
+          config.count = value;
+          markBuilderDirty();
+        },
+        { type: "number", min: 1, max: 100 }
+      )
+    );
+    return;
+  }
+
+  if (draft.primitive === "deck") {
+    panel.append(
+      builderTextarea(
+        "Cards · one per line",
+        simpleLinesText(config.cards || []),
+        (value) => {
+          config.cards = parseSimpleLines(value);
+          markBuilderDirty();
+        }
+      ),
+      builderTextInput(
+        "Draw count",
+        config.drawCount || 1,
+        (value) => {
+          config.drawCount = value;
+          markBuilderDirty();
+        },
+        { type: "number", min: 1, max: 100 }
+      )
+    );
+    const replacement = node("input", {
+      type: "checkbox",
+      checked: Boolean(config.replacement)
+    });
+    replacement.addEventListener("change", () => {
+      config.replacement = replacement.checked;
+      markBuilderDirty();
+    });
+    panel.append(node("label", {
+      class: "settings-sound-toggle builder-check"
+    }, [
+      replacement,
+      node("span", { text: "Draw with replacement" })
+    ]));
+    return;
+  }
+
+  if (draft.primitive === "table") {
+    panel.append(builderTextarea(
+      "Rows · label | weight | value",
+      weightedRowsText(config.rows || []),
+      (value) => {
+        config.rows = parseWeightedRowsText(value);
+        markBuilderDirty();
+      },
+      "Common | 5 | 1 coin\nRare | 1 | 10 coins"
+    ));
+  }
+}
+
+function compoundDefaultStep(index) {
+  return {
+    id: "step-" + (index + 1) + "-" + Date.now().toString(36),
+    name: "Step " + (index + 1),
+    primitive: "pick",
+    input: { kind: "config" },
+    config: {
+      entries: ["Option A", "Option B"]
+    }
+  };
+}
+
+function renderCompoundStep(builder, step, index) {
+  const draft = builder.draft;
+  const previous = draft.config.steps.slice(0, index);
+  const card = node("article", {
+    class: "compound-step-card"
+  });
+
+  const nameInput = node("input", {
+    class: "field",
+    value: step.name
+  });
+  nameInput.addEventListener("input", () => {
+    step.name = nameInput.value;
+    markBuilderDirty();
+  });
+
+  const primitive = node("select", {
+    class: "field"
+  }, [
+    "pick",
+    "sample",
+    "shuffle",
+    "number",
+    "dice",
+    "faces",
+    "table"
+  ].map((value) =>
+    node("option", { value, text: value })
+  ));
+  primitive.value = step.primitive;
+  primitive.addEventListener("change", () => {
+    step.primitive = primitive.value;
+    step.config = cloneData(defaultCustomConfig(step.primitive));
+    step.input = { kind: "config" };
+    markBuilderDirty();
+    render();
+  });
+
+  const dependencyCapable = ["pick", "sample", "shuffle"].includes(step.primitive);
+  const inputOptions = [
+    ["config", "Own configured data"]
+  ];
+  if (dependencyCapable) {
+    inputOptions.push(["prompt", "Runtime prompt input"]);
+    previous.forEach((earlier) => {
+      inputOptions.push([
+        "step:" + earlier.id,
+        "Previous step · " + earlier.name
+      ]);
+    });
+  }
+
+  const input = node("select", {
+    class: "field"
+  }, inputOptions.map(([value, label]) =>
+    node("option", { value, text: label })
+  ));
+  input.value = step.input.kind === "step"
+    ? "step:" + step.input.stepId
+    : step.input.kind;
+  input.addEventListener("change", () => {
+    const value = input.value;
+    step.input = value.startsWith("step:")
+      ? { kind: "step", stepId: value.slice(5) }
+      : { kind: value };
+    markBuilderDirty();
+    render();
+  });
+
+  card.append(node("div", { class: "compound-step-head" }, [
+    node("span", {
+      class: "template-step-number",
+      text: String(index + 1)
+    }),
+    nameInput,
+    primitive,
+    input,
+    draft.config.steps.length > 2
+      ? node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            const removedId = step.id;
+            draft.config.steps.splice(index, 1);
+            draft.config.steps.forEach((candidate) => {
+              if (
+                candidate.input?.kind === "step"
+                && candidate.input.stepId === removedId
+              ) {
+                candidate.input = { kind: "config" };
+              }
+            });
+            if (draft.config.finalStepId === removedId) {
+              draft.config.finalStepId =
+                draft.config.steps[draft.config.steps.length - 1].id;
+            }
+            markBuilderDirty();
+            render();
+          }
+        }, "×")
+      : null
+  ]));
+
+  const body = node("div", { class: "compound-step-body" });
+
+  if (["pick", "sample", "shuffle"].includes(step.primitive)) {
+    if (step.input.kind === "config") {
+      body.append(builderTextarea(
+        "Step entries · label | weight | value",
+        weightedRowsText(step.config.entries || []),
+        (value) => {
+          step.config.entries = parseWeightedRowsText(value);
+          markBuilderDirty();
+        }
+      ));
+    }
+    if (step.primitive === "sample") {
+      body.append(builderTextInput(
+        "Draw count",
+        step.config.count || 2,
+        (value) => {
+          step.config.count = value;
+          markBuilderDirty();
+        },
+        { type: "number", min: 1, max: 100 }
+      ));
+    }
+  } else if (step.primitive === "number") {
+    body.append(node("div", { class: "builder-grid" }, [
+      builderTextInput("Minimum", step.config.min ?? 1, (value) => {
+        step.config.min = value;
+        markBuilderDirty();
+      }, { type: "number" }),
+      builderTextInput("Maximum", step.config.max ?? 100, (value) => {
+        step.config.max = value;
+        markBuilderDirty();
+      }, { type: "number" })
+    ]));
+  } else if (step.primitive === "dice") {
+    body.append(builderTextInput(
+      "Dice expression",
+      step.config.expression || "1d6",
+      (value) => {
+        step.config.expression = value;
+        markBuilderDirty();
+      }
+    ));
+  } else if (step.primitive === "faces") {
+    body.append(builderTextarea(
+      "Faces",
+      simpleLinesText(step.config.faces || []),
+      (value) => {
+        step.config.faces = parseSimpleLines(value);
+        markBuilderDirty();
+      }
+    ));
+  } else if (step.primitive === "table") {
+    body.append(builderTextarea(
+      "Rows · label | weight | value",
+      weightedRowsText(step.config.rows || []),
+      (value) => {
+        step.config.rows = parseWeightedRowsText(value);
+        markBuilderDirty();
+      }
+    ));
+  }
+
+  card.append(body);
+  return card;
+}
+
+function renderBuilder() {
+  const builder = state.builder;
+  if (!builder) {
+    return node("main", { class: "content" }, [
+      emptyState(
+        "No Builder draft open",
+        "Open My Creations and start or edit a creation.",
+        "My Creations",
+        () => setView("creations")
+      )
+    ]);
+  }
+
+  const draft = builder.draft;
+  const validation = validateCustomExperience(draft);
+
+  const content = node("main", {
+    class: "content builder-view"
+  });
+
+  content.append(node("div", {
+    class: "builder-head"
+  }, [
+    iconButton("Back to My Creations", "←", () => setView("creations")),
+    node("div", {}, [
+      node("div", {
+        class: "kicker",
+        text: draft.status === "published" ? "Published creation" : "Draft creation"
+      }),
+      node("h1", {
+        class: "view-title",
+        text: draft.name || "Untitled Creation"
+      }),
+      node("p", {
+        class: "view-subtitle",
+        text:
+          "Declarative only · "
+          + draft.primitive
+          + " · revision "
+          + draft.revision
+      })
+    ])
+  ]));
+
+  if (builder.error) {
+    content.append(toolError(builder.error));
+  }
+
+  content.append(node("div", {
+    class: "builder-safety-banner"
+  }, [
+    node("strong", { text: "Safe Builder" }),
+    node("span", {
+      text:
+        "No JavaScript, HTML, CSS, event handlers, network code, or arbitrary expressions are accepted. Dice notation is parsed by the safe Dice engine."
+    })
+  ]));
+
+  const identity = node("section", {
+    class: "builder-panel"
+  }, [
+    node("h2", { text: "1. Identity" })
+  ]);
+
+  const name = node("input", {
+    class: "field",
+    value: draft.name
+  });
+  name.addEventListener("input", () => {
+    draft.name = name.value;
+    markBuilderDirty();
+  });
+
+  const description = node("textarea", {
+    class: "field builder-description"
+  });
+  description.value = draft.description || "";
+  description.addEventListener("input", () => {
+    draft.description = description.value;
+    markBuilderDirty();
+  });
+
+  identity.append(
+    node("div", { class: "builder-grid" }, [
+      builderField("Name", name),
+      builderTextInput("Icon", draft.icon, (value) => {
+        draft.icon = value;
+        markBuilderDirty();
+      })
+    ]),
+    builderField("Description", description)
+  );
+
+  const primitivePanel = node("section", {
+    class: "builder-panel"
+  }, [
+    node("h2", { text: "2. Randomization" })
+  ]);
+
+  primitivePanel.append(builderSelect(
+    "Primitive",
+    draft.primitive,
+    CUSTOM_PRIMITIVES.map((value) => [value, value]),
+    (value) => {
+      draft.primitive = value;
+      draft.config = cloneData(defaultCustomConfig(value));
+      markBuilderDirty();
+    }
+  ));
+
+  if (draft.primitive === "compound") {
+    const steps = node("div", {
+      class: "compound-step-list"
+    }, draft.config.steps.map((step, index) =>
+      renderCompoundStep(builder, step, index)
+    ));
+
+    primitivePanel.append(steps);
+
+    primitivePanel.append(node("div", {
+      class: "builder-compound-actions"
+    }, [
+      node("button", {
+        class: "small-action",
+        type: "button",
+        disabled:
+          draft.config.steps.length >= 8
+            ? "disabled"
+            : null,
+        onClick: () => {
+          draft.config.steps.push(
+            compoundDefaultStep(draft.config.steps.length)
+          );
+          draft.config.finalStepId =
+            draft.config.steps[draft.config.steps.length - 1].id;
+          markBuilderDirty();
+          render();
+        }
+      }, "+ Add step"),
+      builderSelect(
+        "Final output",
+        draft.config.finalStepId,
+        draft.config.steps.map((step) => [step.id, step.name]),
+        (value) => {
+          draft.config.finalStepId = value;
+          markBuilderDirty();
+        }
+      )
+    ]));
+  } else {
+    renderBuilderSimpleConfig(builder, primitivePanel);
+  }
+
+  const appearance = node("section", {
+    class: "builder-panel"
+  }, [
+    node("h2", { text: "3. Appearance" }),
+    node("div", { class: "builder-grid" }, [
+      builderSelect(
+        "Accent",
+        draft.appearance.accent,
+        CUSTOM_ACCENTS.map((value) => [value, value]),
+        (value) => {
+          draft.appearance.accent = value;
+          markBuilderDirty();
+        }
+      ),
+      builderSelect(
+        "Stage layout",
+        draft.appearance.layout,
+        CUSTOM_LAYOUTS.map((value) => [value, value]),
+        (value) => {
+          draft.appearance.layout = value;
+          markBuilderDirty();
+        }
+      ),
+      builderTextInput(
+        "Result label",
+        draft.appearance.resultLabel,
+        (value) => {
+          draft.appearance.resultLabel = value;
+          markBuilderDirty();
+        }
+      ),
+      builderTextInput(
+        "Action label",
+        draft.appearance.actionLabel,
+        (value) => {
+          draft.appearance.actionLabel = value;
+          markBuilderDirty();
+        }
+      )
+    ])
+  ]);
+
+  const test = node("section", {
+    class: "builder-panel builder-test-panel"
+  }, [
+    node("div", { class: "builder-panel-head" }, [
+      node("div", {}, [
+        node("h2", { text: "4. Test Mode" }),
+        node("p", {
+          text:
+            "Test runs use a deterministic Builder-only seed. They create no Run and do not advance your app's seeded sequence."
+        })
+      ]),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: testBuilder
+      }, "TEST")
+    ])
+  ]);
+
+  if (customExperienceNeedsPromptInput(draft)) {
+    test.append(builderTextarea(
+      "Test input",
+      builder.testInput,
+      (value) => {
+        builder.testInput = value;
+        builder.testResult = null;
+      }
+    ));
+  }
+
+  if (builder.testResult) {
+    test.append(node("div", {
+      class: "builder-test-result"
+    }, [
+      node("span", { text: "Test result" }),
+      node("strong", {
+        text: builder.testResult.summary
+      }),
+      builder.testResult.detail
+        ? node("pre", {
+            text: JSON.stringify(builder.testResult.detail, null, 2)
+          })
+        : null
+    ]));
+  }
+
+  const validationPanel = node("section", {
+    class:
+      "builder-validation "
+      + (validation.valid ? "is-valid" : "is-invalid")
+  }, [
+    node("strong", {
+      text: validation.valid
+        ? "Definition valid"
+        : "Definition needs attention"
+    }),
+    node("span", {
+      text: validation.valid
+        ? "Ready to save or publish."
+        : validation.errors[0]?.message || "Invalid definition."
+    })
+  ]);
+
+  content.append(identity, primitivePanel, appearance, test, validationPanel);
+
+  content.append(node("div", {
+    class: "builder-footer"
+  }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: async () => {
+        try {
+          await persistBuilder("draft");
+        } catch (error) {
+          builder.error = error?.message || "Could not save draft.";
+          render();
+        }
+      }
+    }, "Save Draft"),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => downloadCustomExperience(draft)
+    }, "Export"),
+    node("span", {
+      class: "builder-footer-spacer"
+    }),
+    draft.status === "published"
+      ? node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: async () => {
+            try {
+              await persistBuilder("draft");
+            } catch (error) {
+              builder.error = error?.message || "Could not unpublish.";
+              render();
+            }
+          }
+        }, "Unpublish")
+      : null,
+    node("button", {
+      class: "primary",
+      type: "button",
+      disabled: validation.valid ? null : "disabled",
+      onClick: async () => {
+        try {
+          const saved = await persistBuilder("published");
+          if (saved) openTool(customToolId(saved.id));
+        } catch (error) {
+          builder.error = error?.message || "Could not publish.";
+          render();
+        }
+      }
+    }, draft.status === "published" ? "Publish Changes" : "Publish")
+  ]));
+
+  return content;
+}
+
+function renderCustomImportModal(modal, config) {
+  modal.classList.add("setup-modal");
+  modal.append(
+    node("h2", { text: "Import Custom Experience" }),
+    node("p", {
+      text:
+        "Paste a Randomizer Arcade Custom Experience JSON export. Imports are validated and always arrive as drafts."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  const area = node("textarea", {
+    class: "field custom-import-text",
+    placeholder: "{ ... }"
+  });
+  area.value = config.text || "";
+  area.addEventListener("input", () => {
+    config.text = area.value;
+  });
+
+  modal.append(area);
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: async () => {
+        try {
+          const imported = importCustomExperience(config.text);
+          await put("customExperiences", imported);
+          replaceCustomExperience(imported);
+          state.modal = null;
+          openBuilder(imported.id);
+        } catch (error) {
+          config.error = error?.message || "Import failed.";
+          render();
+        }
+      }
+    }, "Import as Draft")
+  ]));
+}
+
 function topBar() {
   const seeded = state.settings.randomness.mode === "seeded";
   return node("header", { class: "topbar" }, [
@@ -2670,7 +4084,22 @@ function renderPlay() {
   content.append(hero);
 
   if (state.search.trim()) {
-    const results = searchTools(state.search);
+    const q = state.search.trim().toLowerCase();
+    const customResults = state.customExperiences
+      .filter((experience) => experience.status === "published")
+      .filter((experience) =>
+        [
+          experience.name,
+          experience.description,
+          experience.primitive,
+          ...(experience.tags || [])
+        ].join(" ").toLowerCase().includes(q)
+      )
+      .map(experienceAsTool);
+    const results = [
+      ...searchTools(state.search),
+      ...customResults
+    ];
     content.append(sectionHeader("Search results", results.length + " found"));
     content.append(
       results.length
@@ -2680,7 +4109,16 @@ function renderPlay() {
     return content;
   }
 
-  const favorites = TOOLS.filter((tool) => state.favorites.includes(tool.id));
+  const favorites = [
+    ...TOOLS.filter((tool) => state.favorites.includes(tool.id)),
+    ...state.customExperiences
+      .filter(
+        (experience) =>
+          experience.status === "published"
+          && state.favorites.includes(customToolId(experience.id))
+      )
+      .map(experienceAsTool)
+  ];
   if (favorites.length) {
     content.append(sectionHeader("Favorites", "Your shortcuts"));
     content.append(node("div", { class: "tool-grid" }, favorites.map(toolCard)));
@@ -2741,13 +4179,42 @@ function renderPlay() {
 }
 
 function renderArcade() {
+  const publishedCustom = state.customExperiences.filter(
+    (experience) => experience.status === "published"
+  );
   const content = node("main", { class: "content" }, [
-    node("h1", { class: "view-title", text: "Arcade" }),
-    node("p", {
-      class: "view-subtitle",
-      text: TOOLS.length + " randomizers, organized by what you are trying to do."
-    })
+    node("div", { class: "creation-page-head" }, [
+      node("div", {}, [
+        node("h1", { class: "view-title", text: "Arcade" }),
+        node("p", {
+          class: "view-subtitle",
+          text:
+            TOOLS.length
+            + " built-in randomizers"
+            + (publishedCustom.length
+              ? " · " + publishedCustom.length + " custom"
+              : "")
+        })
+      ]),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => setView("creations")
+      }, "My Creations")
+    ])
   ]);
+
+  if (publishedCustom.length) {
+    content.append(sectionHeader(
+      "✦  My Creations",
+      publishedCustom.length + " published"
+    ));
+    content.append(node("div", { class: "tool-grid" },
+      publishedCustom.map((experience) =>
+        toolCard(experienceAsTool(experience))
+      )
+    ));
+  }
 
   for (const category of CATEGORIES) {
     const tools = TOOLS.filter((tool) => tool.category === category.id);
@@ -8100,7 +9567,7 @@ function renderSavePresetModal(modal, config) {
   });
 
   const options = [];
-  if (listInputTools.has(tool.id)) {
+  if (toolAcceptsListInput(tool.id)) {
     if (source?.poolId) {
       options.push(
         node("option", {
@@ -8810,6 +10277,11 @@ function renderModal() {
 
   if (
     typeof state.modal === "object"
+    && state.modal.type === "import-custom-experience"
+  ) {
+    renderCustomImportModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
     && state.modal.type === "save-preset"
   ) {
     renderSavePresetModal(modal, state.modal);
@@ -9163,6 +10635,8 @@ function render() {
   else if (state.view === "history") layout.append(renderHistory());
   else if (state.view === "studio") layout.append(renderStudio());
   else if (state.view === "template-session") layout.append(renderTemplateSession());
+  else if (state.view === "creations") layout.append(renderCreations());
+  else if (state.view === "builder") layout.append(renderBuilder());
   else if (state.view === "tool") layout.append(renderTool());
 
   layout.append(bottomNav());
@@ -9215,6 +10689,7 @@ async function init() {
 
   const requestedParty = params.get("party");
   const requestedTemplateSession = params.get("templateSession");
+  const requestedBuilder = params.get("builder");
   const requestedTool = params.get("tool");
 
   if (
@@ -9241,6 +10716,22 @@ async function init() {
           ? "result"
           : "ready"
     });
+  } else if (
+    requestedBuilder
+    && customExperienceById(requestedBuilder)
+  ) {
+    const experience = customExperienceById(requestedBuilder);
+    state.builder = {
+      draft: cloneData(experience),
+      baseRevision: experience.revision,
+      isNew: false,
+      testIndex: 0,
+      testInput: "Option A\nOption B\nOption C",
+      testResult: null,
+      error: null
+    };
+    state.view = "builder";
+    state.toolId = null;
   } else if (
     requestedTemplateSession
     && templateSessionById(requestedTemplateSession)
