@@ -163,7 +163,9 @@ function canPlaceBundle({
   targetMembers,
   capacities,
   apart,
-  maxTagRules
+  maxTagRules,
+  hardHistoryAvoid,
+  historyPairs
 }) {
   const current = targetMembers.get(targetId) || [];
   if (current.length + bundle.members.length > (capacities.get(targetId) ?? 0)) {
@@ -171,6 +173,16 @@ function canPlaceBundle({
   }
 
   if (bundleConflictsWithTarget(bundle, current, apart)) return false;
+
+  if (hardHistoryAvoid) {
+    for (const item of bundle.members) {
+      for (const existing of current) {
+        if (historyPairs.has(labelHistoryKey(item.label, existing.label))) {
+          return false;
+        }
+      }
+    }
+  }
 
   for (const rule of maxTagRules) {
     const tag = String(rule.params.tag || "").trim();
@@ -366,6 +378,9 @@ export function solveGrouping({
   const capacities = computeCapacities(items, targets, activeRules);
   const requiredTagRules = hardRequiredTags(activeRules);
   const maxTagRules = hardMaxTags(activeRules);
+  const hardHistoryAvoid = activeRules.some(
+    (rule) => rule.strength === "hard" && rule.type === "historyAvoid"
+  );
   let bundles = buildBundles(items, activeRules);
 
   for (const bundle of bundles) {
@@ -467,7 +482,9 @@ export function solveGrouping({
         targetMembers,
         capacities,
         apart: hardApart,
-        maxTagRules
+        maxTagRules,
+        hardHistoryAvoid,
+        historyPairs
       })) {
         continue;
       }
