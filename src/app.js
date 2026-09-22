@@ -648,6 +648,7 @@ function runsByIdMap() {
 
 
 function setView(view) {
+  if (state.toolId) finishPresentation(state.toolId, null, false);
   state.view = view;
   state.toolId = null;
   state.modal = null;
@@ -657,6 +658,9 @@ function setView(view) {
 }
 
 function openTool(id) {
+  if (state.toolId && state.toolId !== id) {
+    finishPresentation(state.toolId, null, false);
+  }
   const tool = getTool(id);
   if (!tool) return;
   state.view = "tool";
@@ -1520,7 +1524,10 @@ function resultList(items) {
   return node("div", { class: "result-list" }, items.map((item, index) =>
     node("div", {
       class: "result-row",
-      style: { "--reveal-index": String(index) }
+      style: {
+        "--reveal-index": String(index),
+        "--shuffle-x": index % 2 === 0 ? "-14px" : "14px"
+      }
     }, [
       node("span", { class: "rank", text: String(index + 1) }),
       node("strong", { text: String(item) })
@@ -2191,6 +2198,7 @@ function particleField(presentation) {
         class: "fx-particle",
         style: {
           "--particle-angle": angle + "deg",
+          "--particle-angle-neg": (-angle) + "deg",
           "--particle-distance": distance + "px",
           "--particle-delay": delay + "ms",
           "--particle-index": String(index)
@@ -3396,6 +3404,7 @@ function numberPresetRow(tool, ts) {
 }
 
 async function undoActiveSession(toolId) {
+  finishPresentation(toolId, null, false);
   const ts = ensureToolState(toolId);
   const current = sessionById(ts.activeSessionId);
   if (!current) return;
@@ -3426,6 +3435,7 @@ async function undoActiveSession(toolId) {
 }
 
 async function redoActiveSession(toolId) {
+  finishPresentation(toolId, null, false);
   const ts = ensureToolState(toolId);
   const current = sessionById(ts.activeSessionId);
   if (!current) return;
@@ -3462,6 +3472,7 @@ async function redoActiveSession(toolId) {
 }
 
 async function endActiveSession(toolId, status = "abandoned", resetTool = false) {
+  finishPresentation(toolId, null, false);
   const ts = ensureToolState(toolId);
   const current = sessionById(ts.activeSessionId);
 
@@ -3791,6 +3802,11 @@ function buildControls(tool, ts) {
           type: "button",
           onClick: () => {
             ts.secretReveal = Number(reveal.value);
+            beginPresentation(
+              "secret-santa",
+              ts,
+              { privateReveal: true }
+            );
             render();
           }
         }, "Reveal privately"),
@@ -3798,6 +3814,7 @@ function buildControls(tool, ts) {
           class: "secondary",
           type: "button",
           onClick: () => {
+            finishPresentation("secret-santa", null, false);
             ts.secretReveal = null;
             render();
           }
@@ -4264,7 +4281,12 @@ async function runTool(id) {
       const previous = beforeState.wheelRotation || 0;
       const current = ((previous % 360) + 360) % 360;
       const delta = (desired - current + 360) % 360;
-      const target = previous + 1080 + delta;
+      const extraRotation = plan.reducedMotion
+        ? 0
+        : plan.mode === "showtime"
+          ? 1800
+          : 1080;
+      const target = previous + extraRotation + delta;
 
       ts.previousWheelRotation = previous;
       ts.pendingWheelRotation = target;
@@ -6057,11 +6079,17 @@ async function init() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
+      for (const toolId of Object.keys(state.tool)) {
+        finishPresentation(toolId, null, false);
+      }
+
       const secret = state.tool["secret-santa"];
       if (secret?.secretReveal != null) {
         secret.secretReveal = null;
-        render();
       }
+
+      cancelHaptics();
+      if (state.view === "tool") render();
     }
   });
 }
