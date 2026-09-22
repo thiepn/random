@@ -435,6 +435,21 @@ function runById(id) {
   return state.runs.find((run) => run.id === id) || null;
 }
 
+function historyRunById(id) {
+  const canonical = runById(id);
+  if (canonical) return canonical;
+
+  if (String(id).startsWith("legacy:")) {
+    const legacyId = String(id).slice("legacy:".length);
+    const entry = state.history.find(
+      (item) => String(item.id) === legacyId
+    );
+    return entry ? legacyHistoryToRun(entry) : null;
+  }
+
+  return null;
+}
+
 function replaceSession(next) {
   state.sessions = [
     next,
@@ -3631,8 +3646,14 @@ function buildControls(tool, ts) {
       class: "secondary",
       type: "button",
       onClick: () => {
-        if (ts.activeSessionId) endActiveSession(tool.id, "abandoned", true);
-        else {
+        if (ts.activeSessionId) {
+          const session = sessionById(ts.activeSessionId);
+          endActiveSession(
+            tool.id,
+            session?.status === "completed" ? "completed" : "abandoned",
+            true
+          );
+        } else {
           invalidateTool(tool.id, ts, true);
           render();
         }
@@ -3649,8 +3670,14 @@ function buildControls(tool, ts) {
       class: "secondary",
       type: "button",
       onClick: () => {
-        if (ts.activeSessionId) endActiveSession(tool.id, "abandoned", true);
-        else {
+        if (ts.activeSessionId) {
+          const session = sessionById(ts.activeSessionId);
+          endActiveSession(
+            tool.id,
+            session?.status === "completed" ? "completed" : "abandoned",
+            true
+          );
+        } else {
           invalidateTool(tool.id, ts, true);
           render();
         }
@@ -5248,6 +5275,117 @@ function renderAddRuleModal(modal, config) {
   ]));
 }
 
+function renderRunDetailModal(modal, config) {
+  const run = historyRunById(config.runId);
+  if (!run) {
+    modal.append(
+      node("h2", { text: "Run unavailable" }),
+      node("p", { text: "This History record could not be loaded." })
+    );
+    return;
+  }
+
+  modal.classList.add("run-detail-modal");
+
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "long"
+  });
+
+  modal.append(
+    node("div", { class: "run-detail-title" }, [
+      node("span", {
+        class: "history-icon",
+        text: run.icon || "✦"
+      }),
+      node("div", {}, [
+        node("h2", { text: run.toolName || run.toolId }),
+        node("span", {
+          text: formatter.format(new Date(run.timestamp))
+        })
+      ])
+    ]),
+    node("div", { class: "run-detail-result" }, [
+      node("span", { text: "Result" }),
+      node("strong", { text: run.summary || "Stored result" })
+    ])
+  );
+
+  const metadata = [
+    ["Origin", run.origin || "local"],
+    ["Run ID", run.id],
+    ["Session", run.sessionId || "Standalone"],
+    ["Setup", run.setupFingerprint || "Legacy / unavailable"],
+    [
+      "Randomness",
+      run.randomContext?.mode === "seeded"
+        ? "Seeded · position " + run.randomContext.position
+        : run.randomContext?.mode === "secure"
+          ? "Secure random"
+          : "Legacy / unavailable"
+    ]
+  ];
+
+  modal.append(node("div", { class: "run-detail-meta" },
+    metadata.map(([label, value]) =>
+      node("div", {}, [
+        node("span", { text: label }),
+        node("strong", { text: String(value) })
+      ])
+    )
+  ));
+
+  if (run.detail) {
+    modal.append(
+      node("h3", { class: "run-detail-heading", text: "Stored details" }),
+      node("pre", {
+        class: "run-detail-json",
+        text: JSON.stringify(run.detail, null, 2)
+      })
+    );
+  }
+
+  const actions = node("div", { class: "modal-actions" });
+
+  if (run.origin !== "legacy" && run.afterState) {
+    actions.append(node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => replayStoredRun(run)
+    }, "Replay"));
+  }
+
+  if (run.origin !== "legacy" && run.beforeState) {
+    actions.append(node("button", {
+      class: "primary",
+      type: "button",
+      onClick: () => rerunStoredRun(run)
+    }, "Rerun"));
+  }
+
+  if (run.sessionId) {
+    const session = sessionById(run.sessionId);
+    if (session) {
+      actions.append(node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => resumeStoredSession(session)
+      }, session.status === "active" ? "Resume Session" : "Open Session"));
+    }
+  }
+
+  actions.append(node("button", {
+    class: "small-action",
+    type: "button",
+    onClick: () => {
+      state.modal = null;
+      render();
+    }
+  }, "Close"));
+
+  modal.append(actions);
+}
+
 function renderModal() {
   if (!state.modal) return null;
 
@@ -5270,7 +5408,12 @@ function renderModal() {
     "aria-modal": "true"
   });
 
-  if (state.modal === "settings") {
+  if (
+    typeof state.modal === "object"
+    && state.modal.type === "run-detail"
+  ) {
+    renderRunDetailModal(modal, state.modal);
+  } else if (state.modal === "settings") {
     modal.append(
       node("h2", { text: "Randomness" }),
       node("p", {
