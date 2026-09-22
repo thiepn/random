@@ -1288,7 +1288,12 @@ async function runStudio() {
   const items = parseList(document.getElementById("studio-input").value);
   const count = Number(document.getElementById("studio-count").value);
 
-  if (items.length < 2 || !Number.isSafeInteger(count) || count < 2 || count > items.length) {
+  if (
+    items.length < 2
+    || !Number.isSafeInteger(count)
+    || count < 2
+    || count > items.length
+  ) {
     announce("Decision Studio needs at least two options and a valid finalist count.");
     return;
   }
@@ -1296,14 +1301,50 @@ async function runStudio() {
   const prepared = prepareRandomSource();
   const finalists = sample(items, count, prepared.source);
   const winner = pick(finalists, prepared.source);
+  const beforeState = {
+    studioText: state.tool.studioText || items.join("\n"),
+    studioCount: state.tool.studioCount || count,
+    studioResult: cloneData(state.studioResult)
+  };
+  const afterState = {
+    ...beforeState,
+    studioResult: { finalists, winner }
+  };
+  const inputSnapshot = { items };
+  const configSnapshot = { finalistCount: count };
+  const fingerprint = fingerprintSetup(
+    "studio",
+    inputSnapshot,
+    configSnapshot
+  );
+
+  const run = createRun({
+    toolId: "studio",
+    toolName: "Decision Studio",
+    icon: "◆",
+    setupFingerprint: fingerprint,
+    inputSnapshot,
+    configSnapshot,
+    beforeState,
+    afterState,
+    result: { finalists, winner },
+    summary: winner,
+    detail: { finalists },
+    randomContext: prepared.context
+  });
 
   try {
-    await record(
-      { id: "studio", name: "Decision Studio", icon: "◆" },
-      winner,
-      { finalists }
-    );
-    await prepared.commit();
+    await commitRunAndSession({
+      run,
+      settingsRecord: prepared.settingsRecord
+    });
+
+    if (prepared.nextSettings) state.settings = prepared.nextSettings;
+    state.runs = [
+      run,
+      ...state.runs.filter((candidate) => candidate.id !== run.id)
+    ].sort((a, b) => b.timestamp - a.timestamp);
+
     state.studioResult = { finalists, winner };
     announce("Decision result: " + winner);
     render();
@@ -1311,7 +1352,6 @@ async function runStudio() {
     announce("Could not save the Decision Studio result.");
   }
 }
-
 function currentTool() {
   return getTool(state.toolId);
 }
