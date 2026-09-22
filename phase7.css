@@ -104,7 +104,7 @@
   transform:
     rotate(var(--particle-angle))
     translateX(0)
-    rotate(calc(var(--particle-angle) * -1));
+    rotate(var(--particle-angle-neg));
   animation:particleBurst
     min(var(--present-duration),900ms)
     cubic-bezier(.1,.7,.25,1)
@@ -126,7 +126,7 @@
     transform:
       rotate(var(--particle-angle))
       translateX(0)
-      rotate(calc(var(--particle-angle) * -1))
+      rotate(var(--particle-angle-neg))
       scale(.4)
   }
   18%{opacity:1}
@@ -135,7 +135,7 @@
     transform:
       rotate(var(--particle-angle))
       translateX(var(--particle-distance))
-      rotate(calc(var(--particle-angle) * -1))
+      rotate(var(--particle-angle-neg))
       scale(1)
   }
 }
@@ -224,7 +224,7 @@
     calc(var(--reveal-index,0) * var(--reveal-stagger))
 }
 @keyframes shuffleDeal{
-  0%{opacity:0;transform:translateX(calc((var(--reveal-index,0) % 2) * 28px - 14px)) rotate(-2deg)}
+  0%{opacity:0;transform:translateX(var(--shuffle-x,-14px)) rotate(-2deg)}
   70%{opacity:1;transform:translateX(2px) rotate(.4deg)}
   100%{opacity:1;transform:none}
 }
