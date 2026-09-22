@@ -1317,6 +1317,9 @@ async function applyPresetToTool(preset, {
     pendingWheelRotation: null,
     activePresetId: preset.id,
     replayRunId: null,
+    workflowSessionId: null,
+    workflowNodeId: null,
+    workflowSilent: false,
     activeSessionId: null
   };
 
@@ -12212,6 +12215,7 @@ async function init() {
   await loadData();
 
   const requestedParty = params.get("party");
+  const requestedWorkflowSession = params.get("workflowSession");
   const requestedTemplateSession = params.get("templateSession");
   const requestedBuilder = params.get("builder");
   const requestedTool = params.get("tool");
@@ -12240,6 +12244,15 @@ async function init() {
           ? "result"
           : "ready"
     });
+  } else if (
+    requestedWorkflowSession
+    && workflowSessionById(requestedWorkflowSession)
+  ) {
+    const workflowSession = workflowSessionById(requestedWorkflowSession);
+    state.activeWorkflowSessionId = workflowSession.id;
+    state.workflowInputText = (workflowSession.inputItems || []).join("\n");
+    state.view = "studio";
+    state.toolId = null;
   } else if (
     requestedBuilder
     && customExperienceById(requestedBuilder)
@@ -12271,6 +12284,22 @@ async function init() {
   }
 
   render();
+
+  const resumedWorkflowSession = workflowSessionById(
+    state.activeWorkflowSessionId
+  );
+  if (
+    state.view === "studio"
+    && resumedWorkflowSession?.status === "active"
+  ) {
+    const resumedWorkflow = workflowById(resumedWorkflowSession.workflowId);
+    if (resumedWorkflow?.automation.mode === "auto") {
+      setTimeout(
+        () => advanceWorkflowSession(resumedWorkflowSession.id),
+        0
+      );
+    }
+  }
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
