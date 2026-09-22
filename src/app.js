@@ -3006,6 +3006,21 @@ function renderPoolEditorModal(modal, editor) {
     ])
   );
 
+  if (duplicates.groupCount) {
+    modal.append(node("section", { class: "duplicate-review" }, [
+      node("strong", { text: "Duplicate review" }),
+      node("span", {
+        text: "Duplicates are allowed and remain separate items with separate IDs."
+      }),
+      ...duplicates.groups.slice(0, 8).map((group) =>
+        node("div", { class: "duplicate-review-row" }, [
+          node("span", { text: group[0].label }),
+          node("strong", { text: group.length + " copies" })
+        ])
+      )
+    ]));
+  }
+
   if (editor.error) modal.append(toolError(editor.error));
 
   const search = node("input", {
@@ -3340,7 +3355,12 @@ function renderPoolEditorModal(modal, editor) {
 
     table.append(node("div", {
       class: "pool-editor-row" + (!item.active ? " is-inactive" : ""),
-      style: { "--pool-field-count": String(draft.fields.length) }
+      style: {
+        gridTemplateColumns:
+          "28px 28px minmax(130px,1.4fr) 80px minmax(120px,1fr) "
+          + "minmax(100px,1fr) ".repeat(draft.fields.length)
+          + "40px"
+      }
     }, [
       node("label", { class: "pool-select-cell" }, [selectItem]),
       node("label", { class: "pool-active-cell" }, [
