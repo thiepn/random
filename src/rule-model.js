@@ -13,7 +13,7 @@ const TOOL_RULES = {
   teams: new Set(["together", "apart", "fixed", "capacity", "requiredTag", "maxTag", "balanceField", "historyAvoid"]),
   groups: new Set(["together", "apart", "fixed", "capacity", "requiredTag", "maxTag", "balanceField", "historyAvoid"]),
   pairs: new Set(["together", "apart", "fixed", "historyAvoid"]),
-  assignment: new Set(["together", "apart", "fixed", "capacity", "requiredTag", "maxTag", "balanceField", "historyAvoid"]),
+  assignment: new Set(["together", "apart", "fixed", "capacity", "requiredTag", "maxTag", "balanceField"]),
   "secret-santa": new Set(["apart", "fixed"]),
   tournament: new Set(["apart", "fixed", "historyAvoid"])
 };
