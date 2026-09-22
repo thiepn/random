@@ -2419,7 +2419,10 @@ function openTool(id) {
   state.view = "tool";
   state.toolId = id;
   state.modal = null;
-  ensureToolState(id);
+  const openedState = ensureToolState(id);
+  openedState.workflowSessionId = null;
+  openedState.workflowNodeId = null;
+  openedState.workflowSilent = false;
   maybeResumeLatestSession(id);
   history.replaceState({}, "", location.pathname + "?tool=" + encodeURIComponent(id));
   render();
@@ -5680,6 +5683,11 @@ async function executeWorkflowToolNode(session, workflow, nodeDef, {
   ts.result = null;
 
   await runTool(tool.id);
+
+  const executedState = ensureToolState(tool.id);
+  executedState.workflowSessionId = null;
+  executedState.workflowNodeId = null;
+  executedState.workflowSilent = false;
 
   const latest = workflowSessionById(session.id);
   if (!latest || latest.revision === session.revision) {
@@ -9740,9 +9748,6 @@ async function runTool(id) {
     }
 
     if (nextWorkflowSession) {
-      ts.workflowSessionId = nextWorkflowSession.id;
-      ts.workflowNodeId = committedWorkflowNodeId;
-      ts.workflowSilent = true;
       state.activeWorkflowSessionId = nextWorkflowSession.id;
     }
 
