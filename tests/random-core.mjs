@@ -6,7 +6,8 @@ import {
   sample,
   weightedPick,
   partition,
-  pairs
+  pairs,
+  derangement
 } from "../src/random-core.js";
 
 const golden = new SeededRandom("golden-001");
@@ -71,6 +72,14 @@ for (const sides of [1, 2, 3, 6, 10, 37, 100, 255, 256, 257, 1000, 65535, 65536,
   assert.equal(result.flat().length, 5);
   assert.equal(new Set(result.flat()).size, 5);
   assert.equal(result.filter((group) => group.length === 1).length, 1);
+}
+
+{
+  const input = ["A", "B", "C", "D", "E", "F"];
+  const result = derangement(input, new SeededRandom("derangement"));
+  assert.equal(result.length, input.length);
+  assert.deepEqual([...result].sort(), [...input].sort());
+  result.forEach((value, index) => assert.notEqual(value, input[index]));
 }
 
 console.log("Random Core certification tests passed.");
