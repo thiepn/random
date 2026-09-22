@@ -10,6 +10,10 @@ import {
   randomHexColor
 } from "./random-core.js";
 import { normalizeSelection } from "./selection-model.js";
+import {
+  DiceExpressionError,
+  rollDiceExpression
+} from "./dice-engine.js";
 
 const MAX_UINT32_RANGE = 0x100000000;
 
@@ -159,11 +163,77 @@ export function executeTool(toolId, config, rng) {
     }
 
     case "dice": {
+      if (config.diceMode === "expression") {
+        try {
+          const rolled = rollDiceExpression(config.diceExpression, rng);
+          const result = {
+            mode: "expression",
+            expression: rolled.source,
+            canonical: rolled.canonical,
+            total: rolled.total,
+            diceGroups: rolled.diceGroups,
+            evaluation: rolled.evaluation,
+            randomRollCount: rolled.randomRollCount,
+            version: rolled.version
+          };
+          return {
+            result,
+            summary: String(result.total),
+            detail: {
+              expression: result.expression,
+              canonical: result.canonical,
+              total: result.total,
+              diceGroups: result.diceGroups,
+              randomRollCount: result.randomRollCount,
+              version: result.version
+            },
+            fairness: {
+              kind: "dice-expression",
+              mode: "uniform-faces",
+              expression: result.expression,
+              canonical: result.canonical,
+              randomRollCount: result.randomRollCount,
+              groups: result.diceGroups.map((group) => ({
+                notation: group.notation,
+                count: group.count,
+                sides: group.sides,
+                keepDrop: group.keepDrop,
+                reroll: group.reroll,
+                explode: group.explode
+              }))
+            }
+          };
+        } catch (error) {
+          if (error instanceof DiceExpressionError) {
+            throw new ToolValidationError(
+              error.message,
+              error.code || "INVALID_DICE_EXPRESSION"
+            );
+          }
+          throw error;
+        }
+      }
+
       const count = requireInteger(config.diceCount, "Dice count", 1, 8);
       const sides = requireInteger(config.diceSides, "Die sides", 1, 100);
       const values = Array.from({ length: count }, () => rng.int(1, sides));
-      const result = { values, total: values.reduce((sum, value) => sum + value, 0), sides };
-      return { result, summary: String(result.total), detail: { values, sides } };
+      const result = {
+        mode: "quick",
+        values,
+        total: values.reduce((sum, value) => sum + value, 0),
+        sides
+      };
+      return {
+        result,
+        summary: String(result.total),
+        detail: { values, sides, mode: "quick" },
+        fairness: {
+          kind: "dice",
+          mode: "uniform-faces",
+          count,
+          sides
+        }
+      };
     }
 
     case "number": {
