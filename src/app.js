@@ -932,6 +932,14 @@ function workflowSessionById(id) {
   return state.workflowSessions.find((session) => session.id === id) || null;
 }
 
+function workflowForSession(session) {
+  if (!session) return null;
+  if (session.workflowSnapshot) {
+    return normalizeWorkflow(session.workflowSnapshot);
+  }
+  return workflowById(session.workflowId);
+}
+
 function replaceWorkflow(next) {
   state.workflows = [
     next,
@@ -4646,7 +4654,13 @@ function historyGroupPinKey(group) {
 }
 
 async function clearStandaloneHistory() {
-  const standalone = state.runs.filter((run) => !run.sessionId);
+  const standalone = state.runs.filter(
+    (run) =>
+      !run.sessionId
+      && !run.templateSessionId
+      && !run.partySessionId
+      && !run.workflowSessionId
+  );
   await Promise.all(standalone.map((run) => remove("runs", run.id)));
   await clear("history");
 
@@ -4657,7 +4671,13 @@ async function clearStandaloneHistory() {
     }
   }
 
-  state.runs = state.runs.filter((run) => run.sessionId);
+  state.runs = state.runs.filter(
+    (run) =>
+      run.sessionId
+      || run.templateSessionId
+      || run.partySessionId
+      || run.workflowSessionId
+  );
   state.history = [];
   render();
 }
@@ -5585,7 +5605,7 @@ async function submitWorkflowInput(session) {
     await persistWorkflowSessionTransition(session, next);
     render();
 
-    const workflow = workflowById(next.workflowId);
+    const workflow = workflowForSession(next);
     if (workflow) {
       setTimeout(
         () => advanceWorkflowSession(next.id, {
@@ -5685,7 +5705,7 @@ async function advanceWorkflowSession(sessionId, {
   const session = workflowSessionById(sessionId);
   if (!session || session.status !== "active") return;
 
-  const workflow = workflowById(session.workflowId);
+  const workflow = workflowForSession(session);
   if (!workflow) return;
 
   if (session.stepCount >= workflow.automation.maxSteps) {
@@ -5811,7 +5831,7 @@ async function resumeCurrentWorkflow(session) {
     const next = resumeWorkflowSession(session);
     await persistWorkflowSessionTransition(session, next);
     render();
-    const workflow = workflowById(next.workflowId);
+    const workflow = workflowForSession(next);
     if (workflow?.automation.mode === "auto") {
       setTimeout(() => advanceWorkflowSession(next.id), 0);
     }
@@ -5840,7 +5860,7 @@ function closeWorkflowRunner() {
 
 function renderWorkflowRunner() {
   const session = workflowSessionById(state.activeWorkflowSessionId);
-  const workflow = session ? workflowById(session.workflowId) : null;
+  const workflow = session ? workflowForSession(session) : null;
 
   if (!session || !workflow) {
     return node("main", { class: "content" }, [
@@ -12299,7 +12319,7 @@ async function init() {
     state.view === "studio"
     && resumedWorkflowSession?.status === "active"
   ) {
-    const resumedWorkflow = workflowById(resumedWorkflowSession.workflowId);
+    const resumedWorkflow = workflowForSession(resumedWorkflowSession);
     if (resumedWorkflow?.automation.mode === "auto") {
       setTimeout(
         () => advanceWorkflowSession(resumedWorkflowSession.id),
