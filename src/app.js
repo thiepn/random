@@ -927,6 +927,10 @@ async function startPartyMode(toolId) {
 
   await put("partySessions", party);
   replacePartySession(party);
+  const ts = ensureToolState(toolId);
+  ts.replayRunId = null;
+  if (toolId === "secret-santa") ts.secretReveal = null;
+
   state.activePartySessionId = party.id;
   state.view = "party";
   state.toolId = toolId;
@@ -954,7 +958,13 @@ async function openPartySession(partyId) {
   state.toolId = party.toolId;
   state.modal = null;
   state.partyCountdown = null;
-  ensureToolState(party.toolId);
+
+  const latest = latestPartyRun(party);
+  if (latest?.afterState) {
+    restoreToolSnapshot(party.toolId, latest.afterState);
+  } else {
+    ensureToolState(party.toolId);
+  }
   maybeResumeLatestSession(party.toolId);
 
   history.replaceState(
@@ -1214,6 +1224,11 @@ async function runPartyAction() {
   if (!party || party.status !== "active") return;
 
   const ts = ensureToolState(party.toolId);
+
+  if (party.options.paused) {
+    announce("Party is paused.");
+    return;
+  }
 
   if (ts.animating || ts.presentation) {
     skipPresentation(party.toolId);
@@ -1540,9 +1555,11 @@ function renderParty() {
       class: "primary party-primary",
       type: "button",
       onClick: runPartyAction
-    }, state.partyCountdown != null
-      ? "CANCEL COUNTDOWN"
-      : actionLabel(tool.id, ts)
+    }, party.options.paused
+      ? "PARTY PAUSED"
+      : state.partyCountdown != null
+        ? "CANCEL COUNTDOWN"
+        : actionLabel(tool.id, ts)
     ));
   }
 
@@ -1561,6 +1578,19 @@ function renderParty() {
             onClick: () => undoActiveSession(tool.id)
           }, "Undo")
         : null,
+      node("button", {
+        class: "party-icon-button",
+        type: "button",
+        onClick: async () => {
+          const next = await updateActivePartyOptions({
+            paused: !party.options.paused
+          });
+          broadcastPartyAudience({
+            party: next,
+            stage: next.options.paused ? "paused" : "ready"
+          });
+        }
+      }, party.options.paused ? "Resume" : "Pause"),
       node("button", {
         class: "party-icon-button",
         type: "button",
@@ -1727,7 +1757,23 @@ function renderAudience() {
     })
   ]));
 
-  if (data.countdown > 0) {
+  if (data.stage === "ended") {
+    shell.append(node("section", {
+      class: "audience-private audience-ended"
+    }, [
+      node("div", { text: "✓" }),
+      node("strong", { text: "Party ended" }),
+      node("span", { text: "Thanks for playing." })
+    ]));
+  } else if (data.stage === "paused") {
+    shell.append(node("section", {
+      class: "audience-private audience-paused"
+    }, [
+      node("div", { text: "Ⅱ" }),
+      node("strong", { text: "Paused" }),
+      node("span", { text: "Waiting for the host." })
+    ]));
+  } else if (data.countdown > 0) {
     shell.append(node("section", {
       class: "audience-countdown"
     }, [
@@ -5179,6 +5225,18 @@ async function undoActiveSession(toolId) {
       sessionId: next.id
     });
     announce("Undid the last " + getTool(toolId).name + " action.");
+    if (state.view === "party") {
+      const party = activePartySession();
+      const restored = ensureToolState(toolId);
+      broadcastPartyAudience({
+        party,
+        run: {
+          result: restored.result,
+          fairness: null
+        },
+        stage: "result"
+      });
+    }
     render();
   } catch (error) {
     ts.error = error?.message || "Could not undo.";
@@ -5216,6 +5274,18 @@ async function redoActiveSession(toolId) {
       sessionId: next.id
     });
     announce("Redid the stored " + getTool(toolId).name + " result.");
+    if (state.view === "party") {
+      const party = activePartySession();
+      const restored = ensureToolState(toolId);
+      broadcastPartyAudience({
+        party,
+        run: {
+          result: restored.result,
+          fairness: null
+        },
+        stage: "result"
+      });
+    }
     render();
   } catch (error) {
     ts.error = error?.message || "Could not redo.";
@@ -8648,7 +8718,12 @@ async function init() {
     state.activePartySessionId = party.id;
     state.view = "party";
     state.toolId = party.toolId;
-    ensureToolState(party.toolId);
+    const latest = latestPartyRun(party);
+    if (latest?.afterState) {
+      restoreToolSnapshot(party.toolId, latest.afterState);
+    } else {
+      ensureToolState(party.toolId);
+    }
     maybeResumeLatestSession(party.toolId);
     if (party.options.wakeLock) requestPartyWakeLock(party);
   } else if (
