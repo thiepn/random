@@ -142,6 +142,23 @@ function targetOf(result, itemId) {
 }
 
 {
+  const result = solveGrouping({
+    toolId: "teams",
+    items,
+    targets,
+    fields,
+    rules: [
+      createRule("together", { itemIds: ["a", "b"] }),
+      createRule("historyAvoid", { depth: 5 }, { strength: "hard" })
+    ],
+    historyPairs: new Set([historyPairKey("Anna", "Ben")]),
+    rng: new SeededRandom("solver-history-conflict")
+  });
+  assert.equal(result.status, "impossible");
+  assert.ok(result.errors.some((error) => error.code === "TOGETHER_HISTORY_CONFLICT"));
+}
+
+{
   const result = solveSecretSanta({
     items,
     rules: [
