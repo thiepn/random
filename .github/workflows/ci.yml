@@ -29,6 +29,8 @@ jobs:
           node --check src/dice-engine.js
           node --check src/number-engine.js
           node --check src/pool-model.js
+          node --check src/rule-model.js
+          node --check src/constraint-engine.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -51,6 +53,12 @@ jobs:
 
       - name: Pool model certification
         run: node tests/pool-model.mjs
+
+      - name: Rule model certification
+        run: node tests/rule-model.mjs
+
+      - name: Constraint engine certification
+        run: node tests/constraint-engine.mjs
 
       - name: Guard decision randomness and unsafe execution
         run: |
