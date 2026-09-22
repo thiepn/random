@@ -4215,7 +4215,10 @@ function renderPlay() {
       .filter(
         (experience) =>
           experience.status === "published"
-          && state.favorites.includes(customToolId(experience.id))
+          && (
+            experience.favorite
+            || state.favorites.includes(customToolId(experience.id))
+          )
       )
       .map(experienceAsTool)
   ];
