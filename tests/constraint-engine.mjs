@@ -146,7 +146,7 @@ function targetOf(result, itemId) {
     items,
     rules: [
       createRule("apart", { itemIds: ["a", "b"] }),
-      createRule("fixed", { itemId: "c", targetId: "d" })
+      createRule("fixed", { itemId: "c", targetId: "a" })
     ],
     rng: new SeededRandom("secret-rules")
   });
@@ -158,7 +158,7 @@ function targetOf(result, itemId) {
   assert.notEqual(map.get("b"), "b");
   assert.notEqual(map.get("a"), "b");
   assert.notEqual(map.get("b"), "a");
-  assert.equal(map.get("c"), "d");
+  assert.equal(map.get("c"), "a");
 }
 
 console.log("Constraint engine certification tests passed.");
