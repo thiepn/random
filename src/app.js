@@ -4936,6 +4936,20 @@ async function runTool(id) {
   try {
     let session = null;
     let expectedSessionRevision = null;
+    let templateSession = ts.templateSessionId
+      ? templateSessionById(ts.templateSessionId)
+      : null;
+    let expectedTemplateSessionRevision = templateSession?.revision ?? null;
+
+    if (
+      templateSession
+      && (
+        templateSession.status !== "active"
+        || templateSession.steps[ts.templateStepIndex]?.stepId !== ts.templateStepId
+      )
+    ) {
+      throw new Error("This Session Template step is no longer active.");
+    }
 
     if (isStatefulTool(id)) {
       session = await abandonSessionForSetupChange(id, ts, fingerprint);
@@ -4976,6 +4990,8 @@ async function runTool(id) {
       toolName: tool.name,
       icon: tool.icon,
       sessionId: session?.id || null,
+      templateSessionId: templateSession?.id || null,
+      templateStepId: ts.templateStepId || null,
       setupFingerprint: fingerprint,
       inputSnapshot,
       configSnapshot,
@@ -4989,6 +5005,7 @@ async function runTool(id) {
     });
 
     let nextSession = null;
+    let nextTemplateSession = null;
     let event = null;
 
     if (session) {
@@ -5005,12 +5022,23 @@ async function runTool(id) {
       });
     }
 
+    if (templateSession) {
+      nextTemplateSession = completeTemplateStep(
+        templateSession,
+        Number(ts.templateStepIndex),
+        run.id,
+        resultToItems(id, result)
+      );
+    }
+
     await commitRunAndSession({
       run,
       session: nextSession,
       event,
+      templateSession: nextTemplateSession,
       settingsRecord: prepared.settingsRecord,
-      expectedSessionRevision
+      expectedSessionRevision,
+      expectedTemplateSessionRevision
     });
 
     if (prepared.nextSettings) state.settings = prepared.nextSettings;
@@ -5021,10 +5049,20 @@ async function runTool(id) {
     ].sort((a, b) => b.timestamp - a.timestamp);
 
     if (nextSession) replaceSession(nextSession);
+    if (nextTemplateSession) replaceTemplateSession(nextTemplateSession);
+
+    const committedTemplateStepIndex = Number(ts.templateStepIndex);
 
     ts = restoreToolSnapshot(id, afterState, {
       sessionId: nextSession?.id || null
     });
+
+    if (nextTemplateSession) {
+      ts.templateSessionId = nextTemplateSession.id;
+      ts.templateStepIndex = committedTemplateStepIndex;
+      ts.templateStepId = run.templateStepId;
+      state.activeTemplateSessionId = nextTemplateSession.id;
+    }
 
     const plan = beginPresentation(id, ts, result);
 
