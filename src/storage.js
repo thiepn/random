@@ -1,5 +1,5 @@
 const DB_NAME = "randomizer-arcade";
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const STORES = [
   "pools",
   "poolViews",
@@ -8,6 +8,8 @@ const STORES = [
   "templateSessions",
   "partySessions",
   "customExperiences",
+  "workflows",
+  "workflowSessions",
   "history",
   "runs",
   "sessions",
@@ -133,10 +135,12 @@ export async function commitRunAndSession({
   event = null,
   templateSession = null,
   partySession = null,
+  workflowSession = null,
   settingsRecord = null,
   expectedSessionRevision = null,
   expectedTemplateSessionRevision = null,
-  expectedPartySessionRevision = null
+  expectedPartySessionRevision = null,
+  expectedWorkflowSessionRevision = null
 }) {
   const db = await openDb();
   const storeNames = ["runs"];
@@ -144,6 +148,7 @@ export async function commitRunAndSession({
   if (event) storeNames.push("sessionEvents");
   if (templateSession) storeNames.push("templateSessions");
   if (partySession) storeNames.push("partySessions");
+  if (workflowSession) storeNames.push("workflowSessions");
   if (settingsRecord) storeNames.push("settings");
 
   return new Promise((resolve, reject) => {
@@ -157,15 +162,25 @@ export async function commitRunAndSession({
     const partyStore = partySession
       ? tx.objectStore("partySessions")
       : null;
+    const workflowStore = workflowSession
+      ? tx.objectStore("workflowSessions")
+      : null;
     const settingsStore = settingsRecord ? tx.objectStore("settings") : null;
 
     let explicitError = null;
     let sessionReady = !session;
     let templateReady = !templateSession;
     let partyReady = !partySession;
+    let workflowReady = !workflowSession;
 
     const writeAll = () => {
-      if (!sessionReady || !templateReady || !partyReady || explicitError) return;
+      if (
+        !sessionReady
+        || !templateReady
+        || !partyReady
+        || !workflowReady
+        || explicitError
+      ) return;
 
       const existingRun = runStore.get(run.id);
       existingRun.onerror = () => {
@@ -185,6 +200,7 @@ export async function commitRunAndSession({
         if (event) eventStore.add(event);
         if (templateSession) templateStore.put(templateSession);
         if (partySession) partyStore.put(partySession);
+        if (workflowSession) workflowStore.put(workflowSession);
         if (settingsRecord) settingsStore.put(settingsRecord);
       };
     };
@@ -270,7 +286,34 @@ export async function commitRunAndSession({
       };
     }
 
-    if (!session && !templateSession && !partySession) {
+    if (workflowSession) {
+      const readWorkflow = workflowStore.get(workflowSession.id);
+      readWorkflow.onerror = () => {
+        explicitError = readWorkflow.error;
+        tx.abort();
+      };
+      readWorkflow.onsuccess = () => {
+        const current = readWorkflow.result || null;
+        const actualRevision = current?.revision ?? null;
+
+        if (
+          expectedWorkflowSessionRevision != null
+          && actualRevision !== expectedWorkflowSessionRevision
+        ) {
+          explicitError = revisionConflict(
+            expectedWorkflowSessionRevision,
+            actualRevision
+          );
+          tx.abort();
+          return;
+        }
+
+        workflowReady = true;
+        writeAll();
+      };
+    }
+
+    if (!session && !templateSession && !partySession && !workflowSession) {
       writeAll();
     }
 
@@ -280,6 +323,7 @@ export async function commitRunAndSession({
       event,
       templateSession,
       partySession,
+      workflowSession,
       settingsRecord
     });
     tx.onerror = () => reject(explicitError || tx.error);
