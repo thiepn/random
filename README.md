@@ -5,6 +5,8 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 ## Current foundation
 
 - Secure Web Crypto randomness with unbiased bounded integers
+- Weighted selection with per-entry probabilities, exclusions, zero-weight entries, and repeat/no-repeat sampling
+- Runtime Fairness panels explaining effective probabilities and Secure vs Seeded semantics
 - Seeded deterministic mode for reproducible sequences
 - Arcade-style responsive UI
 - Reusable Pools stored in IndexedDB
