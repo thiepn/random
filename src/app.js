@@ -166,6 +166,7 @@ const constraintTools = new Set([
 const presentationTimers = new Map();
 const wheelTickTimers = new Map();
 let partyCountdownTimer = null;
+let hostUnlockTimer = null;
 let wakeLockSentinel = null;
 let audienceChannel = null;
 
@@ -1145,6 +1146,595 @@ async function applyPresetToTool(preset, {
   return next;
 }
 
+
+async function updateActivePartyOptions(patch) {
+  const party = activePartySession();
+  if (!party) return null;
+
+  const next = await persistPartyOptions(party, patch);
+
+  if ("wakeLock" in patch) {
+    if (next.options.wakeLock) await requestPartyWakeLock(next);
+    else await releasePartyWakeLock();
+  }
+
+  if ("fullscreen" in patch) {
+    if (next.options.fullscreen) await requestPartyFullscreen();
+    else await exitPartyFullscreen();
+  }
+
+  broadcastPartyAudience({ party: next, stage: "ready" });
+  render();
+  return next;
+}
+
+function cancelPartyCountdown({
+  renderAfter = true,
+  announceCancel = false
+} = {}) {
+  if (partyCountdownTimer) {
+    clearInterval(partyCountdownTimer);
+    partyCountdownTimer = null;
+  }
+
+  const wasActive = state.partyCountdown != null;
+  state.partyCountdown = null;
+
+  const party = activePartySession();
+  if (party) {
+    broadcastPartyAudience({ party, stage: "ready", countdown: 0 });
+  }
+
+  if (announceCancel && wasActive) {
+    announce("Countdown cancelled.");
+  }
+  if (renderAfter && wasActive) render();
+}
+
+async function runPartyAction() {
+  const party = activePartySession();
+  if (!party || party.status !== "active") return;
+
+  const ts = ensureToolState(party.toolId);
+
+  if (ts.animating || ts.presentation) {
+    skipPresentation(party.toolId);
+    return;
+  }
+
+  if (state.partyCountdown != null) {
+    cancelPartyCountdown({
+      renderAfter: true,
+      announceCancel: true
+    });
+    return;
+  }
+
+  const seconds = countdownSeconds(party.options.countdown);
+  if (!seconds) {
+    await runTool(party.toolId);
+    return;
+  }
+
+  state.partyCountdown = seconds;
+  broadcastPartyAudience({
+    party,
+    stage: "countdown",
+    countdown: seconds
+  });
+  render();
+
+  partyCountdownTimer = setInterval(async () => {
+    state.partyCountdown -= 1;
+
+    if (state.partyCountdown > 0) {
+      broadcastPartyAudience({
+        party: activePartySession(),
+        stage: "countdown",
+        countdown: state.partyCountdown
+      });
+      render();
+      return;
+    }
+
+    clearInterval(partyCountdownTimer);
+    partyCountdownTimer = null;
+    state.partyCountdown = null;
+    render();
+    await runTool(party.toolId);
+  }, 1000);
+}
+
+function partyFairnessBadges(tool, ts) {
+  const badges = [
+    state.settings.randomness.mode === "seeded"
+      ? "Seeded"
+      : "Secure Random"
+  ];
+
+  if (selectionTools.has(tool.id)) {
+    const model = currentSelectionModel(tool.id, ts);
+    if (model?.customWeights) badges.push("Weighted");
+    if (model?.excludedCount) {
+      badges.push(model.excludedCount + " excluded");
+    }
+  }
+
+  if (constraintTools.has(tool.id)) {
+    const active = (ts.rules || []).filter(
+      (rule) => rule.enabled !== false
+    );
+    if (active.length) badges.push(active.length + " rules");
+  }
+
+  return badges;
+}
+
+function partyPaceControl(party) {
+  return node("div", {
+    class: "segmented party-segment",
+    "aria-label": "Party reveal pace"
+  }, [
+    ["fast", "Fast"],
+    ["standard", "Standard"],
+    ["dramatic", "Dramatic"]
+  ].map(([value, label]) =>
+    node("button", {
+      class: party.options.pace === value ? "active" : "",
+      type: "button",
+      onClick: () => updateActivePartyOptions({ pace: value })
+    }, label)
+  ));
+}
+
+function partyCountdownControl(party) {
+  return node("div", {
+    class: "segmented party-segment",
+    "aria-label": "Party countdown"
+  }, [
+    ["off", "No Count"],
+    ["short", "3s"],
+    ["full", "5s"]
+  ].map(([value, label]) =>
+    node("button", {
+      class: party.options.countdown === value ? "active" : "",
+      type: "button",
+      onClick: () => updateActivePartyOptions({ countdown: value })
+    }, label)
+  ));
+}
+
+function partyHostLockButton(party) {
+  if (!party.options.hostLocked) {
+    return node("button", {
+      class: "party-icon-button",
+      type: "button",
+      onClick: () => updateActivePartyOptions({ hostLocked: true })
+    }, "Lock Host");
+  }
+
+  const clearUnlock = () => {
+    if (hostUnlockTimer) {
+      clearTimeout(hostUnlockTimer);
+      hostUnlockTimer = null;
+    }
+  };
+
+  const button = node("button", {
+    class: "party-unlock-button",
+    type: "button",
+    "aria-label": "Hold to unlock host controls"
+  }, "Hold to unlock");
+
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    clearUnlock();
+    button.classList.add("is-holding");
+    hostUnlockTimer = setTimeout(async () => {
+      hostUnlockTimer = null;
+      button.classList.remove("is-holding");
+      await updateActivePartyOptions({ hostLocked: false });
+      announce("Host controls unlocked.");
+    }, 900);
+  });
+
+  for (const type of ["pointerup", "pointercancel", "pointerleave"]) {
+    button.addEventListener(type, () => {
+      button.classList.remove("is-holding");
+      clearUnlock();
+    });
+  }
+
+  return button;
+}
+
+function partyPrivateControls(tool, ts, party) {
+  if (tool.id !== "secret-santa" || !ts.secretAssignments) return null;
+
+  if (!Number.isSafeInteger(ts.partyPrivateIndex)) {
+    ts.partyPrivateIndex = 0;
+  }
+  if (ts.partyPrivateIndex >= ts.secretAssignments.length) {
+    ts.partyPrivateIndex = 0;
+  }
+
+  const assignment = ts.secretAssignments[ts.partyPrivateIndex];
+
+  if (ts.secretReveal != null) {
+    return node("div", { class: "party-private-controls" }, [
+      node("div", { class: "party-private-instruction" }, [
+        node("strong", { text: "Private result visible" }),
+        node("span", {
+          text: "Hide it before passing the device."
+        })
+      ]),
+      node("button", {
+        class: "primary party-primary",
+        type: "button",
+        onClick: () => {
+          finishPresentation("secret-santa", null, false);
+          ts.secretReveal = null;
+          ts.partyPrivateIndex =
+            (ts.partyPrivateIndex + 1) % ts.secretAssignments.length;
+          broadcastPartyAudience({
+            party,
+            stage: "private",
+            privateReveal: true
+          });
+          render();
+        }
+      }, "Hide & Pass")
+    ]);
+  }
+
+  return node("div", { class: "party-private-controls" }, [
+    node("div", { class: "party-private-instruction" }, [
+      node("span", { text: "Pass the device to" }),
+      node("strong", { text: assignment.source })
+    ]),
+    node("button", {
+      class: "primary party-primary",
+      type: "button",
+      onClick: () => {
+        ts.secretReveal = ts.partyPrivateIndex;
+        beginPresentation(
+          "secret-santa",
+          ts,
+          { privateReveal: true }
+        );
+        broadcastPartyAudience({
+          party,
+          stage: "private",
+          privateReveal: true
+        });
+        render();
+      }
+    }, "Tap to Reveal")
+  ]);
+}
+
+function renderParty() {
+  const party = activePartySession();
+  const tool = party ? getTool(party.toolId) : null;
+
+  if (!party || !tool) {
+    return node("main", { class: "party-shell party-error" }, [
+      node("strong", { text: "Party Session unavailable" }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => setView("play")
+      }, "Back")
+    ]);
+  }
+
+  const ts = ensureToolState(tool.id);
+  const locked = party.options.hostLocked;
+  const privateControls = partyPrivateControls(tool, ts, party);
+
+  const shell = node("main", {
+    class:
+      "party-shell accent-"
+      + tool.accent
+      + (locked ? " host-locked" : "")
+  });
+
+  const top = node("header", { class: "party-host-bar" }, [
+    node("div", { class: "party-host-title" }, [
+      node("span", {
+        class: "party-tool-icon",
+        text: tool.icon,
+        "aria-hidden": "true"
+      }),
+      node("div", {}, [
+        node("strong", { text: tool.name }),
+        node("span", {
+          text:
+            "Round "
+            + party.round
+            + " · "
+            + party.options.pace
+        })
+      ])
+    ]),
+    node("div", { class: "party-host-lock-slot" }, [
+      partyHostLockButton(party)
+    ])
+  ]);
+
+  shell.append(top);
+
+  const fairness = node("div", {
+    class: "party-fairness-strip",
+    "aria-label": "Randomization information"
+  }, partyFairnessBadges(tool, ts).map((label) =>
+    node("span", { text: label })
+  ));
+
+  shell.append(fairness);
+
+  const arena = node("section", { class: "party-arena" }, [
+    buildStage(tool, ts)
+  ]);
+
+  if (state.partyCountdown != null) {
+    arena.append(node("div", {
+      class: "party-countdown-overlay",
+      role: "status",
+      "aria-live": "assertive"
+    }, [
+      node("span", { text: "GET READY" }),
+      node("strong", { text: String(state.partyCountdown) })
+    ]));
+  }
+
+  shell.append(arena);
+
+  const actionZone = node("footer", { class: "party-action-zone" });
+
+  if (privateControls) {
+    actionZone.append(privateControls);
+  } else {
+    actionZone.append(node("button", {
+      class: "primary party-primary",
+      type: "button",
+      onClick: runPartyAction
+    }, state.partyCountdown != null
+      ? "CANCEL COUNTDOWN"
+      : actionLabel(tool.id, ts)
+    ));
+  }
+
+  if (!locked) {
+    const hostControls = node("div", { class: "party-host-controls" }, [
+      partyPaceControl(party),
+      partyCountdownControl(party),
+      isStatefulTool(tool.id) && ts.activeSessionId
+        ? node("button", {
+            class: "party-icon-button",
+            type: "button",
+            disabled:
+              sessionCanUndo(sessionById(ts.activeSessionId))
+                ? null
+                : "disabled",
+            onClick: () => undoActiveSession(tool.id)
+          }, "Undo")
+        : null,
+      node("button", {
+        class: "party-icon-button",
+        type: "button",
+        onClick: async () => {
+          await updatePresentationSetting(
+            "sound",
+            !state.settings.presentation.sound
+          );
+          render();
+        }
+      }, state.settings.presentation.sound ? "Mute" : "Unmute"),
+      node("button", {
+        class: "party-icon-button",
+        type: "button",
+        onClick: () => requestPartyFullscreen()
+      }, "Fullscreen"),
+      node("button", {
+        class: "party-icon-button",
+        type: "button",
+        disabled:
+          typeof BroadcastChannel === "undefined"
+            ? "disabled"
+            : null,
+        onClick: () => openAudienceWindow(party)
+      }, party.options.audienceEnabled ? "Audience ✓" : "Audience"),
+      node("button", {
+        class: "party-icon-button",
+        type: "button",
+        onClick: () => updateActivePartyOptions({
+          wakeLock: !party.options.wakeLock
+        })
+      }, party.options.wakeLock ? "Wake ✓" : "Wake"),
+      node("button", {
+        class: "party-icon-button party-exit",
+        type: "button",
+        onClick: endPartyMode
+      }, "Exit")
+    ]);
+
+    actionZone.append(hostControls);
+  }
+
+  shell.append(actionZone);
+  return shell;
+}
+
+function audienceResultNode(toolId, result) {
+  if (result == null) {
+    return node("div", {
+      class: "audience-result audience-result-empty",
+      text: "READY"
+    });
+  }
+
+  if (typeof result === "string" || typeof result === "number") {
+    return node("div", {
+      class: "audience-result",
+      text: String(result)
+    });
+  }
+
+  if (Array.isArray(result)) {
+    if (toolId === "teams" || toolId === "groups") {
+      return node("div", { class: "audience-team-grid" },
+        result.map((group, index) =>
+          node("div", { class: "audience-team-card" }, [
+            node("strong", {
+              text:
+                (toolId === "teams" ? "Team " : "Group ")
+                + (index + 1)
+            }),
+            node("span", {
+              text: Array.isArray(group) ? group.join(", ") : String(group)
+            })
+          ])
+        )
+      );
+    }
+
+    if (toolId === "tournament") {
+      return node("div", { class: "audience-team-grid" },
+        result.map((match) =>
+          node("div", { class: "audience-team-card" }, [
+            node("strong", {
+              text: match.b
+                ? match.a + " vs " + match.b
+                : match.a + " — BYE"
+            })
+          ])
+        )
+      );
+    }
+
+    return node("div", { class: "audience-list" },
+      result.map((item) =>
+        node("span", {
+          text:
+            Array.isArray(item)
+              ? item.join(" ↔ ")
+              : typeof item === "object"
+                ? item.source && item.target
+                  ? item.source + " → " + item.target
+                  : JSON.stringify(item)
+                : String(item)
+        })
+      )
+    );
+  }
+
+  if (typeof result === "object") {
+    const text =
+      result.winner
+      || result.eliminated
+      || result.card
+      || result.total
+      || result.summary
+      || (
+        result.x != null && result.y != null
+          ? "(" + result.x + ", " + result.y + ")"
+          : ""
+      );
+
+    return node("div", {
+      class: "audience-result",
+      text: String(text || "RESULT")
+    });
+  }
+
+  return node("div", {
+    class: "audience-result",
+    text: String(result)
+  });
+}
+
+function renderAudience() {
+  const data = state.audienceState;
+
+  if (!data) {
+    return node("main", { class: "audience-shell waiting" }, [
+      node("div", { class: "audience-waiting-mark", text: "✦" }),
+      node("strong", { text: "Waiting for host" }),
+      node("span", {
+        text: "This window only receives sanitized Party presentation data."
+      })
+    ]);
+  }
+
+  const shell = node("main", {
+    class: "audience-shell accent-" + (data.tool?.accent || "cyan")
+  });
+
+  shell.append(node("header", { class: "audience-header" }, [
+    node("div", {}, [
+      node("span", {
+        class: "party-tool-icon",
+        text: data.tool?.icon || "✦"
+      }),
+      node("strong", {
+        text: data.tool?.name || "Randomizer Arcade"
+      })
+    ]),
+    node("span", {
+      text: "Round " + data.round
+    })
+  ]));
+
+  if (data.countdown > 0) {
+    shell.append(node("section", {
+      class: "audience-countdown"
+    }, [
+      node("span", { text: "GET READY" }),
+      node("strong", { text: String(data.countdown) })
+    ]));
+  } else if (data.private) {
+    shell.append(node("section", {
+      class: "audience-private"
+    }, [
+      node("div", { text: "◈" }),
+      node("strong", { text: "Private reveal" }),
+      node("span", {
+        text: "The assignment stays on the host device."
+      })
+    ]));
+  } else {
+    shell.append(node("section", { class: "audience-stage" }, [
+      node("span", {
+        class: "audience-status",
+        text: data.statusText || "Ready"
+      }),
+      audienceResultNode(data.tool?.id, data.result)
+    ]));
+  }
+
+  if (data.fairness) {
+    const labels = [
+      data.fairness.mode,
+      data.fairness.eligibleCount != null
+        ? data.fairness.eligibleCount + " eligible"
+        : null,
+      data.fairness.hardRuleCount
+        ? data.fairness.hardRuleCount + " required rules"
+        : null
+    ].filter(Boolean);
+
+    if (labels.length) {
+      shell.append(node("footer", {
+        class: "audience-fairness"
+      }, labels.map((label) =>
+        node("span", { text: String(label) })
+      )));
+    }
+  }
+
+  return shell;
+}
 
 async function startTemplateSession(template) {
   const session = createTemplateSession(template);
@@ -5148,7 +5738,12 @@ function buildControls(tool, ts) {
           class: "active-preset-chip",
           text: "Preset · " + (presetById(ts.activePresetId)?.name || "Loaded")
         })
-      : null
+      : null,
+    node("button", {
+      class: "small-action party-launch-button",
+      type: "button",
+      onClick: () => startPartyMode(tool.id)
+    }, "Party Mode")
   ]));
 
   const actions = node("div", { class: "button-row" });
@@ -7938,6 +8533,16 @@ function render() {
 
   document.querySelectorAll(".modal-backdrop").forEach((item) => item.remove());
 
+  if (state.view === "audience") {
+    root.replaceChildren(renderAudience());
+    return;
+  }
+
+  if (state.view === "party") {
+    root.replaceChildren(renderParty());
+    return;
+  }
+
   const layout = node("div", { class: "layout" });
   layout.append(topBar());
 
@@ -7960,10 +8565,46 @@ async function init() {
   await loadData();
 
   const params = new URLSearchParams(location.search);
+  const requestedAudience = params.get("audience");
+  const requestedParty = params.get("party");
   const requestedTemplateSession = params.get("templateSession");
   const requestedTool = params.get("tool");
 
   if (
+    requestedAudience
+    && partySessionById(requestedAudience)
+  ) {
+    const party = partySessionById(requestedAudience);
+    const tool = getTool(party.toolId);
+    state.audiencePartyId = party.id;
+    state.view = "audience";
+    state.toolId = null;
+    state.audienceState = makeAudienceState({
+      party,
+      tool,
+      run: latestPartyRun(party),
+      stage: latestPartyRun(party) ? "result" : "ready"
+    });
+
+    const channel = partyChannelFor(party.id);
+    if (channel) {
+      channel.onmessage = (event) => {
+        state.audienceState = cloneData(event.data);
+        render();
+      };
+    }
+  } else if (
+    requestedParty
+    && partySessionById(requestedParty)?.status === "active"
+  ) {
+    const party = partySessionById(requestedParty);
+    state.activePartySessionId = party.id;
+    state.view = "party";
+    state.toolId = party.toolId;
+    ensureToolState(party.toolId);
+    maybeResumeLatestSession(party.toolId);
+    if (party.options.wakeLock) requestPartyWakeLock(party);
+  } else if (
     requestedTemplateSession
     && templateSessionById(requestedTemplateSession)
   ) {
@@ -7994,7 +8635,7 @@ async function init() {
     }
   });
 
-  document.addEventListener("visibilitychange", () => {
+  document.addEventListener("visibilitychange", async () => {
     if (document.hidden) {
       for (const toolId of Object.keys(state.tool)) {
         finishPresentation(toolId, null, false);
@@ -8005,8 +8646,24 @@ async function init() {
         secret.secretReveal = null;
       }
 
+      cancelPartyCountdown({ renderAfter: false });
       cancelHaptics();
-      if (state.view === "tool") render();
+      await releasePartyWakeLock();
+
+      if (state.view === "tool" || state.view === "party") render();
+      return;
+    }
+
+    if (state.view === "party") {
+      const party = activePartySession();
+      if (party?.options?.wakeLock) {
+        await requestPartyWakeLock(party);
+      }
+      broadcastPartyAudience({
+        party,
+        stage: "ready",
+        privateReveal: isPrivatePartyTool(party?.toolId)
+      });
     }
   });
 }
