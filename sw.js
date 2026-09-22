@@ -12,7 +12,8 @@ const SHELL = [
   "./phase7.css",
   "./phase8.css",
   "./phase9.css",
-  "./phase10.css",\n  "./phase11.css",
+  "./phase10.css",
+  "./phase11.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./src/app.js",
@@ -30,7 +31,8 @@ const SHELL = [
   "./src/session-template-model.js",
   "./src/party-model.js",
   "./src/custom-experience-model.js",
-  "./src/custom-engine.js",\n  "./src/workflow-model.js",
+  "./src/custom-engine.js",
+  "./src/workflow-model.js",
   "./src/storage.js",
   "./src/registry.js"
 ];
