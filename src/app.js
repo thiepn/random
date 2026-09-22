@@ -526,8 +526,32 @@ function beginPresentation(toolId, ts, result) {
       partyPresentationMode(party.options.pace);
   }
 
+  const customExperience = customExperienceFromToolId(toolId);
+  const presentationToolId = customExperience
+    ? ({
+        wheel: "wheel",
+        card: "cards",
+        dice: "dice",
+        list: "shuffle",
+        number: "number",
+        table: "picker",
+        text: "picker",
+        auto:
+          customExperience.primitive === "dice"
+            || customExperience.primitive === "faces"
+              ? "dice"
+              : customExperience.primitive === "deck"
+                ? "cards"
+                : customExperience.primitive === "shuffle"
+                  ? "shuffle"
+                  : customExperience.primitive === "number"
+                    ? "number"
+                    : "picker"
+      })[customExperience.appearance.layout]
+    : toolId;
+
   const plan = presentationPlan({
-    toolId,
+    toolId: presentationToolId,
     settings: effectiveSettings,
     capabilities: presentationCapabilities(),
     result
@@ -3762,52 +3786,7 @@ function constraintValidation(tool, ts) {
 function renderRuleStrip(tool, ts) {
   let rules = [];
 
-  if (
-    constraintTools.has(tool.id)
-    && (ts.rules || []).some((rule) => rule.enabled !== false)
-  ) {
-    const activeRules = ts.rules.filter((rule) => rule.enabled !== false);
-    const required = activeRules.filter(
-      (rule) => rule.strength !== "soft"
-    ).length;
-    const preferred = activeRules.filter(
-      (rule) => rule.strength === "soft"
-    ).length;
-
-    panel.querySelector(".fairness-body").append(
-      node("div", { class: "fairness-method" }, [
-        node("strong", { text: "Constrained randomization" }),
-        node("p", {
-          text:
-            "The solver searches randomly among configurations satisfying required rules, then uses preferences to rank valid candidates. "
-            + "It is not guaranteed to sample uniformly across every mathematically valid arrangement. "
-            + required
-            + " required and "
-            + preferred
-            + " preferred rules are active."
-        }),
-        ts.lastSolverDiagnostics
-          ? node("div", { class: "solver-diagnostics" }, [
-              node("span", {
-                text: "Search nodes " + ts.lastSolverDiagnostics.nodes
-              }),
-              node("span", {
-                text: "Valid candidates " + ts.lastSolverDiagnostics.solutions
-              }),
-              node("span", {
-                text:
-                  "Preference score "
-                  + (
-                    ts.lastConstraintScore == null
-                      ? "—"
-                      : Number(ts.lastConstraintScore).toFixed(2)
-                  )
-              })
-            ])
-          : null
-      ])
-    );
-  } else if (selectionTools.has(tool.id)) {
+  if (selectionTools.has(tool.id)) {
     const model = currentSelectionModel(tool.id, ts);
     if (!model) return null;
     rules = selectionRuleSummary(model, {
@@ -3839,6 +3818,12 @@ function renderRuleStrip(tool, ts) {
     if (active.length) {
       const effort = ts.solverEffort || "automatic";
       rules.push(effort[0].toUpperCase() + effort.slice(1));
+    }
+  } else if (tool.custom) {
+    const experience = customExperienceFromToolId(tool.id);
+    if (experience) {
+      rules.push("Custom");
+      rules.push(experience.primitive);
     }
   }
 
@@ -6103,6 +6088,10 @@ function buildControls(tool, ts) {
 
 function actionLabel(id, ts) {
   if (ts.animating) return "SHOW RESULT";
+  const customExperience = customExperienceFromToolId(id);
+  if (customExperience) {
+    return customExperience.appearance.actionLabel || "GENERATE";
+  }
   const labels = {
     coin: ts.result ? "FLIP AGAIN" : "FLIP",
     dice: ts.result ? "ROLL AGAIN" : "ROLL",
@@ -6290,7 +6279,18 @@ async function runTool(id) {
       }
     }
 
-    const output = executeTool(id, config, prepared.source);
+    const customExperience = tool.custom
+      ? customExperienceFromToolId(id)
+      : null;
+    const output = customExperience
+      ? executeCustomExperience(
+          customExperience,
+          {
+            inputItems: parseList(ts.customInputText)
+          },
+          prepared.source
+        )
+      : executeTool(id, config, prepared.source);
     let result = output.result;
     let summary = output.summary;
 
@@ -6404,9 +6404,18 @@ async function runTool(id) {
       });
     }
 
-    if (id === "wheel") {
+    if (
+      id === "wheel"
+      || (
+        tool.custom
+        && customExperience?.appearance?.layout === "wheel"
+        && Number.isSafeInteger(output.detail?.selectedIndex)
+      )
+    ) {
       const index = output.detail.selectedIndex;
-      const model = normalizeSelection(config.items, config.selectionEntries || []);
+      const model = id === "wheel"
+        ? normalizeSelection(config.items, config.selectionEntries || [])
+        : customWheelModel(customExperience, ts);
       const segment = wheelSegmentForIndex(model, index);
       const desired = (360 - segment.center) % 360;
       const previous = beforeState.wheelRotation || 0;
@@ -8010,9 +8019,19 @@ function renderSaveRuleSetModal(modal, config) {
 
 function renderUseResultModal(modal, config) {
   const items = resultToItems(config.sourceToolId, config.result);
-  const targets = [...listInputTools]
+  const targets = [
+    ...TOOLS.map((tool) => tool.id),
+    ...state.customExperiences
+      .filter(
+        (experience) =>
+          experience.status === "published"
+          && customExperienceNeedsPromptInput(experience)
+      )
+      .map((experience) => customToolId(experience.id))
+  ]
     .filter((id) => id !== config.sourceToolId)
-    .map(getTool)
+    .filter((id) => toolAcceptsListInput(id))
+    .map(resolveTool)
     .filter(Boolean);
 
   modal.classList.add("use-result-modal");
