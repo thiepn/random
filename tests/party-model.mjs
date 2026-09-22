@@ -26,6 +26,9 @@ import {
   assert.equal(party.options.pace, "dramatic");
   assert.equal(party.options.hostLocked, true);
 
+  party = updatePartyOptions(party, { paused: true });
+  assert.equal(party.options.paused, true);
+
   party = appendPartyRun(party, "run-1");
   assert.deepEqual(party.runIds, ["run-1"]);
   assert.equal(party.round, 2);
