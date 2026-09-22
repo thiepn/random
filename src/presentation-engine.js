@@ -134,7 +134,12 @@ export function presentationPlan({
       : profile.normal;
 
   let kind = profile.kind;
-  let particles = effects === "high" ? 12 : 0;
+  let particles =
+    normalized.mode === "instant" || profile.kind === "private"
+      ? 0
+      : effects === "high"
+        ? 12
+        : 0;
   let celebration = false;
 
   if (reducedMotion) {
