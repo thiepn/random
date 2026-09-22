@@ -204,6 +204,28 @@ export function publicPartyResult(toolId, result) {
     };
   }
 
+  if (Array.isArray(result.items)) {
+    return result.items.map(String);
+  }
+  if (result.output != null) {
+    const output = result.output;
+    if (typeof output === "string" || typeof output === "number") {
+      return String(output);
+    }
+    if (Array.isArray(output)) {
+      return output.map((item) => String(item));
+    }
+  }
+  if (Array.isArray(result.cards)) {
+    return result.cards.map(String);
+  }
+  if (result.total != null) {
+    return {
+      total: result.total,
+      expression: result.expression || null
+    };
+  }
+  if (result.value != null) return String(result.value);
   if (Array.isArray(result.displayValues)) {
     return result.displayValues.map(String);
   }
