@@ -1,4 +1,4 @@
-import { createRng, pick, shuffle, sample, partition, pairs, randomHexColor } from "./random-core.js";
+import { createRng, pick, shuffle, sample, partition, pairs, derangement, randomHexColor } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import { getAll, put, remove, clear, getSettings, saveSettings, requestPersistentStorage } from "./storage.js";
 
@@ -93,7 +93,14 @@ function defaultList(toolId) {
     picker: ["Anna", "Ben", "David", "Sarah"],
     shuffle: ["Anna", "Ben", "David", "Sarah", "Luke"],
     teams: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
-    pairs: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"]
+    pairs: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    sampler: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    groups: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
+    assignment: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    elimination: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    ladder: ["Anna", "Ben", "David", "Sarah"],
+    "secret-santa": ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    tournament: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"]
   };
   return (defaults[toolId] || ["Option A", "Option B", "Option C"]).join("\n");
 }
@@ -113,6 +120,21 @@ function ensureToolState(toolId) {
       chance: 50,
       lotteryCount: 6,
       lotteryMax: 49,
+      sampleCount: 3,
+      groupCount: 3,
+      targetText: "Setup\nCleanup\nSnacks",
+      ladderOutcomes: "Prize A\nPrize B\nPrize C\nPrize D",
+      timeStart: "09:00",
+      timeEnd: "17:00",
+      xMin: 0,
+      xMax: 10,
+      yMin: 0,
+      yMax: 10,
+      eliminationRemaining: null,
+      eliminationOut: [],
+      eliminationSignature: "",
+      secretAssignments: null,
+      secretReveal: null,
       dateStart: new Date().toISOString().slice(0, 10),
       dateEnd: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       deck: null
