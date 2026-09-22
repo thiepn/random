@@ -188,9 +188,10 @@ export function presentationPlan({
     particles,
     celebration,
     staggerMs,
-    tickMs: toolId === "wheel" && duration > 0
-      ? (normalized.mode === "showtime" ? 80 : 65)
-      : 0
+    tickMs:
+      toolId === "wheel" && duration > 0 && !reducedMotion
+        ? (normalized.mode === "showtime" ? 80 : 65)
+        : 0
   };
 }
 
