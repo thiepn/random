@@ -18,6 +18,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Reusable Presets with live Pool/View bindings, frozen inputs, prompt inputs, favorites, and saved Rule Set integration
 - Linear Session Templates with previous-result handoff, persistent Template Sessions, step locking, dependency invalidation, and Rerun From Here
 - Fullscreen Party mode with persistent Party Sessions, Fast/Standard/Dramatic reveals, configurable countdowns, Host Lock, Wake Lock, pass-the-phone private reveals, TV/projector layouts, and an optional sanitized audience window
+- Safe declarative Custom Builder with user-created Wheels, Pickers, Dice, Deck draws, weighted tables, Number generators, bounded compound generators, drafts, Test Mode, validation, import/export, and My Creations
 - History and favorites
 - Offline service worker + web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -47,6 +48,8 @@ Then open `http://localhost:8080`.
 - `src/preset-model.js` — Presets, live/frozen/prompt input bindings, favorites, Rule Sets, and source-scope compatibility
 - `src/session-template-model.js` — linear Session Templates, runtime Template Sessions, locking, invalidation, built-ins, and result handoff contracts
 - `src/party-model.js` — Party Session progression, pace/countdown options, privacy rules, and sanitized audience-state construction
+- `src/custom-experience-model.js` — safe Custom Experience schema, allowlisted primitives, appearance/input rules, validation, import/export, and custom tool identities
+- `src/custom-engine.js` — bounded execution of approved Custom Experience primitives using the same Random Core, Dice engine, and Number engine
 - `src/storage.js` — IndexedDB persistence
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
@@ -72,3 +75,7 @@ IndexedDB schema v4 adds `ruleSets`, `sessionTemplates`, and `templateSessions`.
 ## Party mode and audience privacy
 
 IndexedDB schema v5 adds `partySessions`. Party Runs append to their Party Session in the same transaction as the immutable Run and seeded-position update. Fast/Standard/Dramatic only override presentation. Secret Santa uses a pass-the-phone privacy gate, and the audience window receives a strict sanitized `AudienceState` over `BroadcastChannel`; it starts in a minimal mode and does not load the host's Pools, History, Presets, or other IndexedDB data. The audience window is opened with `noopener` so it cannot inspect the host window.
+
+## Custom Builder safety and interoperability
+
+IndexedDB schema v6 adds `customExperiences`. User-created definitions are declarative JSON data only: the validator rejects custom JavaScript, HTML, CSS, event-handler keys, cyclic definitions, forward/cyclic compound dependencies, oversized definitions, invalid Dice notation, and unbounded numeric/list settings. Published creations resolve as `custom:<id>` tool identities without modifying the built-in registry, so they can create immutable Runs, enter Party Mode, be saved in Presets, and participate in linear Session Templates. Builder Test Mode uses a dedicated deterministic seed and creates no Run or app-seed advancement.
