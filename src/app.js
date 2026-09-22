@@ -2911,6 +2911,838 @@ function summarizeResult(id, result) {
   return String(result);
 }
 
+function poolEditorFieldInput(field, item, editor) {
+  const current = item.values?.[field.id];
+
+  if (field.type === "boolean") {
+    const select = node("select", {
+      class: "pool-cell-input",
+      "aria-label": field.name + " for " + item.label
+    }, [
+      node("option", { value: "", text: "—" }),
+      node("option", { value: "true", text: "Yes" }),
+      node("option", { value: "false", text: "No" })
+    ]);
+    select.value = current === true ? "true" : current === false ? "false" : "";
+    select.addEventListener("change", () => {
+      item.values[field.id] = select.value === ""
+        ? ""
+        : select.value === "true";
+    });
+    return select;
+  }
+
+  const input = node("input", {
+    class: "pool-cell-input",
+    type: field.type === "number" ? "number" : "text",
+    value: current ?? "",
+    placeholder: field.name,
+    "aria-label": field.name + " for " + item.label
+  });
+  input.addEventListener("input", () => {
+    item.values[field.id] = field.type === "number"
+      ? (input.value === "" ? "" : Number(input.value))
+      : input.value;
+  });
+  return input;
+}
+
+function renderPoolEditorModal(modal, editor) {
+  const draft = editor.draft;
+  const stats = poolStats(draft);
+  const duplicates = duplicateSummary(draft);
+  modal.classList.add("pool-editor-modal");
+
+  const titleInput = node("input", {
+    class: "pool-title-input",
+    value: draft.name,
+    "aria-label": "Pool name"
+  });
+  titleInput.addEventListener("input", () => {
+    draft.name = titleInput.value;
+  });
+
+  const description = node("textarea", {
+    class: "field pool-description-input",
+    placeholder: "Optional description",
+    "aria-label": "Pool description"
+  });
+  description.value = draft.description;
+  description.addEventListener("input", () => {
+    draft.description = description.value;
+  });
+
+  const kind = node("select", {
+    class: "field",
+    "aria-label": "Pool kind"
+  }, ["generic", "people", "choices", "tasks", "cards"].map((value) =>
+    node("option", { value, text: value[0].toUpperCase() + value.slice(1) })
+  ));
+  kind.value = draft.kind;
+  kind.addEventListener("change", () => {
+    draft.kind = kind.value;
+  });
+
+  modal.append(
+    node("div", { class: "pool-editor-heading" }, [
+      titleInput,
+      node("span", {
+        class: "pool-revision",
+        text: "Revision " + editor.baseRevision
+      })
+    ]),
+    description,
+    node("div", { class: "pool-editor-meta" }, [
+      kind,
+      node("span", { text: stats.active + "/" + stats.total + " active" }),
+      node("span", { text: stats.tags + " tags" }),
+      node("span", { text: stats.fields + " fields" }),
+      duplicates.groupCount
+        ? node("span", {
+            class: "warning",
+            text: duplicates.groupCount + " duplicate groups"
+          })
+        : node("span", { text: "No duplicate labels" })
+    ])
+  );
+
+  if (editor.error) modal.append(toolError(editor.error));
+
+  const search = node("input", {
+    class: "field",
+    type: "search",
+    placeholder: "Search labels, tags, and fields…",
+    value: editor.search,
+    "aria-label": "Search Pool items"
+  });
+  search.addEventListener("input", () => {
+    editor.search = search.value;
+  });
+  search.addEventListener("change", render);
+
+  const activeFilter = node("select", {
+    class: "field",
+    "aria-label": "Active item filter"
+  }, [
+    node("option", { value: "all", text: "All items" }),
+    node("option", { value: "active", text: "Active only" }),
+    node("option", { value: "inactive", text: "Inactive only" })
+  ]);
+  activeFilter.value = editor.active;
+  activeFilter.addEventListener("change", () => {
+    editor.active = activeFilter.value;
+    render();
+  });
+
+  const tagFilter = node("input", {
+    class: "field",
+    type: "text",
+    placeholder: "Filter tag",
+    value: editor.tagFilter,
+    "aria-label": "Filter Pool by tag"
+  });
+  tagFilter.addEventListener("change", () => {
+    editor.tagFilter = tagFilter.value.trim();
+    render();
+  });
+
+  modal.append(node("div", { class: "pool-filter-bar" }, [
+    search,
+    activeFilter,
+    tagFilter,
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: async () => {
+        try {
+          await persistPoolDraft(editor);
+          openPoolImport(draft.id);
+        } catch (error) {
+          editor.error = error?.message || "Could not save before import.";
+          render();
+        }
+      }
+    }, "Import")
+  ]));
+
+  const fieldsBox = node("section", { class: "pool-fields-box" }, [
+    node("div", { class: "pool-section-head" }, [
+      node("strong", { text: "Structured fields" }),
+      node("span", {
+        text: draft.fields.length
+          ? "Custom data travels with each item."
+          : "Optional metadata for future rules and balancing."
+      })
+    ])
+  ]);
+
+  if (draft.fields.length) {
+    fieldsBox.append(node("div", { class: "field-chip-row" },
+      draft.fields.map((field) =>
+        node("span", { class: "field-chip" }, [
+          node("span", { text: field.name + " · " + field.type }),
+          node("button", {
+            type: "button",
+            "aria-label": "Remove field " + field.name,
+            onClick: () => {
+              draft.fields = draft.fields.filter((item) => item.id !== field.id);
+              for (const poolItem of draft.items) {
+                delete poolItem.values[field.id];
+              }
+              render();
+            }
+          }, "×")
+        ])
+      )
+    ));
+  }
+
+  const newFieldName = node("input", {
+    class: "field",
+    placeholder: "Field name",
+    "aria-label": "New field name"
+  });
+  const newFieldType = node("select", {
+    class: "field",
+    "aria-label": "New field type"
+  }, ["text", "number", "boolean", "category"].map((value) =>
+    node("option", { value, text: value })
+  ));
+
+  fieldsBox.append(node("div", { class: "field-add-row" }, [
+    newFieldName,
+    newFieldType,
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        try {
+          draft.fields.push(createPoolField(newFieldName.value, newFieldType.value));
+          render();
+        } catch (error) {
+          editor.error = error.message;
+          render();
+        }
+      }
+    }, "Add field")
+  ]));
+  modal.append(fieldsBox);
+
+  const visible = filterPoolItems(draft, {
+    search: editor.search,
+    active: editor.active,
+    tags: editor.tagFilter ? [editor.tagFilter] : []
+  });
+
+  const selected = editor.selected;
+  const bulkTag = node("input", {
+    class: "field bulk-tag-input",
+    placeholder: "Tag selected",
+    "aria-label": "Tag selected items"
+  });
+
+  modal.append(node("div", { class: "pool-bulk-bar" }, [
+    node("span", {
+      text: selected.size + " selected · " + visible.length + " visible"
+    }),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        visible.forEach((item) => selected.add(item.id));
+        render();
+      }
+    }, "Select visible"),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        selected.clear();
+        render();
+      }
+    }, "Clear"),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      disabled: selected.size ? null : "disabled",
+      onClick: () => {
+        draft.items.forEach((item) => {
+          if (selected.has(item.id)) item.active = true;
+        });
+        render();
+      }
+    }, "Activate"),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      disabled: selected.size ? null : "disabled",
+      onClick: () => {
+        draft.items.forEach((item) => {
+          if (selected.has(item.id)) item.active = false;
+        });
+        render();
+      }
+    }, "Deactivate"),
+    bulkTag,
+    node("button", {
+      class: "small-action",
+      type: "button",
+      disabled: selected.size ? null : "disabled",
+      onClick: () => {
+        const value = bulkTag.value.trim();
+        if (!value) return;
+        draft.items.forEach((item) => {
+          if (selected.has(item.id) && !item.tags.includes(value)) {
+            item.tags.push(value);
+          }
+        });
+        render();
+      }
+    }, "Add tag"),
+    node("button", {
+      class: "small-action danger-lite",
+      type: "button",
+      disabled: selected.size ? null : "disabled",
+      onClick: () => {
+        draft.items = draft.items.filter((item) => !selected.has(item.id));
+        selected.clear();
+        render();
+      }
+    }, "Remove")
+  ]));
+
+  const table = node("div", { class: "pool-editor-table" });
+  for (const item of visible) {
+    const selectItem = node("input", {
+      type: "checkbox",
+      checked: selected.has(item.id),
+      "aria-label": "Select " + item.label
+    });
+    selectItem.addEventListener("change", () => {
+      if (selectItem.checked) selected.add(item.id);
+      else selected.delete(item.id);
+    });
+
+    const active = node("input", {
+      type: "checkbox",
+      checked: item.active,
+      "aria-label": "Active " + item.label
+    });
+    active.addEventListener("change", () => {
+      item.active = active.checked;
+    });
+
+    const label = node("input", {
+      class: "pool-cell-input pool-label-input",
+      value: item.label,
+      "aria-label": "Item label"
+    });
+    label.addEventListener("input", () => {
+      item.label = label.value;
+    });
+
+    const weight = node("input", {
+      class: "pool-cell-input pool-weight-input",
+      type: "number",
+      min: "0",
+      step: "0.1",
+      value: String(item.weight),
+      "aria-label": "Default weight for " + item.label
+    });
+    weight.addEventListener("change", () => {
+      const value = Number(weight.value);
+      item.weight = Number.isFinite(value) && value >= 0 ? value : 1;
+      weight.value = String(item.weight);
+    });
+
+    const tags = node("input", {
+      class: "pool-cell-input pool-tags-input",
+      value: item.tags.join(", "),
+      placeholder: "tags",
+      "aria-label": "Tags for " + item.label
+    });
+    tags.addEventListener("change", () => {
+      item.tags = Array.from(new Set(
+        tags.value.split(",").map((tag) => tag.trim()).filter(Boolean)
+      ));
+    });
+
+    table.append(node("div", {
+      class: "pool-editor-row" + (!item.active ? " is-inactive" : "")
+    }, [
+      node("label", { class: "pool-select-cell" }, [selectItem]),
+      node("label", { class: "pool-active-cell" }, [
+        active,
+        node("span", { class: "sr-only", text: "Active" })
+      ]),
+      label,
+      weight,
+      tags,
+      ...draft.fields.map((field) => poolEditorFieldInput(field, item, editor)),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        "aria-label": "Remove " + item.label,
+        onClick: () => {
+          draft.items = draft.items.filter((candidate) => candidate.id !== item.id);
+          selected.delete(item.id);
+          render();
+        }
+      }, "×")
+    ]));
+  }
+
+  if (!visible.length) {
+    table.append(emptyState(
+      "No items match",
+      "Change the filters or add another item."
+    ));
+  }
+
+  modal.append(table);
+
+  const newItem = node("input", {
+    class: "field",
+    placeholder: "Add item…",
+    "aria-label": "New Pool item"
+  });
+  const addItem = () => {
+    try {
+      draft.items.push(createPoolItem(newItem.value));
+      render();
+    } catch (error) {
+      editor.error = error.message;
+      render();
+    }
+  };
+  newItem.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addItem();
+    }
+  });
+
+  modal.append(node("div", { class: "pool-add-item-row" }, [
+    newItem,
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: addItem
+    }, "Add item")
+  ]));
+
+  const existingViews = poolViewsFor(draft.id);
+  const viewName = node("input", {
+    class: "field",
+    placeholder: "View name",
+    value: editor.viewName,
+    "aria-label": "New View name"
+  });
+  viewName.addEventListener("input", () => {
+    editor.viewName = viewName.value;
+  });
+
+  const viewsBox = node("section", { class: "pool-views-box" }, [
+    node("div", { class: "pool-section-head" }, [
+      node("strong", { text: "Views" }),
+      node("span", {
+        text: "Save this filter dynamically or freeze the selected item IDs."
+      })
+    ]),
+    node("div", { class: "pool-view-create" }, [
+      viewName,
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: async () => {
+          try {
+            const view = createPoolView({
+              name: editor.viewName,
+              poolId: draft.id,
+              mode: "dynamic",
+              filters: {
+                search: editor.search,
+                active: editor.active === "all" ? "active" : editor.active,
+                tags: editor.tagFilter ? [editor.tagFilter] : []
+              }
+            });
+            await put("poolViews", view);
+            state.poolViews.push(view);
+            editor.viewName = "";
+            render();
+          } catch (error) {
+            editor.error = error.message;
+            render();
+          }
+        }
+      }, "Save filter"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        disabled: selected.size ? null : "disabled",
+        onClick: async () => {
+          try {
+            const view = createPoolView({
+              name: editor.viewName,
+              poolId: draft.id,
+              mode: "static",
+              itemIds: [...selected]
+            });
+            await put("poolViews", view);
+            state.poolViews.push(view);
+            editor.viewName = "";
+            render();
+          } catch (error) {
+            editor.error = error.message;
+            render();
+          }
+        }
+      }, "Save selected")
+    ])
+  ]);
+
+  if (existingViews.length) {
+    viewsBox.append(node("div", { class: "pool-view-list" },
+      existingViews.map((view) =>
+        node("div", { class: "pool-view-item" }, [
+          node("span", {
+            text: view.name + " · " + (view.mode === "static" ? "static" : "dynamic")
+          }),
+          node("span", {
+            text: resolvePoolView(draft, view).length + " active items"
+          }),
+          node("button", {
+            class: "small-action",
+            type: "button",
+            onClick: async () => {
+              await remove("poolViews", view.id);
+              state.poolViews = state.poolViews.filter((item) => item.id !== view.id);
+              render();
+            }
+          }, "Remove")
+        ])
+      )
+    ));
+  }
+  modal.append(viewsBox);
+
+  modal.append(node("div", { class: "pool-editor-footer" }, [
+    node("button", {
+      class: "danger",
+      type: "button",
+      onClick: async () => {
+        if (!confirm("Permanently delete “" + draft.name + "”? Existing tool WorkingSets keep their copied data, but the source Pool and its Views will be removed.")) {
+          return;
+        }
+        await remove("pools", draft.id);
+        const views = poolViewsFor(draft.id);
+        await Promise.all(views.map((view) => remove("poolViews", view.id)));
+        state.poolViews = state.poolViews.filter((view) => view.poolId !== draft.id);
+        state.pools = state.pools.filter((pool) => pool.id !== draft.id);
+        state.modal = null;
+        render();
+      }
+    }, "Delete permanently"),
+    node("span", { class: "pool-editor-footer-spacer" }),
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: async () => {
+        try {
+          const saved = await persistPoolDraft(editor);
+          announce(saved.name + " saved at revision " + saved.revision + ".");
+          state.modal = null;
+          render();
+        } catch (error) {
+          editor.error = error?.name === "RevisionConflictError"
+            ? "This Pool changed elsewhere. Close the editor and reopen the latest revision."
+            : error?.message || "Could not save Pool.";
+          render();
+        }
+      }
+    }, "Save Pool")
+  ]));
+}
+
+function renderPoolImportModal(modal, importer) {
+  modal.classList.add("pool-import-modal");
+  const sourcePool = importer.poolId ? poolById(importer.poolId) : null;
+
+  modal.append(
+    node("h2", {
+      text: sourcePool ? "Import into " + sourcePool.name : "Import Pool"
+    }),
+    node("p", {
+      text: "Paste CSV, TSV, or semicolon-delimited data. Special columns: label/name, weight, active, tags. Other columns become structured text fields."
+    })
+  );
+
+  if (importer.error) modal.append(toolError(importer.error));
+
+  if (!sourcePool) {
+    const name = node("input", {
+      class: "field",
+      value: importer.poolName,
+      placeholder: "Pool name",
+      "aria-label": "Imported Pool name"
+    });
+    name.addEventListener("input", () => {
+      importer.poolName = name.value;
+    });
+    modal.append(name);
+  }
+
+  if (sourcePool) {
+    const mode = node("select", {
+      class: "field",
+      "aria-label": "Import mode"
+    }, [
+      node("option", { value: "append", text: "Append to current items" }),
+      node("option", { value: "replace", text: "Replace all current items" })
+    ]);
+    mode.value = importer.mode;
+    mode.addEventListener("change", () => {
+      importer.mode = mode.value;
+    });
+    modal.append(mode);
+  }
+
+  const header = node("select", {
+    class: "field",
+    "aria-label": "Header row"
+  }, [
+    node("option", { value: "auto", text: "Detect header automatically" }),
+    node("option", { value: "yes", text: "First row is header" }),
+    node("option", { value: "no", text: "No header row" })
+  ]);
+  header.value = importer.hasHeader;
+  header.addEventListener("change", () => {
+    importer.hasHeader = header.value;
+    importer.preview = null;
+  });
+
+  const input = node("textarea", {
+    class: "field pool-import-text",
+    placeholder: "name,weight,active,tags\nAnna,2,true,leader\nBen,1,true,guest",
+    "aria-label": "CSV or spreadsheet data"
+  });
+  input.value = importer.text;
+  input.addEventListener("input", () => {
+    importer.text = input.value;
+    importer.preview = null;
+  });
+
+  const buildPreview = () => {
+    try {
+      const hasHeader = importer.hasHeader === "auto"
+        ? null
+        : importer.hasHeader === "yes";
+      importer.preview = parseDelimitedText(importer.text, { hasHeader });
+      importer.error = null;
+      render();
+    } catch (error) {
+      importer.error = error.message;
+      importer.preview = null;
+      render();
+    }
+  };
+
+  modal.append(
+    node("div", { class: "pool-import-options" }, [header]),
+    input,
+    node("div", { class: "button-row" }, [
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: buildPreview
+      }, "Preview import")
+    ])
+  );
+
+  if (importer.preview) {
+    const preview = importer.preview;
+    modal.append(node("section", { class: "pool-import-preview" }, [
+      node("strong", {
+        text: preview.rows.length + " data rows · " + preview.headers.length + " columns"
+      }),
+      node("div", { class: "field-chip-row" },
+        preview.headers.map((name) => node("span", { class: "field-chip", text: name }))
+      ),
+      node("div", { class: "import-preview-table" },
+        preview.rows.slice(0, 5).map((row) =>
+          node("div", { class: "import-preview-row" },
+            row.map((value) => node("span", { text: value }))
+          )
+        )
+      )
+    ]));
+  }
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: async () => {
+        try {
+          const hasHeader = importer.hasHeader === "auto"
+            ? null
+            : importer.hasHeader === "yes";
+          const parsed = parseDelimitedText(importer.text, { hasHeader });
+          if (!parsed.rows.length) throw new Error("No import rows found.");
+
+          let pool = sourcePool
+            ? normalizePool(sourcePool)
+            : createPool({ name: importer.poolName, items: [] });
+
+          const special = new Set(["label", "name", "weight", "active", "tag", "tags"]);
+          const fieldColumns = {};
+          const fields = [...pool.fields];
+
+          for (const headerName of parsed.headers) {
+            if (special.has(headerName.toLocaleLowerCase())) continue;
+            let field = fields.find((candidate) =>
+              candidate.name.toLocaleLowerCase() === headerName.toLocaleLowerCase()
+            );
+            if (!field) {
+              field = createPoolField(headerName, "text");
+              fields.push(field);
+            }
+            fieldColumns[field.id] = headerName;
+          }
+
+          const items = importRowsToPoolItems(parsed, { fieldColumns });
+          if (!items.length) throw new Error("No labeled items were found.");
+
+          if (sourcePool) {
+            const next = mutatePool(pool, (draft) => {
+              draft.fields = fields;
+              draft.items = importer.mode === "replace"
+                ? items
+                : [...draft.items, ...items];
+            });
+            await putWithRevision("pools", next, sourcePool.revision);
+            state.pools = state.pools.map((item) => item.id === next.id ? next : item);
+            state.modal = null;
+            openPoolEditor(next.id);
+          } else {
+            pool = normalizePool({
+              ...pool,
+              fields,
+              items,
+              revision: 1
+            });
+            await put("pools", pool);
+            state.pools.unshift(pool);
+            requestPersistentStorage();
+            state.modal = null;
+            openPoolEditor(pool.id);
+          }
+        } catch (error) {
+          importer.error = error?.message || "Could not import data.";
+          render();
+        }
+      }
+    }, sourcePool ? "Import items" : "Create Pool")
+  ]));
+}
+
+function renderSaveToolPoolModal(modal, config) {
+  const ts = ensureToolState(config.toolId);
+  const tool = getTool(config.toolId);
+  const name = node("input", {
+    class: "field",
+    placeholder: "Pool name",
+    value: config.name,
+    "aria-label": "Pool name"
+  });
+  name.addEventListener("input", () => {
+    config.name = name.value;
+  });
+
+  const kind = node("select", {
+    class: "field",
+    "aria-label": "Pool kind"
+  }, ["generic", "people", "choices", "tasks"].map((value) =>
+    node("option", { value, text: value })
+  ));
+  kind.value = config.kind;
+  kind.addEventListener("change", () => {
+    config.kind = kind.value;
+  });
+
+  modal.append(
+    node("h2", { text: "Save current list as Pool" }),
+    node("p", {
+      text: "This saves the current run input as a reusable source. Later edits to the Pool will not rewrite this run automatically."
+    }),
+    name,
+    kind,
+    node("div", { class: "modal-actions" }, [
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => {
+          state.modal = null;
+          render();
+        }
+      }, "Cancel"),
+      node("button", {
+        class: "primary",
+        type: "button",
+        onClick: async () => {
+          try {
+            const labels = parseList(ts.listText);
+            if (!labels.length) throw new Error("Current list is empty.");
+
+            const weights = selectionTools.has(tool.id)
+              ? reconcileSelectionEntries(labels, ts.selectionEntries || [])
+              : labels.map(() => ({ weight: 1 }));
+
+            const pool = createPool({
+              name: config.name,
+              kind: config.kind,
+              items: labels.map((label, index) => ({
+                label,
+                weight: weights[index]?.weight ?? 1,
+                active: true
+              }))
+            });
+
+            await put("pools", pool);
+            state.pools.unshift(pool);
+            applyWorkingSetToTool(tool.id, ts, createWorkingSet(pool));
+            ts.workingSetDirty = false;
+            requestPersistentStorage();
+            state.modal = null;
+            render();
+          } catch (error) {
+            config.error = error.message;
+            render();
+          }
+        }
+      }, "Save Pool")
+    ])
+  );
+
+  if (config.error) modal.prepend(toolError(config.error));
+}
+
 function renderModal() {
   if (!state.modal) return null;
 
