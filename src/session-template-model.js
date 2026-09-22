@@ -126,7 +126,7 @@ export function createSessionTemplate({
 
   const timestamp = now();
   return {
-    id: uuid(),
+    id: builtinKey ? "builtin:" + String(builtinKey) : uuid(),
     schemaVersion: SESSION_TEMPLATE_SCHEMA_VERSION,
     revision: 1,
     name: cleanName,
