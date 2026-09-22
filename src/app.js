@@ -559,6 +559,10 @@ function snapshotToolState(toolId, toolState) {
   delete snapshot.rulesOpen;
   delete snapshot.diceHelpOpen;
   delete snapshot.presentation;
+  delete snapshot.activePresetId;
+  delete snapshot.templateSessionId;
+  delete snapshot.templateStepIndex;
+  delete snapshot.templateStepId;
   delete snapshot.activeSessionId;
   delete snapshot.replayRunId;
   return snapshot;
@@ -689,6 +693,169 @@ function setupFingerprintFor(toolId, toolState) {
 
 function runsByIdMap() {
   return new Map(state.runs.map((run) => [run.id, run]));
+}
+
+function presetById(id) {
+  return state.presets.find((preset) => preset.id === id) || null;
+}
+
+function ruleSetById(id) {
+  return state.ruleSets.find((ruleSet) => ruleSet.id === id) || null;
+}
+
+function allSessionTemplates() {
+  return [
+    ...BUILTIN_SESSION_TEMPLATES,
+    ...state.sessionTemplates
+  ];
+}
+
+function sessionTemplateById(id) {
+  return allSessionTemplates().find((template) => template.id === id) || null;
+}
+
+function templateSessionById(id) {
+  return state.templateSessions.find((session) => session.id === id) || null;
+}
+
+function replaceTemplateSession(next) {
+  state.templateSessions = [
+    next,
+    ...state.templateSessions.filter((session) => session.id !== next.id)
+  ].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function presetConfigSnapshot(toolId, toolState) {
+  const snapshot = setupSnapshot(toolId, toolState);
+  delete snapshot.listText;
+  delete snapshot.workingSet;
+  delete snapshot.workingSetDirty;
+  delete snapshot.rules;
+  return snapshot;
+}
+
+function frozenPresetItems(toolId, toolState) {
+  const labels = parseList(toolState.listText);
+  const selection = selectionTools.has(toolId)
+    ? reconcileSelectionEntries(labels, toolState.selectionEntries || [])
+    : labels.map((label, index) => ({
+        key: label + "\u001f" + (index + 1),
+        label,
+        weight: 1,
+        excluded: false
+      }));
+
+  const workingItems = toolState.workingSet?.items || [];
+  const aligned = workingItems.length === labels.length;
+
+  return labels.map((label, index) => ({
+    id: aligned
+      ? String(workingItems[index].id)
+      : crypto.randomUUID(),
+    label,
+    weight: Number(selection[index]?.weight ?? workingItems[index]?.weight ?? 1),
+    tags: aligned && Array.isArray(workingItems[index].tags)
+      ? [...workingItems[index].tags]
+      : [],
+    values: aligned && workingItems[index].values
+      ? { ...workingItems[index].values }
+      : {}
+  }));
+}
+
+async function applyPresetToTool(preset, {
+  open = true,
+  preserveTemplateContext = false
+} = {}) {
+  if (!preset) return null;
+  const tool = getTool(preset.toolId);
+  if (!tool) throw new Error("Preset tool is no longer available.");
+
+  const previous = ensureToolState(tool.id);
+  if (previous.activeSessionId && isStatefulTool(tool.id)) {
+    await endActiveSession(tool.id, "abandoned", true);
+  }
+
+  const next = {
+    ...ensureToolState(tool.id),
+    ...cloneData(preset.configSnapshot || {}),
+    result: null,
+    error: null,
+    animating: false,
+    presentation: null,
+    pendingWheelRotation: null,
+    activePresetId: preset.id,
+    replayRunId: null,
+    activeSessionId: null
+  };
+
+  if (!preserveTemplateContext) {
+    next.templateSessionId = null;
+    next.templateStepIndex = null;
+    next.templateStepId = null;
+  }
+
+  const resolved = resolvePresetInput(preset, {
+    pools: state.pools,
+    views: state.poolViews,
+    createWorkingSet,
+    resolvePoolView
+  });
+
+  if (resolved.mode === "prompt") {
+    next.listText = "";
+    next.workingSet = null;
+    next.workingSetDirty = false;
+  } else if (resolved.workingSet) {
+    next.workingSet = resolved.workingSet;
+    next.listText = workingSetLabels(resolved.workingSet).join("\n");
+    next.workingSetDirty = false;
+  }
+
+  const sourcePoolId = next.workingSet?.source?.poolId || null;
+  const savedRuleSet = preset.ruleSetId
+    ? ruleSetById(preset.ruleSetId)
+    : null;
+
+  if (
+    savedRuleSet
+    && ruleSetCompatible(savedRuleSet, {
+      toolId: tool.id,
+      sourcePoolId
+    })
+  ) {
+    next.rules = applyRuleSet(savedRuleSet);
+  } else {
+    next.rules = cloneData(preset.rulesSnapshot || []);
+  }
+
+  state.tool[tool.id] = next;
+
+  if (selectionTools.has(tool.id)) {
+    reconcileToolSelection(tool.id, next);
+    if (resolved.workingSet) {
+      next.selectionEntries = next.selectionEntries.map((entry, index) => ({
+        ...entry,
+        weight: resolved.workingSet.items[index]?.weight ?? entry.weight,
+        excluded: false
+      }));
+    }
+  }
+
+  if (open) {
+    state.view = "tool";
+    state.toolId = tool.id;
+    state.modal = null;
+    history.replaceState(
+      {},
+      "",
+      location.pathname + "?tool=" + encodeURIComponent(tool.id)
+    );
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  return next;
 }
 
 
