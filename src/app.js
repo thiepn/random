@@ -545,12 +545,120 @@ function renderArcade() {
   return content;
 }
 
+function poolById(id) {
+  return state.pools.find((pool) => pool.id === id) || null;
+}
+
+function poolViewsFor(poolId) {
+  return state.poolViews.filter((view) => String(view.poolId) === String(poolId));
+}
+
+function openPoolEditor(poolId) {
+  const pool = poolById(poolId);
+  if (!pool) return;
+  state.modal = {
+    type: "pool-editor",
+    poolId,
+    baseRevision: pool.revision,
+    draft: normalizePool(pool),
+    search: "",
+    active: "all",
+    tagFilter: "",
+    selected: new Set(),
+    viewName: ""
+  };
+  render();
+}
+
+function openPoolImport(poolId = null) {
+  state.modal = {
+    type: "pool-import",
+    poolId,
+    text: "",
+    mode: poolId ? "append" : "new",
+    poolName: poolId ? "" : "Imported Pool",
+    hasHeader: "auto",
+    preview: null,
+    error: null
+  };
+  render();
+}
+
+async function persistPoolDraft(editor) {
+  const current = poolById(editor.poolId);
+  if (!current) throw new Error("Pool no longer exists.");
+
+  const draft = normalizePool(editor.draft);
+  const next = mutatePool(current, (target) => {
+    target.name = draft.name;
+    target.description = draft.description;
+    target.kind = draft.kind;
+    target.icon = draft.icon;
+    target.accent = draft.accent;
+    target.archived = draft.archived;
+    target.fields = draft.fields;
+    target.items = draft.items;
+    target.weightProfiles = draft.weightProfiles;
+  });
+
+  await putWithRevision("pools", next, editor.baseRevision);
+  state.pools = state.pools
+    .map((pool) => pool.id === next.id ? next : pool)
+    .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+  editor.baseRevision = next.revision;
+  editor.draft = normalizePool(next);
+  return next;
+}
+
+async function setPoolArchived(pool, archived) {
+  const next = mutatePool(pool, (draft) => {
+    draft.archived = archived;
+  });
+  await putWithRevision("pools", next, pool.revision);
+  state.pools = state.pools.map((item) => item.id === next.id ? next : item);
+  render();
+}
+
+function applyWorkingSetToTool(toolId, ts, workingSet) {
+  ts.workingSet = workingSet;
+  ts.listText = workingSetLabels(workingSet).join("\n");
+  invalidateTool(toolId, ts);
+
+  if (selectionTools.has(toolId)) {
+    reconcileToolSelection(toolId, ts);
+    ts.selectionEntries = ts.selectionEntries.map((entry, index) => ({
+      ...entry,
+      weight: workingSet.items[index]?.weight ?? 1,
+      excluded: false
+    }));
+  }
+}
+
+function workingSetFromView(pool, view) {
+  const items = resolvePoolView(pool, view);
+  return createWorkingSet(pool, { itemIds: items.map((item) => item.id) });
+}
+
 function renderPools() {
+  const activePools = state.pools.filter((pool) => {
+    if (!state.poolShowArchived && pool.archived) return false;
+    if (state.poolShowArchived && !pool.archived) return false;
+    const query = state.poolSearch.trim().toLocaleLowerCase();
+    if (!query) return true;
+    const haystack = [
+      pool.name,
+      pool.description,
+      pool.kind,
+      ...pool.items.flatMap((item) => [item.label, ...item.tags])
+    ].join(" ").toLocaleLowerCase();
+    return haystack.includes(query);
+  });
+
   const content = node("main", { class: "content" }, [
     node("h1", { class: "view-title", text: "Pools" }),
     node("p", {
       class: "view-subtitle",
-      text: "Save a list once, then reuse it across compatible randomizers."
+      text: "Reusable source data with active items, tags, fields, weights, Views, and revision-safe editing."
     }),
     node("div", { class: "button-row" }, [
       node("button", {
@@ -560,51 +668,118 @@ function renderPools() {
           state.modal = "pool";
           render();
         }
-      }, "+ New Pool")
+      }, "+ New Pool"),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => openPoolImport()
+      }, "Import CSV")
     ])
   ]);
 
-  content.append(sectionHeader("Saved pools", state.pools.length + " total"));
+  const search = node("input", {
+    class: "field pool-library-search",
+    type: "search",
+    placeholder: state.poolShowArchived ? "Search archived Pools…" : "Search Pools…",
+    value: state.poolSearch,
+    "aria-label": "Search Pools"
+  });
+  search.addEventListener("input", () => {
+    state.poolSearch = search.value;
+  });
+  search.addEventListener("change", render);
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") render();
+  });
 
-  if (!state.pools.length) {
+  const archivedToggle = node("button", {
+    class: "secondary",
+    type: "button",
+    onClick: () => {
+      state.poolShowArchived = !state.poolShowArchived;
+      state.poolSearch = "";
+      render();
+    }
+  }, state.poolShowArchived ? "← Active Pools" : "Archived");
+
+  content.append(node("div", { class: "pool-library-toolbar" }, [
+    search,
+    archivedToggle
+  ]));
+
+  content.append(sectionHeader(
+    state.poolShowArchived ? "Archived Pools" : "Saved Pools",
+    activePools.length + " shown"
+  ));
+
+  if (!activePools.length) {
     content.append(emptyState(
-      "No saved Pools yet",
-      "Paste a list once and reuse it across Wheel, Teams, Pairing, Secret Santa, and more.",
-      "Create Pool",
-      () => {
-        state.modal = "pool";
-        render();
-      }
+      state.poolShowArchived ? "No archived Pools" : "No Pools found",
+      state.poolShowArchived
+        ? "Archived Pools will appear here."
+        : "Create a Pool, import CSV/spreadsheet data, or clear the current search.",
+      !state.poolShowArchived && !state.poolSearch ? "Create Pool" : null,
+      !state.poolShowArchived && !state.poolSearch
+        ? () => {
+            state.modal = "pool";
+            render();
+          }
+        : null
     ));
     return content;
   }
 
-  const list = node("div", { class: "pool-list" });
+  const list = node("div", { class: "pool-list pool-list-v2" });
 
-  for (const pool of state.pools) {
-    list.append(node("div", { class: "pool-item" }, [
+  for (const pool of activePools) {
+    const stats = poolStats(pool);
+    const views = poolViewsFor(pool.id);
+
+    const badges = node("div", { class: "pool-badges" }, [
+      node("span", { text: stats.active + "/" + stats.total + " active" }),
+      stats.tags ? node("span", { text: stats.tags + " tags" }) : null,
+      stats.fields ? node("span", { text: stats.fields + " fields" }) : null,
+      views.length ? node("span", { text: views.length + " views" }) : null,
+      stats.duplicates ? node("span", { class: "warning", text: stats.duplicates + " duplicate groups" }) : null
+    ]);
+
+    list.append(node("article", {
+      class: "pool-item pool-card-v2" + (pool.archived ? " is-archived" : "")
+    }, [
       node("div", { class: "pool-icon", text: pool.icon || "◎" }),
       node("div", { class: "pool-copy" }, [
         node("strong", { text: pool.name }),
-        node("span", { text: pool.items.length + " items" })
+        node("span", {
+          text: (pool.description || pool.kind) + " · revision " + pool.revision
+        }),
+        badges
       ]),
-      iconButton("Use " + pool.name, "▶", () => {
-        state.modal = { type: "use-pool", poolId: pool.id };
-        render();
-      }),
-      iconButton("Delete " + pool.name, "×", async () => {
-        if (!confirm("Delete “" + pool.name + "”? Historical results remain intact.")) return;
-        await remove("pools", pool.id);
-        state.pools = state.pools.filter((item) => item.id !== pool.id);
-        render();
-      })
+      node("div", { class: "pool-card-actions" }, [
+        !pool.archived ? node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => {
+            state.modal = { type: "use-pool", poolId: pool.id };
+            render();
+          }
+        }, "Use") : null,
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => openPoolEditor(pool.id)
+        }, "Edit"),
+        node("button", {
+          class: "small-action",
+          type: "button",
+          onClick: () => setPoolArchived(pool, !pool.archived)
+        }, pool.archived ? "Restore" : "Archive")
+      ])
     ]));
   }
 
   content.append(list);
   return content;
 }
-
 function renderHistory() {
   const content = node("main", { class: "content" }, [
     node("h1", { class: "view-title", text: "History" }),
