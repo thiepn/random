@@ -3733,10 +3733,94 @@ function renderBuilder() {
     renderBuilderSimpleConfig(builder, primitivePanel);
   }
 
+  const rulesPanel = node("section", {
+    class: "builder-panel"
+  }, [
+    node("h2", { text: "3. Rules" }),
+    node("p", {
+      class: "builder-panel-copy",
+      text:
+        "Safe input rules apply to list-consuming primitives: deduplicate labels, exclude exact labels, and enforce bounded item counts."
+    })
+  ]);
+
+  if (!draft.rules) {
+    draft.rules = {
+      deduplicate: false,
+      excludedLabels: [],
+      caseSensitiveExclusions: false,
+      minItems: 1,
+      maxItems: 500
+    };
+  }
+
+  const dedupe = node("input", {
+    type: "checkbox",
+    checked: Boolean(draft.rules.deduplicate)
+  });
+  dedupe.addEventListener("change", () => {
+    draft.rules.deduplicate = dedupe.checked;
+    markBuilderDirty();
+  });
+
+  const caseSensitive = node("input", {
+    type: "checkbox",
+    checked: Boolean(draft.rules.caseSensitiveExclusions)
+  });
+  caseSensitive.addEventListener("change", () => {
+    draft.rules.caseSensitiveExclusions = caseSensitive.checked;
+    markBuilderDirty();
+  });
+
+  rulesPanel.append(
+    node("div", { class: "builder-grid" }, [
+      builderTextInput(
+        "Minimum input items",
+        draft.rules.minItems ?? 1,
+        (value) => {
+          draft.rules.minItems = value;
+          markBuilderDirty();
+        },
+        { type: "number", min: 1, max: 500 }
+      ),
+      builderTextInput(
+        "Maximum input items",
+        draft.rules.maxItems ?? 500,
+        (value) => {
+          draft.rules.maxItems = value;
+          markBuilderDirty();
+        },
+        { type: "number", min: 1, max: 500 }
+      )
+    ]),
+    builderTextarea(
+      "Excluded labels · one per line",
+      simpleLinesText(draft.rules.excludedLabels || []),
+      (value) => {
+        draft.rules.excludedLabels = parseSimpleLines(value);
+        markBuilderDirty();
+      }
+    ),
+    node("div", { class: "builder-rule-toggles" }, [
+      node("label", {
+        class: "settings-sound-toggle builder-check"
+      }, [
+        dedupe,
+        node("span", { text: "Deduplicate labels" })
+      ]),
+      node("label", {
+        class: "settings-sound-toggle builder-check"
+      }, [
+        caseSensitive,
+        node("span", { text: "Case-sensitive exclusions" })
+      ])
+    ])
+  );
+
   const appearance = node("section", {
     class: "builder-panel"
   }, [
-    node("h2", { text: "3. Appearance" }),
+    node("h2", { text: "4. Appearance" }),
     node("div", { class: "builder-grid" }, [
       builderSelect(
         "Accent",
@@ -3780,7 +3864,7 @@ function renderBuilder() {
   }, [
     node("div", { class: "builder-panel-head" }, [
       node("div", {}, [
-        node("h2", { text: "4. Test Mode" }),
+        node("h2", { text: "5. Test Mode" }),
         node("p", {
           text:
             "Test runs use a deterministic Builder-only seed. They create no Run and do not advance your app's seeded sequence."
@@ -3838,7 +3922,14 @@ function renderBuilder() {
     })
   ]);
 
-  content.append(identity, primitivePanel, appearance, test, validationPanel);
+  content.append(
+    identity,
+    primitivePanel,
+    rulesPanel,
+    appearance,
+    test,
+    validationPanel
+  );
 
   content.append(node("div", {
     class: "builder-footer"
