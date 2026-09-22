@@ -2,6 +2,12 @@ import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import { executeTool } from "./tool-engine.js";
 import {
+  normalizeSelection,
+  reconcileSelectionEntries,
+  selectionRuleSummary,
+  percentage
+} from "./selection-model.js";
+import {
   getAll,
   put,
   remove,
@@ -31,6 +37,8 @@ const palette = [
   "#7c5cff", "#2ee5ff", "#ffca3a", "#ff5577",
   "#40e38b", "#4d8dff", "#ff63c3", "#ff923e"
 ];
+
+const selectionTools = new Set(["wheel", "picker", "sampler"]);
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
@@ -128,6 +136,10 @@ function ensureToolState(toolId) {
       teamCount: 2,
       groupCount: 3,
       sampleCount: 3,
+      selectionEntries: [],
+      allowRepeats: false,
+      selectionOpen: false,
+      fairnessOpen: false,
 
       targetText: "Setup\nCleanup\nSnacks",
       ladderOutcomes: "Prize A\nPrize B\nPrize C\nPrize D",
@@ -160,6 +172,25 @@ function ensureToolState(toolId) {
     };
   }
   return state.tool[toolId];
+}
+
+function syncSelectionState(toolId, toolState) {
+  if (!selectionTools.has(toolId)) return null;
+  const items = parseList(toolState.listText);
+  toolState.selectionEntries = reconcileSelectionEntries(
+    items,
+    toolState.selectionEntries || []
+  );
+  return normalizeSelection(items, toolState.selectionEntries);
+}
+
+function currentSelectionModel(toolId, toolState) {
+  if (!selectionTools.has(toolId)) return null;
+  try {
+    return syncSelectionState(toolId, toolState);
+  } catch {
+    return null;
+  }
 }
 
 function invalidateTool(toolId, toolState, resetSession = false) {
