@@ -1056,7 +1056,9 @@ function buildStage(tool, ts) {
   } else if (tool.id === "pairs" && Array.isArray(result)) {
     wrap.append(
       node("div", { class: "stage-label", text: "Random pairs" }),
-      resultList(result.map((pair) => pair.join("  ↔  ")))
+      resultList(result.map((pair) =>
+        pair.length === 2 ? pair.join("  ↔  ") : pair[0] + "  —  unmatched"
+      ))
     );
   } else if (tool.id === "assignment" && Array.isArray(result)) {
     wrap.append(
@@ -1741,7 +1743,9 @@ function summarizeResult(id, result) {
   }
 
   if (id === "pairs") {
-    return result.map((group) => group.join(" & ")).join(" | ");
+    return result.map((group) =>
+      group.length === 2 ? group.join(" & ") : group[0] + " — unmatched"
+    ).join(" | ");
   }
 
   if (id === "assignment" || id === "ladder") {
@@ -2006,6 +2010,7 @@ async function init() {
       const secret = state.tool["secret-santa"];
       if (secret?.secretReveal != null) {
         secret.secretReveal = null;
+        render();
       }
     }
   });
