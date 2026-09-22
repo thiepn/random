@@ -950,10 +950,11 @@ async function openTemplateStep(session, stepIndex) {
     ts.workingSet = null;
     ts.workingSetDirty = false;
     if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
-  } else if (definition.input.kind === "prompt" && !preset) {
+  } else if (definition.input.kind === "prompt") {
     ts.listText = "";
     ts.workingSet = null;
     ts.workingSetDirty = false;
+    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
   }
 
   ts.templateSessionId = session.id;
@@ -6492,6 +6493,558 @@ function renderAddRuleModal(modal, config) {
   ]));
 }
 
+function renderSavePresetModal(modal, config) {
+  const tool = getTool(config.toolId);
+  const ts = ensureToolState(config.toolId);
+  const source = ts.workingSet?.source || null;
+
+  modal.classList.add("setup-modal");
+  modal.append(
+    node("h2", { text: "Save Preset" }),
+    node("p", {
+      text: "A Preset saves tool configuration. Choose whether its input stays live, is frozen now, or is requested fresh each time."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  const name = node("input", {
+    class: "field",
+    placeholder: "Preset name",
+    value: config.name,
+    "aria-label": "Preset name"
+  });
+  name.addEventListener("input", () => { config.name = name.value; });
+
+  const description = node("input", {
+    class: "field",
+    placeholder: "Description (optional)",
+    value: config.description,
+    "aria-label": "Preset description"
+  });
+  description.addEventListener("input", () => {
+    config.description = description.value;
+  });
+
+  const options = [];
+  if (listInputTools.has(tool.id)) {
+    if (source?.poolId) {
+      options.push(
+        node("option", {
+          value: "live-source",
+          text: source.viewId ? "Live View" : "Live Pool"
+        })
+      );
+    }
+    options.push(
+      node("option", { value: "frozen", text: "Freeze current input" }),
+      node("option", { value: "prompt", text: "Ask for fresh input" })
+    );
+  } else {
+    options.push(node("option", {
+      value: "none",
+      text: "No list input"
+    }));
+  }
+
+  const binding = node("select", {
+    class: "field",
+    "aria-label": "Preset input binding"
+  }, options);
+  binding.value = config.bindingMode;
+  binding.addEventListener("change", () => {
+    config.bindingMode = binding.value;
+  });
+
+  const favorite = node("input", {
+    type: "checkbox",
+    checked: config.favorite,
+    "aria-label": "Favorite Preset"
+  });
+  favorite.addEventListener("change", () => {
+    config.favorite = favorite.checked;
+  });
+
+  const sourcePoolId = source?.poolId || null;
+  const compatibleSets = state.ruleSets.filter((ruleSet) =>
+    ruleSetCompatible(ruleSet, {
+      toolId: tool.id,
+      sourcePoolId
+    })
+  );
+
+  const ruleSetSelect = node("select", {
+    class: "field",
+    "aria-label": "Saved Rule Set"
+  }, [
+    node("option", { value: "", text: "Keep current rules in Preset" }),
+    ...compatibleSets.map((ruleSet) =>
+      node("option", { value: ruleSet.id, text: ruleSet.name })
+    )
+  ]);
+  ruleSetSelect.value = config.ruleSetId || "";
+  ruleSetSelect.addEventListener("change", () => {
+    config.ruleSetId = ruleSetSelect.value || null;
+  });
+
+  modal.append(
+    name,
+    description,
+    binding,
+    constraintTools.has(tool.id) ? ruleSetSelect : null,
+    node("label", { class: "settings-sound-toggle setup-favorite-toggle" }, [
+      favorite,
+      node("span", { text: "Favorite Preset" })
+    ])
+  );
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: async () => {
+        try {
+          let inputBinding = { mode: "none" };
+
+          if (config.bindingMode === "live-source") {
+            if (!source?.poolId) {
+              throw new Error("No live Pool or View is attached.");
+            }
+            inputBinding = source.viewId
+              ? {
+                  mode: "live-view",
+                  poolId: source.poolId,
+                  viewId: source.viewId
+                }
+              : {
+                  mode: "live-pool",
+                  poolId: source.poolId
+                };
+          } else if (config.bindingMode === "frozen") {
+            inputBinding = {
+              mode: "frozen",
+              items: frozenPresetItems(tool.id, ts),
+              fields: cloneData(ts.workingSet?.fields || []),
+              sourceLabel: source?.name || "Frozen input"
+            };
+          } else if (config.bindingMode === "prompt") {
+            inputBinding = { mode: "prompt" };
+          }
+
+          const preset = createPreset({
+            name: config.name,
+            description: config.description,
+            toolId: tool.id,
+            inputBinding,
+            configSnapshot: presetConfigSnapshot(tool.id, ts),
+            rulesSnapshot: cloneData(ts.rules || []),
+            ruleSetId: config.ruleSetId,
+            favorite: config.favorite
+          });
+
+          await put("presets", preset);
+          state.presets = [preset, ...state.presets];
+          ts.activePresetId = preset.id;
+          state.modal = null;
+          render();
+          announce("Preset saved.");
+        } catch (error) {
+          config.error = error?.message || "Could not save Preset.";
+          render();
+        }
+      }
+    }, "Save Preset")
+  ]));
+}
+
+function renderPresetDetailModal(modal, config) {
+  const preset = presetById(config.presetId);
+  if (!preset) {
+    modal.append(node("h2", { text: "Preset unavailable" }));
+    return;
+  }
+
+  const tool = getTool(preset.toolId);
+  modal.append(
+    node("h2", { text: preset.name }),
+    node("p", {
+      text:
+        (tool?.name || preset.toolId)
+        + " · "
+        + preset.inputBinding.mode
+    })
+  );
+
+  if (preset.description) {
+    modal.append(node("div", {
+      class: "notice",
+      text: preset.description
+    }));
+  }
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: () => applyPresetToTool(preset)
+    }, "Play"),
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => togglePresetFavorite(preset)
+    }, preset.favorite ? "Unfavorite" : "Favorite"),
+    node("button", {
+      class: "danger",
+      type: "button",
+      onClick: async () => {
+        await deletePreset(preset);
+        state.modal = null;
+        render();
+      }
+    }, "Delete"),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Close")
+  ]));
+}
+
+function renderSaveRuleSetModal(modal, config) {
+  const tool = getTool(config.toolId);
+  const ts = ensureToolState(config.toolId);
+  const source = ts.workingSet?.source || null;
+
+  modal.append(
+    node("h2", { text: "Save Rule Set" }),
+    node("p", {
+      text: "Portable sets use only general rules. Item- or field-specific rules stay tied to their source Pool."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  const name = node("input", {
+    class: "field",
+    placeholder: "Rule Set name",
+    value: config.name,
+    "aria-label": "Rule Set name"
+  });
+  name.addEventListener("input", () => { config.name = name.value; });
+
+  modal.append(name);
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      onClick: async () => {
+        try {
+          const ruleSet = createRuleSet({
+            name: config.name,
+            toolId: tool.id,
+            rules: ts.rules,
+            sourcePoolId: source?.poolId || null,
+            sourcePoolRevision: source?.revision || null,
+            favorite: config.favorite
+          });
+          await put("ruleSets", ruleSet);
+          state.ruleSets = [ruleSet, ...state.ruleSets];
+          state.modal = null;
+          render();
+          announce("Rule Set saved.");
+        } catch (error) {
+          config.error = error?.message || "Could not save Rule Set.";
+          render();
+        }
+      }
+    }, "Save Rule Set")
+  ]));
+}
+
+function renderUseResultModal(modal, config) {
+  const items = resultToItems(config.sourceToolId, config.result);
+  const targets = [...listInputTools]
+    .filter((id) => id !== config.sourceToolId)
+    .map(getTool)
+    .filter(Boolean);
+
+  modal.classList.add("use-result-modal");
+  modal.append(
+    node("h2", { text: "Use Result In…" }),
+    node("p", {
+      text:
+        items.length
+        + " reusable item"
+        + (items.length === 1 ? "" : "s")
+        + " can be sent into another list-based tool."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  if (items.length) {
+    modal.append(node("div", { class: "use-result-preview" },
+      items.slice(0, 10).map((item) =>
+        node("span", { text: item })
+      )
+    ));
+  }
+
+  modal.append(node("div", { class: "tool-grid modal-tool-grid" },
+    targets.map((tool) =>
+      node("button", {
+        class: "tool-card accent-" + tool.accent,
+        type: "button",
+        disabled: items.length ? null : "disabled",
+        onClick: async () => {
+          try {
+            const targetState = ensureToolState(tool.id);
+
+            if (
+              targetState.activeSessionId
+              && isStatefulTool(tool.id)
+            ) {
+              await endActiveSession(tool.id, "abandoned", true);
+            }
+
+            const next = ensureToolState(tool.id);
+            next.listText = items.join("\n");
+            next.workingSet = null;
+            next.workingSetDirty = false;
+            next.activePresetId = null;
+            next.templateSessionId = null;
+            next.templateStepIndex = null;
+            next.templateStepId = null;
+            invalidateTool(tool.id, next);
+
+            state.modal = null;
+            openTool(tool.id);
+          } catch (error) {
+            config.error = error?.message || "Could not reuse result.";
+            render();
+          }
+        }
+      }, [
+        node("span", {
+          class: "tool-icon",
+          text: tool.icon,
+          "aria-hidden": "true"
+        }),
+        node("strong", { text: tool.name }),
+        node("small", { text: tool.blurb })
+      ])
+    )
+  ));
+}
+
+function renderNewSessionTemplateModal(modal, config) {
+  modal.classList.add("template-builder-modal");
+  modal.append(
+    node("h2", { text: "New Session Template" }),
+    node("p", {
+      text: "Combine saved Presets into a linear session. A later step may replace its Preset input with the previous step's result."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  if (!state.presets.length) {
+    modal.append(node("div", {
+      class: "constraint-validation is-warning"
+    }, [
+      node("strong", { text: "Save a Preset first" }),
+      node("span", {
+        text: "Custom Session Templates are built from saved Presets so each step has a reusable configuration."
+      })
+    ]));
+  }
+
+  const name = node("input", {
+    class: "field",
+    placeholder: "Template name",
+    value: config.name,
+    "aria-label": "Template name"
+  });
+  name.addEventListener("input", () => { config.name = name.value; });
+
+  const description = node("input", {
+    class: "field",
+    placeholder: "Description (optional)",
+    value: config.description,
+    "aria-label": "Template description"
+  });
+  description.addEventListener("input", () => {
+    config.description = description.value;
+  });
+
+  modal.append(name, description);
+
+  const steps = node("div", { class: "template-builder-steps" });
+
+  config.steps.forEach((step, index) => {
+    const presetSelect = node("select", {
+      class: "field",
+      "aria-label": "Preset for step " + (index + 1)
+    }, state.presets.map((preset) =>
+      node("option", {
+        value: preset.id,
+        text:
+          preset.name
+          + " · "
+          + (getTool(preset.toolId)?.name || preset.toolId)
+      })
+    ));
+    presetSelect.value = step.presetId;
+    presetSelect.addEventListener("change", () => {
+      step.presetId = presetSelect.value;
+    });
+
+    const kinds = index === 0
+      ? [
+          ["preset", "Use Preset input"],
+          ["prompt", "Ask for fresh input"]
+        ]
+      : [
+          ["preset", "Use Preset input"],
+          ["previous", "Previous result"],
+          ["prompt", "Ask for fresh input"]
+        ];
+
+    const inputKind = node("select", {
+      class: "field",
+      "aria-label": "Input source for step " + (index + 1)
+    }, kinds.map(([value, label]) =>
+      node("option", { value, text: label })
+    ));
+    inputKind.value = step.inputKind;
+    inputKind.addEventListener("change", () => {
+      step.inputKind = inputKind.value;
+    });
+
+    steps.append(node("div", { class: "template-builder-step" }, [
+      node("span", {
+        class: "template-step-number",
+        text: String(index + 1)
+      }),
+      presetSelect,
+      inputKind,
+      config.steps.length > 1
+        ? node("button", {
+            class: "small-action",
+            type: "button",
+            onClick: () => {
+              config.steps.splice(index, 1);
+              render();
+            }
+          }, "×")
+        : null
+    ]));
+  });
+
+  modal.append(
+    steps,
+    node("button", {
+      class: "small-action",
+      type: "button",
+      disabled:
+        config.steps.length >= 8 || !state.presets.length
+          ? "disabled"
+          : null,
+      onClick: () => {
+        config.steps.push({
+          presetId: state.presets[0]?.id || "",
+          inputKind: config.steps.length ? "previous" : "preset"
+        });
+        render();
+      }
+    }, "+ Add step")
+  );
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: "primary",
+      type: "button",
+      disabled: state.presets.length ? null : "disabled",
+      onClick: async () => {
+        try {
+          if (!config.steps.length) throw new Error("Add at least one step.");
+
+          const ids = config.steps.map(() => crypto.randomUUID());
+          const definitions = config.steps.map((step, index) => {
+            const preset = presetById(step.presetId);
+            if (!preset) {
+              throw new Error("Every step needs a saved Preset.");
+            }
+
+            const input = step.inputKind === "previous"
+              ? {
+                  kind: "previous",
+                  sourceStepId: ids[index - 1]
+                }
+              : step.inputKind === "prompt"
+                ? { kind: "prompt" }
+                : {
+                    kind: "preset",
+                    presetId: preset.id
+                  };
+
+            return {
+              id: ids[index],
+              name: preset.name,
+              toolId: preset.toolId,
+              presetId: preset.id,
+              input
+            };
+          });
+
+          const template = createSessionTemplate({
+            name: config.name,
+            description: config.description,
+            steps: definitions
+          });
+
+          await put("sessionTemplates", template);
+          state.sessionTemplates = [template, ...state.sessionTemplates];
+          state.modal = null;
+          render();
+          announce("Session Template saved.");
+        } catch (error) {
+          config.error = error?.message || "Could not save Template.";
+          render();
+        }
+      }
+    }, "Save Template")
+  ]));
+}
+
 function renderRunDetailModal(modal, config) {
   const run = historyRunById(config.runId);
   if (!run) {
@@ -6626,6 +7179,31 @@ function renderModal() {
   });
 
   if (
+    typeof state.modal === "object"
+    && state.modal.type === "save-preset"
+  ) {
+    renderSavePresetModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "preset-detail"
+  ) {
+    renderPresetDetailModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "save-rule-set"
+  ) {
+    renderSaveRuleSetModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "use-result"
+  ) {
+    renderUseResultModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
+    && state.modal.type === "new-session-template"
+  ) {
+    renderNewSessionTemplateModal(modal, state.modal);
+  } else if (
     typeof state.modal === "object"
     && state.modal.type === "run-detail"
   ) {
