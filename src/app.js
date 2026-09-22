@@ -62,6 +62,15 @@ import {
   legacyHistoryToRun,
   groupHistoryRuns
 } from "./session-model.js";
+import {
+  normalizeExperienceSettings,
+  presentationPlan,
+  primeAudio,
+  playPresentationCue,
+  playWheelTick,
+  playHaptic,
+  cancelHaptics
+} from "./presentation-engine.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -100,6 +109,9 @@ const constraintTools = new Set([
   "secret-santa",
   "tournament"
 ]);
+
+const presentationTimers = new Map();
+const wheelTickTimers = new Map();
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
@@ -245,6 +257,7 @@ function ensureToolState(toolId) {
       dateEnd: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 
       deck: null,
+      presentation: null,
       activeSessionId: null,
       replayRunId: null
     };
@@ -278,6 +291,9 @@ function currentSelectionModel(toolId, toolState) {
 }
 
 function invalidateTool(toolId, toolState, resetSession = false) {
+  clearPresentationTimers(toolId);
+  cancelHaptics();
+  toolState.presentation = null;
   toolState.result = null;
   toolState.error = null;
   toolState.animating = false;
@@ -301,6 +317,124 @@ function invalidateTool(toolId, toolState, resetSession = false) {
   if (resetSession && toolId === "cards") {
     toolState.deck = null;
   }
+}
+
+function presentationCapabilities() {
+  return {
+    reducedMotion:
+      typeof window !== "undefined"
+      && typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    hardwareConcurrency:
+      typeof navigator !== "undefined"
+        ? navigator.hardwareConcurrency
+        : undefined,
+    deviceMemory:
+      typeof navigator !== "undefined"
+        ? navigator.deviceMemory
+        : undefined
+  };
+}
+
+function clearPresentationTimers(toolId) {
+  const timer = presentationTimers.get(toolId);
+  if (timer) {
+    clearTimeout(timer);
+    presentationTimers.delete(toolId);
+  }
+
+  const tick = wheelTickTimers.get(toolId);
+  if (tick) {
+    clearInterval(tick);
+    wheelTickTimers.delete(toolId);
+  }
+}
+
+function finishPresentation(toolId, token = null, shouldRender = true) {
+  const ts = ensureToolState(toolId);
+  if (token && ts.presentation?.token !== token) return;
+
+  clearPresentationTimers(toolId);
+  cancelHaptics();
+
+  ts.animating = false;
+  if (toolId === "wheel") {
+    ts.pendingWheelRotation = null;
+    ts.previousWheelRotation = ts.wheelRotation;
+  }
+  ts.presentation = null;
+
+  if (shouldRender && state.toolId === toolId) render();
+}
+
+function skipPresentation(toolId) {
+  const ts = ensureToolState(toolId);
+  if (!ts.animating && !ts.presentation) return false;
+  finishPresentation(toolId, ts.presentation?.token || null, true);
+  announce("Reveal skipped. The committed result is unchanged.");
+  return true;
+}
+
+function beginPresentation(toolId, ts, result) {
+  clearPresentationTimers(toolId);
+
+  const settings = normalizeExperienceSettings(state.settings);
+  state.settings = settings;
+  const plan = presentationPlan({
+    toolId,
+    settings,
+    capabilities: presentationCapabilities(),
+    result
+  });
+
+  const token =
+    String(Date.now())
+    + ":"
+    + toolId
+    + ":"
+    + String(state.runs[0]?.id || "");
+
+  ts.presentation = {
+    ...plan,
+    token,
+    active: plan.duration > 0,
+    startedAt: Date.now()
+  };
+  ts.animating = plan.duration > 0;
+
+  primeAudio(settings.presentation.sound);
+  playPresentationCue(plan.cue, {
+    enabled: settings.presentation.sound,
+    mode: plan.mode
+  });
+  playHaptic(plan.haptic, settings.presentation.haptics);
+
+  if (
+    toolId === "wheel"
+    && plan.tickMs > 0
+    && settings.presentation.sound
+  ) {
+    const tick = setInterval(() => {
+      playWheelTick({
+        enabled: settings.presentation.sound,
+        mode: plan.mode
+      });
+    }, plan.tickMs);
+    wheelTickTimers.set(toolId, tick);
+  }
+
+  if (plan.duration > 0) {
+    const timer = setTimeout(
+      () => finishPresentation(toolId, token, true),
+      plan.duration
+    );
+    presentationTimers.set(toolId, timer);
+  } else {
+    ts.presentation = null;
+    ts.animating = false;
+  }
+
+  return plan;
 }
 
 function prepareRandomSource() {
@@ -364,7 +498,7 @@ async function loadData() {
   state.sessions = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
   state.historyPins = new Set(pins.map((entry) => entry.id));
   state.favorites = favorites.map((entry) => entry.id);
-  state.settings = settings;
+  state.settings = normalizeExperienceSettings(settings);
 }
 
 function cloneData(value) {
@@ -380,6 +514,7 @@ function snapshotToolState(toolId, toolState) {
   delete snapshot.fairnessOpen;
   delete snapshot.rulesOpen;
   delete snapshot.diceHelpOpen;
+  delete snapshot.presentation;
   delete snapshot.activeSessionId;
   delete snapshot.replayRunId;
   return snapshot;
@@ -3862,13 +3997,13 @@ async function runTool(id) {
   const tool = getTool(id);
   let ts = ensureToolState(id);
 
-  if (ts.animating) {
-    ts.animating = false;
-    ts.pendingWheelRotation = null;
-    ts.previousWheelRotation = ts.wheelRotation;
-    render();
-    return;
+  if (ts.animating || ts.presentation) {
+    if (skipPresentation(id)) return;
   }
+
+  primeAudio(
+    normalizeExperienceSettings(state.settings).presentation.sound
+  );
 
   if (ts.replayRunId) {
     ts.error = "Replay is view-only. Use Rerun to create a new result.";
@@ -4000,7 +4135,7 @@ async function runTool(id) {
       sessionId: nextSession?.id || null
     });
 
-    let animationDuration = 0;
+    const plan = beginPresentation(id, ts, result);
 
     if (id === "wheel") {
       const index = output.detail.selectedIndex;
@@ -4015,22 +4150,10 @@ async function runTool(id) {
       ts.previousWheelRotation = previous;
       ts.pendingWheelRotation = target;
       ts.wheelRotation = target;
-      ts.animating = true;
-      animationDuration = 1700;
-    } else if (id === "coin") {
-      ts.animating = true;
-      animationDuration = 850;
-    } else if (id === "dice") {
-      ts.animating = true;
-      animationDuration = 720;
+      ts.animating = plan.duration > 0;
     }
 
     render();
-
-    if (animationDuration) {
-      window.setTimeout(() => finishAnimation(id), animationDuration);
-    }
-
     announce(tool.name + " result: " + summary);
   } catch (error) {
     ts = ensureToolState(id);
@@ -4040,12 +4163,7 @@ async function runTool(id) {
   }
 }
 function finishAnimation(id) {
-  const ts = ensureToolState(id);
-  if (!ts.animating) return;
-  ts.animating = false;
-  ts.pendingWheelRotation = null;
-  ts.previousWheelRotation = ts.wheelRotation;
-  if (state.toolId === id) render();
+  finishPresentation(id, null, true);
 }
 
 async function shareCurrentResult() {
