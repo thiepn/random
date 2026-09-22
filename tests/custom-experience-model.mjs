@@ -31,6 +31,8 @@ import {
   assert.equal(experience.status, "draft");
   assert.equal(experience.config.entries[1].weight, 3);
   assert.equal(experience.appearance.layout, "wheel");
+  assert.equal(experience.rules.minItems, 1);
+  assert.equal(experience.rules.maxItems, 500);
 
   const published = publishCustomExperience(experience);
   assert.equal(published.status, "published");
@@ -149,3 +151,50 @@ assert.throws(
 );
 
 console.log("Custom Experience model certification tests passed.");
+
+
+assert.equal(
+  validateCustomExperience({
+    name: "Bad Dice",
+    primitive: "dice",
+    config: { expression: "not dice" }
+  }).valid,
+  false
+);
+
+assert.equal(
+  validateCustomExperience({
+    name: "Bad Number",
+    primitive: "number",
+    config: {
+      mode: "integer",
+      min: 0.5,
+      max: 10,
+      count: 1
+    }
+  }).valid,
+  false
+);
+
+assert.equal(
+  validateCustomExperience({
+    name: "Bad Dependency Type",
+    primitive: "compound",
+    config: {
+      steps: [
+        {
+          id: "a",
+          primitive: "pick",
+          config: { entries: ["A", "B"] }
+        },
+        {
+          id: "b",
+          primitive: "number",
+          input: { kind: "step", stepId: "a" },
+          config: { min: 1, max: 10, count: 1 }
+        }
+      ]
+    }
+  }).valid,
+  false
+);
