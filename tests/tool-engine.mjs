@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { SeededRandom } from "../src/random-core.js";
+import { SeededRandom, pick } from "../src/random-core.js";
 import {
   executeTool,
   buildLadder,
@@ -23,6 +23,76 @@ function run(tool, config = {}, seed = tool) {
   const result = run("sampler", { items: ["A", "B", "C", "D"], sampleCount: 3 });
   assert.equal(result.result.length, 3);
   assert.equal(new Set(result.result).size, 3);
+}
+
+{
+  const seed = "picker-default-compat";
+  const input = ["A", "B", "C", "D"];
+  const expected = pick(input, new SeededRandom(seed));
+  const actual = run("picker", { items: input, selectionEntries: [] }, seed);
+  assert.equal(actual.result, expected);
+}
+
+{
+  for (let index = 0; index < 80; index += 1) {
+    const result = run("picker", {
+      items: ["Never", "Sometimes", "Often"],
+      selectionEntries: [
+        { key: "Never\u001f1", label: "Never", weight: 0, excluded: false },
+        { key: "Sometimes\u001f1", label: "Sometimes", weight: 1, excluded: false },
+        { key: "Often\u001f1", label: "Often", weight: 4, excluded: false }
+      ]
+    }, "weighted-picker-" + index);
+    assert.notEqual(result.result, "Never");
+    const total = result.fairness.probabilities.reduce(
+      (sum, entry) => sum + entry.probability,
+      0
+    );
+    assert.ok(Math.abs(total - 1) < 1e-12);
+  }
+}
+
+{
+  const result = run("wheel", {
+    items: ["Excluded", "A", "B"],
+    selectionEntries: [
+      { key: "Excluded\u001f1", label: "Excluded", weight: 100, excluded: true },
+      { key: "A\u001f1", label: "A", weight: 1, excluded: false },
+      { key: "B\u001f1", label: "B", weight: 3, excluded: false }
+    ]
+  }, "weighted-wheel");
+  assert.notEqual(result.result, "Excluded");
+  assert.equal(result.fairness.eligibleCount, 2);
+  assert.equal(result.fairness.excludedCount, 1);
+}
+
+{
+  const unique = run("sampler", {
+    items: ["A", "B", "C", "D"],
+    sampleCount: 3,
+    allowRepeats: false,
+    selectionEntries: [
+      { key: "A\u001f1", label: "A", weight: 1, excluded: false },
+      { key: "B\u001f1", label: "B", weight: 2, excluded: false },
+      { key: "C\u001f1", label: "C", weight: 3, excluded: false },
+      { key: "D\u001f1", label: "D", weight: 4, excluded: false }
+    ]
+  }, "weighted-sampler-unique");
+  assert.equal(new Set(unique.result).size, 3);
+  assert.equal(unique.fairness.probabilityMeaning, "first-draw-then-renormalized");
+
+  const repeated = run("sampler", {
+    items: ["A", "B"],
+    sampleCount: 5,
+    allowRepeats: true,
+    selectionEntries: [
+      { key: "A\u001f1", label: "A", weight: 1, excluded: false },
+      { key: "B\u001f1", label: "B", weight: 0, excluded: false }
+    ]
+  }, "weighted-sampler-repeat");
+  assert.deepEqual(repeated.result, ["A", "A", "A", "A", "A"]);
+  assert.equal(repeated.fairness.allowRepeats, true);
+  assert.equal(repeated.fairness.probabilityMeaning, "each-draw");
 }
 
 {
