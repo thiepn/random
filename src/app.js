@@ -116,7 +116,8 @@ import {
 } from "./custom-experience-model.js";
 import {
   executeCustomExperience,
-  customResultItems
+  customResultItems,
+  prepareCustomListEntries
 } from "./custom-engine.js";
 
 const root = document.getElementById("app");
@@ -3949,7 +3950,15 @@ function renderBuilder() {
     node("button", {
       class: "small-action",
       type: "button",
-      onClick: () => downloadCustomExperience(draft)
+      disabled: validation.valid ? null : "disabled",
+      onClick: () => {
+        try {
+          downloadCustomExperience(draft);
+        } catch (error) {
+          builder.error = error?.message || "Could not export.";
+          render();
+        }
+      }
     }, "Export"),
     node("span", {
       class: "builder-footer-spacer"
@@ -5665,15 +5674,14 @@ function particleField(presentation) {
 function customWheelModel(experience, ts) {
   if (!experience) return null;
 
-  const entries = experience.config.source === "prompt"
-    ? parseList(ts.customInputText).map((label, index) => ({
-        id: "prompt:" + index,
-        label,
-        weight: 1
-      }))
-    : experience.config.entries || [];
-
   try {
+    const entries = prepareCustomListEntries(
+      experience,
+      {
+        inputItems: parseList(ts.customInputText)
+      }
+    );
+
     return normalizeSelection(
       entries.map((entry) => entry.label),
       entries.map((entry, index) => ({
@@ -5700,6 +5708,7 @@ function customResultDisplay(result) {
   if (result.total != null) return String(result.total);
   if (result.card != null) return String(result.card);
   if (Array.isArray(result.cards)) return result.cards.join(", ");
+  if (Array.isArray(result.items)) return result.items.join(", ");
   if (result.output != null) return customResultDisplay(result.output);
   if (result.summary != null) return String(result.summary);
   return "RESULT";
@@ -8381,6 +8390,10 @@ async function shareCurrentResult() {
 }
 
 function summarizeResult(id, result) {
+  if (customExperienceFromToolId(id)) {
+    return customResultDisplay(result);
+  }
+
   if (id === "dice") {
     if (result.mode === "expression") {
       return result.expression + " = " + result.total;
