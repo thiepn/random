@@ -4840,164 +4840,1434 @@ function renderHistory() {
   content.append(list);
   return content;
 }
-function studioNode(index, title, copy) {
-  return node("div", { class: "studio-node" }, [
-    node("strong", { text: index + ". " + title }),
-    node("span", { text: copy })
+function workflowPresetChoices() {
+  return state.presets.filter((preset) => {
+    const tool = resolveTool(preset.toolId);
+    return tool && !isStatefulTool(tool.id);
+  });
+}
+
+function workflowValidation(workflow, allowDraft = false) {
+  return validateWorkflow(workflow, {
+    presetIds: new Set(state.presets.map((preset) => preset.id)),
+    allowDraft
+  });
+}
+
+function workflowNodeLabel(workflow, nodeId) {
+  return workflow.nodes.find((node) => node.id === nodeId)?.name || "Unknown node";
+}
+
+function workflowNodeGlyph(type) {
+  return {
+    input: "IN",
+    tool: "✦",
+    branch: "◇",
+    output: "OUT"
+  }[type] || "•";
+}
+
+function workflowStatusText(status) {
+  return {
+    active: "Running",
+    paused: "Paused",
+    completed: "Completed",
+    abandoned: "Ended",
+    error: "Error"
+  }[status] || String(status || "Unknown");
+}
+
+function startWorkflowEditor(workflow = null) {
+  const draft = workflow
+    ? normalizeWorkflow(cloneData(workflow))
+    : createWorkflow({
+        name: "New decision workflow",
+        description: "Connect inputs, saved randomizer Presets, branches, and outcomes."
+      });
+
+  state.workflowEditor = {
+    draft,
+    baseRevision: workflow?.revision ?? null,
+    selectedNodeId: draft.startNodeId,
+    error: null
+  };
+  state.activeWorkflowSessionId = null;
+  state.view = "studio";
+  state.toolId = null;
+  history.replaceState({}, "", location.pathname + "?studio=edit");
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function closeWorkflowEditor() {
+  state.workflowEditor = null;
+  history.replaceState({}, "", location.pathname);
+  render();
+}
+
+function workflowEditorNode(nodeId) {
+  return state.workflowEditor?.draft?.nodes?.find(
+    (candidate) => candidate.id === nodeId
+  ) || null;
+}
+
+function setWorkflowEdge(draft, from, port, to) {
+  draft.edges = draft.edges.filter(
+    (edge) => !(edge.from === from && edge.port === port)
+  );
+  if (to) {
+    draft.edges.push(createWorkflowEdge(from, to, { port }));
+  }
+}
+
+function addWorkflowEditorNode(type) {
+  const editor = state.workflowEditor;
+  if (!editor) return;
+
+  const choices = workflowPresetChoices();
+  const created = createWorkflowNode(type, {
+    position: {
+      x: 60 + (editor.draft.nodes.length % 3) * 280,
+      y: 80 + Math.floor(editor.draft.nodes.length / 3) * 190
+    },
+    config:
+      type === "tool"
+        ? {
+            presetId: choices[0]?.id || "",
+            inputMode: "previous"
+          }
+        : {}
+  });
+
+  const selected = workflowEditorNode(editor.selectedNodeId);
+  if (selected && selected.type !== "output" && selected.type !== "branch") {
+    const existing = editor.draft.edges.find(
+      (edge) => edge.from === selected.id && edge.port === "next"
+    );
+    setWorkflowEdge(editor.draft, selected.id, "next", created.id);
+
+    if (created.type === "branch" && existing?.to) {
+      setWorkflowEdge(editor.draft, created.id, "true", existing.to);
+      setWorkflowEdge(editor.draft, created.id, "false", existing.to);
+    } else if (created.type !== "output" && existing?.to) {
+      setWorkflowEdge(editor.draft, created.id, "next", existing.to);
+    }
+  }
+
+  editor.draft.nodes.push(created);
+  editor.selectedNodeId = created.id;
+  editor.error = null;
+  render();
+}
+
+function removeWorkflowEditorNode(nodeId) {
+  const editor = state.workflowEditor;
+  if (!editor || editor.draft.nodes.length <= 1) return;
+
+  editor.draft.nodes = editor.draft.nodes.filter((node) => node.id !== nodeId);
+  editor.draft.edges = editor.draft.edges.filter(
+    (edge) => edge.from !== nodeId && edge.to !== nodeId
+  );
+
+  if (editor.draft.startNodeId === nodeId) {
+    editor.draft.startNodeId = editor.draft.nodes[0]?.id || null;
+  }
+  if (editor.selectedNodeId === nodeId) {
+    editor.selectedNodeId = editor.draft.startNodeId;
+  }
+  editor.error = null;
+  render();
+}
+
+function workflowTargetSelect(draft, nodeDef, port, label) {
+  const select = node("select", {
+    class: "field workflow-target-select",
+    "aria-label": label
+  }, [
+    node("option", { value: "", text: "Not connected" }),
+    ...draft.nodes
+      .filter((candidate) => candidate.id !== nodeDef.id)
+      .map((candidate) =>
+        node("option", {
+          value: candidate.id,
+          text: candidate.name + " · " + candidate.type
+        })
+      )
+  ]);
+
+  select.value = draft.edges.find(
+    (edge) => edge.from === nodeDef.id && edge.port === port
+  )?.to || "";
+
+  select.addEventListener("change", () => {
+    setWorkflowEdge(draft, nodeDef.id, port, select.value || null);
+    state.workflowEditor.error = null;
+    render();
+  });
+
+  return node("label", { class: "workflow-edge-control" }, [
+    node("span", { text: label }),
+    select
   ]);
 }
 
-function renderStudio() {
-  const content = node("main", { class: "content" }, [
-    node("h1", { class: "view-title", text: "Decision Studio" }),
-    node("p", {
-      class: "view-subtitle",
-      text: "A small working pipeline today: sample finalists, then make a final pick. The full graph Studio comes in a later implementation phase."
-    })
-  ]);
-
-  const panel = node("div", { class: "controls" });
-  const input = node("textarea", {
-    class: "field",
-    id: "studio-input",
-    "aria-label": "Decision options"
-  });
-  input.value = state.tool.studioText
-    || "Pizza\nSushi\nKorean\nBurgers\nIndian\nTacos";
-  input.addEventListener("input", () => {
-    state.tool.studioText = input.value;
+function workflowNodeEditorCard(editor, nodeDef, index) {
+  const draft = editor.draft;
+  const selected = editor.selectedNodeId === nodeDef.id;
+  const incoming = draft.edges.filter((edge) => edge.to === nodeDef.id).length;
+  const card = node("article", {
+    class:
+      "workflow-node-card workflow-node-" + nodeDef.type
+      + (selected ? " is-selected" : "")
+      + (draft.startNodeId === nodeDef.id ? " is-start" : ""),
+    onClick: () => {
+      if (editor.selectedNodeId !== nodeDef.id) {
+        editor.selectedNodeId = nodeDef.id;
+        render();
+      }
+    }
   });
 
-  const finalist = node("input", {
-    class: "field",
-    id: "studio-count",
-    type: "number",
-    min: "2",
-    value: String(state.tool.studioCount || 3),
-    "aria-label": "Number of finalists"
+  const nameInput = node("input", {
+    class: "field workflow-node-name",
+    type: "text",
+    value: nodeDef.name,
+    "aria-label": "Node name"
   });
-  finalist.addEventListener("input", () => {
-    state.tool.studioCount = Number(finalist.value);
+  nameInput.addEventListener("input", () => {
+    nodeDef.name = nameInput.value.slice(0, 80);
   });
 
-  panel.append(
-    node("div", { class: "control" }, [
-      node("label", { for: "studio-input", text: "Options" }),
-      input
-    ]),
-    node("div", {
-      class: "control",
-      style: { marginTop: "10px" }
-    }, [
-      node("label", { for: "studio-count", text: "Finalists" }),
-      finalist
+  card.append(node("div", { class: "workflow-node-head" }, [
+    node("span", {
+      class: "workflow-node-glyph",
+      text: workflowNodeGlyph(nodeDef.type)
+    }),
+    node("div", { class: "workflow-node-heading" }, [
+      node("small", {
+        text:
+          (draft.startNodeId === nodeDef.id ? "Start · " : "")
+          + nodeDef.type
+          + " · "
+          + incoming
+          + " incoming"
+      }),
+      nameInput
     ]),
     node("button", {
-      class: "primary action-button",
+      class: "small-action",
       type: "button",
-      style: { marginTop: "12px" },
-      onClick: runStudio
-    }, "RUN DECISION")
-  );
+      onClick: (event) => {
+        event.stopPropagation();
+        draft.startNodeId = nodeDef.id;
+        editor.selectedNodeId = nodeDef.id;
+        render();
+      }
+    }, draft.startNodeId === nodeDef.id ? "Start" : "Set start")
+  ]));
 
-  const flow = node("div", { class: "studio-flow" }, [
-    studioNode("1", "Input Pool", "Your options"),
-    studioNode("2", "Sample Finalists", "Unique random sample"),
-    studioNode("3", "Final Pick", "One winner from the finalists")
+  const config = node("div", { class: "workflow-node-config" });
+
+  if (nodeDef.type === "input") {
+    const mode = node("select", {
+      class: "field",
+      "aria-label": "Input mode"
+    }, [
+      node("option", { value: "prompt", text: "Ask when workflow starts" }),
+      node("option", { value: "fixed", text: "Use fixed items" })
+    ]);
+    mode.value = nodeDef.config.mode;
+    mode.addEventListener("change", () => {
+      nodeDef.config.mode = mode.value;
+      render();
+    });
+
+    config.append(node("label", { class: "control" }, [
+      node("span", { text: "Input source" }),
+      mode
+    ]));
+
+    if (nodeDef.config.mode === "fixed") {
+      const fixed = node("textarea", {
+        class: "field workflow-fixed-input",
+        "aria-label": "Fixed input items",
+        placeholder: "One item per line"
+      });
+      fixed.value = (nodeDef.config.fixedItems || []).join("\n");
+      fixed.addEventListener("input", () => {
+        nodeDef.config.fixedItems = parseList(fixed.value).slice(0, 500);
+      });
+      config.append(node("label", { class: "control" }, [
+        node("span", { text: "Fixed items" }),
+        fixed
+      ]));
+    }
+  } else if (nodeDef.type === "tool") {
+    const choices = workflowPresetChoices();
+    const preset = node("select", {
+      class: "field",
+      "aria-label": "Saved Preset"
+    }, [
+      node("option", { value: "", text: "Choose a Preset" }),
+      ...choices.map((item) => {
+        const tool = resolveTool(item.toolId);
+        return node("option", {
+          value: item.id,
+          text: item.name + " · " + (tool?.name || item.toolId)
+        });
+      })
+    ]);
+    preset.value = nodeDef.config.presetId || "";
+    preset.addEventListener("change", () => {
+      nodeDef.config.presetId = preset.value;
+      render();
+    });
+
+    const inputMode = node("select", {
+      class: "field",
+      "aria-label": "Randomizer input source"
+    }, [
+      node("option", {
+        value: "previous",
+        text: "Use previous node output when supported"
+      }),
+      node("option", {
+        value: "preset",
+        text: "Use the Preset's own input"
+      })
+    ]);
+    inputMode.value = nodeDef.config.inputMode || "previous";
+    inputMode.addEventListener("change", () => {
+      nodeDef.config.inputMode = inputMode.value;
+    });
+
+    config.append(
+      node("label", { class: "control" }, [
+        node("span", { text: "Randomizer Preset" }),
+        preset
+      ]),
+      node("label", { class: "control" }, [
+        node("span", { text: "Input" }),
+        inputMode
+      ])
+    );
+
+    if (!choices.length) {
+      config.append(node("div", {
+        class: "notice",
+        text: "Save at least one non-stateful Preset before adding automated Randomizer nodes."
+      }));
+    }
+  } else if (nodeDef.type === "branch") {
+    const condition = nodeDef.config.condition;
+    const kind = node("select", {
+      class: "field",
+      "aria-label": "Branch condition"
+    }, [
+      ["contains", "Output contains text"],
+      ["equals", "Output equals text"],
+      ["count-at-least", "Output count is at least"],
+      ["count-at-most", "Output count is at most"],
+      ["non-empty", "Output is non-empty"],
+      ["empty", "Output is empty"],
+      ["always", "Always true"]
+    ].map(([value, text]) => node("option", { value, text })));
+    kind.value = condition.kind;
+    kind.addEventListener("change", () => {
+      condition.kind = kind.value;
+      render();
+    });
+
+    config.append(node("label", { class: "control" }, [
+      node("span", { text: "Condition" }),
+      kind
+    ]));
+
+    if (["contains", "equals"].includes(condition.kind)) {
+      const value = node("input", {
+        class: "field",
+        type: "text",
+        value: condition.value || "",
+        placeholder: "Text to match"
+      });
+      value.addEventListener("input", () => {
+        condition.value = value.value;
+      });
+      const sensitive = node("input", {
+        type: "checkbox",
+        checked: Boolean(condition.caseSensitive)
+      });
+      sensitive.addEventListener("change", () => {
+        condition.caseSensitive = sensitive.checked;
+      });
+      config.append(
+        node("label", { class: "control" }, [
+          node("span", { text: "Match" }),
+          value
+        ]),
+        node("label", { class: "workflow-inline-check" }, [
+          sensitive,
+          node("span", { text: "Case-sensitive" })
+        ])
+      );
+    } else if (["count-at-least", "count-at-most"].includes(condition.kind)) {
+      const count = node("input", {
+        class: "field",
+        type: "number",
+        min: "0",
+        max: "10000",
+        value: String(condition.count ?? 1)
+      });
+      count.addEventListener("input", () => {
+        condition.count = Math.max(0, Number(count.value) || 0);
+      });
+      config.append(node("label", { class: "control" }, [
+        node("span", { text: "Count" }),
+        count
+      ]));
+    }
+  } else if (nodeDef.type === "output") {
+    const title = node("input", {
+      class: "field",
+      type: "text",
+      value: nodeDef.config.title || "",
+      placeholder: "Outcome label"
+    });
+    title.addEventListener("input", () => {
+      nodeDef.config.title = title.value.slice(0, 120);
+    });
+    config.append(node("label", { class: "control" }, [
+      node("span", { text: "Outcome label" }),
+      title
+    ]));
+  }
+
+  card.append(config);
+
+  if (nodeDef.type === "branch") {
+    card.append(node("div", { class: "workflow-edges" }, [
+      workflowTargetSelect(draft, nodeDef, "true", "True →"),
+      workflowTargetSelect(draft, nodeDef, "false", "False →")
+    ]));
+  } else if (nodeDef.type !== "output") {
+    card.append(node("div", { class: "workflow-edges" }, [
+      workflowTargetSelect(draft, nodeDef, "next", "Next →")
+    ]));
+  }
+
+  card.append(node("div", { class: "workflow-node-footer" }, [
+    node("span", { text: "Node " + (index + 1) }),
+    node("button", {
+      class: "danger subtle-danger",
+      type: "button",
+      disabled: draft.nodes.length <= 1 ? "disabled" : null,
+      onClick: (event) => {
+        event.stopPropagation();
+        removeWorkflowEditorNode(nodeDef.id);
+      }
+    }, "Remove")
+  ]));
+
+  return card;
+}
+
+async function saveWorkflowEditor() {
+  const editor = state.workflowEditor;
+  if (!editor) return;
+
+  const existing = workflowById(editor.draft.id);
+  const candidate = existing
+    ? updateWorkflow(existing, {
+        name: editor.draft.name,
+        description: editor.draft.description,
+        automation: editor.draft.automation,
+        startNodeId: editor.draft.startNodeId,
+        nodes: editor.draft.nodes,
+        edges: editor.draft.edges
+      })
+    : normalizeWorkflow(editor.draft);
+
+  const validation = workflowValidation(candidate);
+  if (!validation.valid) {
+    editor.error = validation.errors[0]?.message || "Workflow is not ready to save.";
+    render();
+    return;
+  }
+
+  try {
+    if (existing) {
+      await putWithRevision("workflows", candidate, existing.revision);
+    } else {
+      await put("workflows", candidate);
+    }
+    replaceWorkflow(candidate);
+    state.workflowEditor = null;
+    announce("Workflow saved.");
+    history.replaceState({}, "", location.pathname);
+    render();
+  } catch (error) {
+    editor.error = error?.message || "Could not save workflow.";
+    render();
+  }
+}
+
+async function deleteWorkflow(workflow) {
+  if (!workflow) return;
+  if (!window.confirm("Delete this workflow definition? Existing workflow run history will remain.")) {
+    return;
+  }
+
+  await remove("workflows", workflow.id);
+  state.workflows = state.workflows.filter((item) => item.id !== workflow.id);
+  state.workflowEditor = null;
+  state.activeWorkflowSessionId = null;
+  history.replaceState({}, "", location.pathname);
+  render();
+}
+
+function renderWorkflowEditor() {
+  const editor = state.workflowEditor;
+  const draft = editor.draft;
+  const validation = workflowValidation(draft, true);
+  const strict = workflowValidation(draft);
+
+  const content = node("main", { class: "content workflow-editor-view" }, [
+    node("div", { class: "workflow-page-head" }, [
+      node("div", {}, [
+        node("div", { class: "kicker", text: "Decision Studio · Graph editor" }),
+        node("h1", { class: "view-title", text: "Build a workflow" }),
+        node("p", {
+          class: "view-subtitle",
+          text:
+            "Connect runtime input, saved Presets, conditional branches, and terminal outcomes. "
+            + "Automation is bounded and cycles are rejected."
+        })
+      ]),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: closeWorkflowEditor
+      }, "Close")
+    ])
   ]);
 
-  content.append(panel, flow);
+  const identity = node("section", { class: "controls workflow-editor-identity" });
+  const name = node("input", {
+    class: "field",
+    type: "text",
+    value: draft.name,
+    placeholder: "Workflow name"
+  });
+  name.addEventListener("input", () => {
+    draft.name = name.value.slice(0, 100);
+  });
 
-  if (state.studioResult) {
-    content.append(sectionHeader("Result", "Committed pipeline result"));
-    content.append(node("div", {
-      class: "tool-stage accent-purple"
-    }, node("div", { class: "stage-content" }, [
-      node("div", { class: "stage-label", text: "Finalists" }),
-      resultList(state.studioResult.finalists),
-      node("div", {
-        class: "stage-label",
-        style: { marginTop: "24px" },
-        text: "Final decision"
-      }),
-      node("div", {
-        class: "stage-result",
-        text: state.studioResult.winner
+  const description = node("textarea", {
+    class: "field",
+    placeholder: "What does this workflow decide?"
+  });
+  description.value = draft.description || "";
+  description.addEventListener("input", () => {
+    draft.description = description.value.slice(0, 400);
+  });
+
+  const automation = node("select", {
+    class: "field",
+    "aria-label": "Workflow execution mode"
+  }, [
+    node("option", { value: "auto", text: "Auto — continue until an outcome" }),
+    node("option", { value: "step", text: "Step — run one node at a time" })
+  ]);
+  automation.value = draft.automation.mode;
+  automation.addEventListener("change", () => {
+    draft.automation.mode = automation.value;
+  });
+
+  const maxSteps = node("input", {
+    class: "field",
+    type: "number",
+    min: "1",
+    max: "64",
+    value: String(draft.automation.maxSteps || 24)
+  });
+  maxSteps.addEventListener("input", () => {
+    draft.automation.maxSteps = Math.max(
+      1,
+      Math.min(64, Number(maxSteps.value) || 24)
+    );
+  });
+
+  identity.append(
+    node("label", { class: "control" }, [
+      node("span", { text: "Name" }),
+      name
+    ]),
+    node("label", { class: "control" }, [
+      node("span", { text: "Description" }),
+      description
+    ]),
+    node("div", { class: "control-grid workflow-automation-grid" }, [
+      node("label", { class: "control" }, [
+        node("span", { text: "Execution" }),
+        automation
+      ]),
+      node("label", { class: "control" }, [
+        node("span", { text: "Automation safety limit" }),
+        maxSteps
+      ])
+    ])
+  );
+
+  const paletteBar = node("section", { class: "workflow-node-palette" }, [
+    node("div", {}, [
+      node("strong", { text: "Add node" }),
+      node("span", { text: "New nodes insert after the selected linear node when possible." })
+    ]),
+    node("div", { class: "workflow-palette-actions" }, [
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => addWorkflowEditorNode("input")
+      }, "+ Input"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => addWorkflowEditorNode("tool")
+      }, "+ Randomizer"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => addWorkflowEditorNode("branch")
+      }, "+ Branch"),
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => addWorkflowEditorNode("output")
+      }, "+ Outcome")
+    ])
+  ]);
+
+  const graph = node("section", { class: "workflow-graph" }, [
+    node("div", { class: "workflow-graph-head" }, [
+      node("div", {}, [
+        node("strong", { text: "Workflow graph" }),
+        node("span", {
+          text:
+            draft.nodes.length
+            + " nodes · "
+            + draft.edges.length
+            + " connections"
+        })
+      ]),
+      node("span", {
+        class: "workflow-validation-pill " + (strict.valid ? "is-valid" : "is-draft"),
+        text: strict.valid
+          ? "Ready"
+          : strict.errors.length + " issue" + (strict.errors.length === 1 ? "" : "s")
       })
-    ])));
+    ]),
+    node("div", { class: "workflow-node-grid" },
+      draft.nodes.map((nodeDef, index) =>
+        workflowNodeEditorCard(editor, nodeDef, index)
+      )
+    )
+  ]);
+
+  content.append(identity, paletteBar, graph);
+
+  const issues = strict.valid
+    ? validation.warnings
+    : strict.errors.slice(0, 6);
+  if (issues.length) {
+    content.append(node("section", {
+      class: "workflow-validation-list " + (strict.valid ? "is-warning" : "is-error")
+    }, [
+      node("strong", {
+        text: strict.valid ? "Graph notes" : "Fix before saving"
+      }),
+      ...issues.map((issue) => node("span", { text: issue.message }))
+    ]));
+  }
+
+  if (editor.error) content.append(toolError(editor.error));
+
+  const existing = workflowById(draft.id);
+  content.append(node("div", { class: "workflow-editor-footer" }, [
+    existing
+      ? node("button", {
+          class: "danger",
+          type: "button",
+          onClick: () => deleteWorkflow(existing)
+        }, "Delete workflow")
+      : node("span"),
+    node("div", { class: "workflow-editor-save-actions" }, [
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: closeWorkflowEditor
+      }, "Cancel"),
+      node("button", {
+        class: "primary",
+        type: "button",
+        disabled: strict.valid ? null : "disabled",
+        onClick: saveWorkflowEditor
+      }, existing ? "Save Changes" : "Save Workflow")
+    ])
+  ]));
+
+  return content;
+}
+
+function workflowRecentSession(workflowId) {
+  return state.workflowSessions
+    .filter((session) => session.workflowId === workflowId)
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0] || null;
+}
+
+function openWorkflowSession(sessionId) {
+  const session = workflowSessionById(sessionId);
+  if (!session) return;
+  state.workflowEditor = null;
+  state.activeWorkflowSessionId = session.id;
+  state.workflowInputText = (session.inputItems || []).join("\n");
+  state.view = "studio";
+  state.toolId = null;
+  history.replaceState(
+    {},
+    "",
+    location.pathname + "?workflowSession=" + encodeURIComponent(session.id)
+  );
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function startWorkflowSession(workflow) {
+  const validation = workflowValidation(workflow);
+  if (!validation.valid) {
+    announce(validation.errors[0]?.message || "Workflow is not runnable.");
+    return;
+  }
+
+  try {
+    const session = createWorkflowSession(workflow);
+    await put("workflowSessions", session);
+    replaceWorkflowSession(session);
+    openWorkflowSession(session.id);
+
+    if (session.status === "active" && workflow.automation.mode === "auto") {
+      setTimeout(() => advanceWorkflowSession(session.id), 0);
+    }
+  } catch (error) {
+    announce(error?.message || "Could not start workflow.");
+  }
+}
+
+async function persistWorkflowSessionTransition(current, next) {
+  await putWithRevision(
+    "workflowSessions",
+    next,
+    current.revision
+  );
+  replaceWorkflowSession(next);
+  state.activeWorkflowSessionId = next.id;
+  return next;
+}
+
+async function submitWorkflowInput(session) {
+  try {
+    const items = parseList(state.workflowInputText);
+    const next = provideWorkflowInput(session, items);
+    await persistWorkflowSessionTransition(session, next);
+    render();
+
+    const workflow = workflowById(next.workflowId);
+    if (workflow?.automation.mode === "auto") {
+      setTimeout(() => advanceWorkflowSession(next.id), 0);
+    }
+  } catch (error) {
+    announce(error?.message || "Could not apply workflow input.");
+  }
+}
+
+async function executeWorkflowToolNode(session, workflow, nodeDef, {
+  singleStep = false
+} = {}) {
+  const preset = presetById(nodeDef.config.presetId);
+  if (!preset) {
+    const failed = failWorkflowSession(
+      session,
+      "The workflow Preset no longer exists."
+    );
+    await persistWorkflowSessionTransition(session, failed);
+    render();
+    return;
+  }
+
+  const tool = resolveTool(preset.toolId);
+  if (!tool || isStatefulTool(tool.id)) {
+    const failed = failWorkflowSession(
+      session,
+      "This workflow node uses an unavailable or stateful tool."
+    );
+    await persistWorkflowSessionTransition(session, failed);
+    render();
+    return;
+  }
+
+  await applyPresetToTool(preset, {
+    open: false,
+    preserveTemplateContext: false
+  });
+
+  const ts = ensureToolState(tool.id);
+  ts.templateSessionId = null;
+  ts.templateStepIndex = null;
+  ts.templateStepId = null;
+
+  if (
+    nodeDef.config.inputMode === "previous"
+    && toolAcceptsListInput(tool.id)
+  ) {
+    const text = (session.lastOutputItems || []).join("\n");
+    if (tool.custom) ts.customInputText = text;
+    else ts.listText = text;
+    ts.workingSet = null;
+    ts.workingSetDirty = false;
+    if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
+  }
+
+  ts.workflowSessionId = session.id;
+  ts.workflowNodeId = nodeDef.id;
+  ts.workflowSilent = true;
+  ts.replayRunId = null;
+  ts.result = null;
+
+  await runTool(tool.id);
+
+  const latest = workflowSessionById(session.id);
+  if (!latest || latest.revision === session.revision) {
+    const message =
+      ensureToolState(tool.id).error
+      || "Randomizer node did not commit a result.";
+    const failed = failWorkflowSession(session, message);
+    try {
+      await persistWorkflowSessionTransition(session, failed);
+    } catch {
+      // If the workflow moved concurrently, keep the committed version.
+    }
+    render();
+    return;
+  }
+
+  if (
+    latest.status === "active"
+    && workflow.automation.mode === "auto"
+    && !singleStep
+  ) {
+    setTimeout(() => advanceWorkflowSession(latest.id), 0);
+  }
+}
+
+async function advanceWorkflowSession(sessionId, {
+  singleStep = false
+} = {}) {
+  if (state.workflowBusy) return;
+  const session = workflowSessionById(sessionId);
+  if (!session || session.status !== "active") return;
+
+  const workflow = workflowById(session.workflowId);
+  if (!workflow) return;
+
+  if (session.stepCount >= workflow.automation.maxSteps) {
+    const failed = failWorkflowSession(
+      session,
+      "Automation stopped at the workflow safety limit of "
+        + workflow.automation.maxSteps
+        + " steps."
+    );
+    await persistWorkflowSessionTransition(session, failed);
+    render();
+    return;
+  }
+
+  const nodeDef = workflow.nodes.find(
+    (candidate) => candidate.id === session.currentNodeId
+  );
+  if (!nodeDef) {
+    const failed = failWorkflowSession(
+      session,
+      "The current workflow node no longer exists."
+    );
+    await persistWorkflowSessionTransition(session, failed);
+    render();
+    return;
+  }
+
+  state.workflowBusy = true;
+  try {
+    if (nodeDef.type === "tool") {
+      await executeWorkflowToolNode(
+        session,
+        workflow,
+        nodeDef,
+        { singleStep }
+      );
+      return;
+    }
+
+    if (
+      nodeDef.type === "input"
+      && nodeDef.config.mode === "prompt"
+      && !(session.inputItems || []).length
+    ) {
+      const paused = pauseWorkflowSession(session, "input", nodeDef.id);
+      await persistWorkflowSessionTransition(session, paused);
+      render();
+      return;
+    }
+
+    let next;
+    if (nodeDef.type === "branch") {
+      const branch = evaluateBranchCondition(nodeDef.config.condition, {
+        items: session.lastOutputItems,
+        summary: session.lastSummary
+      });
+      next = recordWorkflowNode(session, workflow, nodeDef.id, {
+        branchPort: branch ? "true" : "false",
+        resultItems: session.lastOutputItems,
+        summary: session.lastSummary
+      });
+    } else if (nodeDef.type === "input") {
+      const items = nodeDef.config.mode === "fixed"
+        ? nodeDef.config.fixedItems
+        : session.inputItems;
+      next = recordWorkflowNode(session, workflow, nodeDef.id, {
+        resultItems: items,
+        summary: items.join(", ")
+      });
+    } else {
+      next = recordWorkflowNode(session, workflow, nodeDef.id, {
+        resultItems: session.lastOutputItems,
+        summary: session.lastSummary
+      });
+    }
+
+    await persistWorkflowSessionTransition(session, next);
+    render();
+
+    if (next.status === "completed") {
+      announce(
+        next.lastSummary
+          ? "Workflow complete: " + next.lastSummary
+          : "Workflow complete."
+      );
+      return;
+    }
+
+    if (workflow.automation.mode === "auto" && !singleStep) {
+      setTimeout(() => advanceWorkflowSession(next.id), 0);
+    }
+  } catch (error) {
+    const current = workflowSessionById(session.id) || session;
+    if (current.status === "active") {
+      const failed = failWorkflowSession(current, error);
+      try {
+        await persistWorkflowSessionTransition(current, failed);
+      } catch {
+        // A concurrent commit takes precedence over this failure state.
+      }
+    }
+    announce(error?.message || "Workflow could not continue.");
+    render();
+  } finally {
+    state.workflowBusy = false;
+  }
+}
+
+async function pauseCurrentWorkflow(session) {
+  if (!session || session.status !== "active" || state.workflowBusy) return;
+  try {
+    const next = pauseWorkflowSession(session, "manual", session.currentNodeId);
+    await persistWorkflowSessionTransition(session, next);
+    render();
+  } catch (error) {
+    announce(error?.message || "Could not pause workflow.");
+  }
+}
+
+async function resumeCurrentWorkflow(session) {
+  if (!session || session.status !== "paused") return;
+  try {
+    const next = resumeWorkflowSession(session);
+    await persistWorkflowSessionTransition(session, next);
+    render();
+    const workflow = workflowById(next.workflowId);
+    if (workflow?.automation.mode === "auto") {
+      setTimeout(() => advanceWorkflowSession(next.id), 0);
+    }
+  } catch (error) {
+    announce(error?.message || "Could not resume workflow.");
+  }
+}
+
+async function abandonCurrentWorkflow(session) {
+  if (!session || !["active", "paused"].includes(session.status)) return;
+  try {
+    const next = abandonWorkflowSession(session);
+    await persistWorkflowSessionTransition(session, next);
+    render();
+  } catch (error) {
+    announce(error?.message || "Could not end workflow.");
+  }
+}
+
+function closeWorkflowRunner() {
+  state.activeWorkflowSessionId = null;
+  state.workflowInputText = "";
+  history.replaceState({}, "", location.pathname);
+  render();
+}
+
+function renderWorkflowRunner() {
+  const session = workflowSessionById(state.activeWorkflowSessionId);
+  const workflow = session ? workflowById(session.workflowId) : null;
+
+  if (!session || !workflow) {
+    return node("main", { class: "content" }, [
+      node("h1", { class: "view-title", text: "Workflow unavailable" }),
+      node("p", {
+        class: "view-subtitle",
+        text: "The workflow definition or run could not be found."
+      }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: closeWorkflowRunner
+      }, "Back to Decision Studio")
+    ]);
+  }
+
+  const current = workflow.nodes.find(
+    (nodeDef) => nodeDef.id === session.currentNodeId
+  ) || null;
+
+  const content = node("main", { class: "content workflow-runner-view" }, [
+    node("div", { class: "workflow-page-head" }, [
+      node("div", {}, [
+        node("div", { class: "kicker", text: "Decision Studio · Workflow run" }),
+        node("h1", { class: "view-title", text: workflow.name }),
+        node("p", {
+          class: "view-subtitle",
+          text:
+            workflowStatusText(session.status)
+            + " · "
+            + session.stepCount
+            + " executed node"
+            + (session.stepCount === 1 ? "" : "s")
+            + " · "
+            + (workflow.automation.mode === "auto" ? "Auto" : "Step")
+        })
+      ]),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: closeWorkflowRunner
+      }, "Studio")
+    ])
+  ]);
+
+  if (session.error) {
+    content.append(toolError(session.error));
+  }
+
+  if (session.status === "paused" && session.pauseReason === "input") {
+    const input = node("textarea", {
+      class: "field workflow-runtime-input",
+      placeholder: "One item per line",
+      "aria-label": "Workflow input items"
+    });
+    input.value = state.workflowInputText || "";
+    input.addEventListener("input", () => {
+      state.workflowInputText = input.value;
+    });
+
+    content.append(node("section", {
+      class: "controls workflow-input-gate"
+    }, [
+      node("div", {}, [
+        node("strong", {
+          text: current?.name || "Workflow input"
+        }),
+        node("span", {
+          text: "Enter the values this workflow should process."
+        })
+      ]),
+      input,
+      node("button", {
+        class: "primary",
+        type: "button",
+        onClick: () => submitWorkflowInput(session)
+      }, "Continue")
+    ]));
+  } else if (session.status === "active" && current) {
+    content.append(node("section", {
+      class: "workflow-current-node workflow-node-" + current.type
+    }, [
+      node("span", {
+        class: "workflow-node-glyph",
+        text: workflowNodeGlyph(current.type)
+      }),
+      node("div", {}, [
+        node("small", { text: "Current node · " + current.type }),
+        node("strong", { text: current.name }),
+        current.type === "tool"
+          ? node("span", {
+              text:
+                "Preset · "
+                + (presetById(current.config.presetId)?.name || "Missing Preset")
+            })
+          : null
+      ]),
+      workflow.automation.mode === "step"
+        ? node("button", {
+            class: "primary",
+            type: "button",
+            disabled: state.workflowBusy ? "disabled" : null,
+            onClick: () => advanceWorkflowSession(session.id, {
+              singleStep: true
+            })
+          }, "Run next")
+        : node("button", {
+            class: "secondary",
+            type: "button",
+            disabled: state.workflowBusy ? "disabled" : null,
+            onClick: () => pauseCurrentWorkflow(session)
+          }, "Pause")
+    ]));
+  } else if (session.status === "paused") {
+    content.append(node("section", {
+      class: "workflow-current-node"
+    }, [
+      node("div", {}, [
+        node("small", { text: "Paused" }),
+        node("strong", {
+          text: current?.name || "Workflow paused"
+        })
+      ]),
+      node("button", {
+        class: "primary",
+        type: "button",
+        onClick: () => resumeCurrentWorkflow(session)
+      }, "Resume")
+    ]));
+  }
+
+  if (session.lastOutputItems?.length || session.lastSummary) {
+    content.append(node("section", {
+      class: "tool-stage accent-purple workflow-output-stage"
+    }, [
+      node("div", { class: "stage-content" }, [
+        node("div", {
+          class: "stage-label",
+          text: session.status === "completed" ? "Final output" : "Latest output"
+        }),
+        session.lastOutputItems?.length > 1
+          ? resultList(session.lastOutputItems)
+          : node("div", {
+              class: "stage-result",
+              text:
+                session.lastOutputItems?.[0]
+                || session.lastSummary
+                || "Result"
+            })
+      ])
+    ]));
+  }
+
+  const path = node("section", { class: "workflow-run-path" }, [
+    node("div", { class: "workflow-graph-head" }, [
+      node("div", {}, [
+        node("strong", { text: "Execution path" }),
+        node("span", {
+          text: session.path.length
+            ? session.path.length + " committed nodes"
+            : "No nodes committed yet"
+        })
+      ])
+    ])
+  ]);
+
+  if (session.path.length) {
+    path.append(node("div", { class: "workflow-path-list" },
+      session.path.map((entry, index) =>
+        node("div", { class: "workflow-path-row" }, [
+          node("span", {
+            class: "workflow-path-index",
+            text: String(index + 1)
+          }),
+          node("span", {
+            class: "workflow-node-glyph small",
+            text: workflowNodeGlyph(entry.nodeType)
+          }),
+          node("div", {}, [
+            node("strong", { text: entry.nodeName }),
+            node("span", {
+              text:
+                entry.branchPort
+                  ? "Branch → " + entry.branchPort
+                  : entry.summary || entry.nodeType
+            })
+          ]),
+          entry.runId
+            ? node("button", {
+                class: "small-action",
+                type: "button",
+                onClick: () => {
+                  state.modal = {
+                    type: "run-detail",
+                    runId: entry.runId
+                  };
+                  render();
+                }
+              }, "Run")
+            : null
+        ])
+      )
+    ));
+  }
+
+  content.append(path);
+
+  const footerActions = [];
+  if (["active", "paused"].includes(session.status)) {
+    footerActions.push(node("button", {
+      class: "danger",
+      type: "button",
+      disabled: state.workflowBusy ? "disabled" : null,
+      onClick: () => abandonCurrentWorkflow(session)
+    }, "End workflow"));
+  }
+
+  if (["completed", "abandoned", "error"].includes(session.status)) {
+    footerActions.push(
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: closeWorkflowRunner
+      }, "Back to Studio"),
+      node("button", {
+        class: "primary",
+        type: "button",
+        onClick: () => startWorkflowSession(workflow)
+      }, "Run again")
+    );
+  }
+
+  if (footerActions.length) {
+    content.append(node("div", {
+      class: "workflow-run-footer"
+    }, footerActions));
   }
 
   return content;
 }
 
-async function runStudio() {
-  const items = parseList(document.getElementById("studio-input").value);
-  const count = Number(document.getElementById("studio-count").value);
+function workflowCard(workflow) {
+  const validation = workflowValidation(workflow);
+  const latest = workflowRecentSession(workflow.id);
+  const branches = workflow.nodes.filter((nodeDef) => nodeDef.type === "branch").length;
+  const randomizers = workflow.nodes.filter((nodeDef) => nodeDef.type === "tool").length;
 
-  if (
-    items.length < 2
-    || !Number.isSafeInteger(count)
-    || count < 2
-    || count > items.length
-  ) {
-    announce("Decision Studio needs at least two options and a valid finalist count.");
-    return;
+  return node("article", {
+    class: "workflow-card" + (validation.valid ? "" : " is-invalid")
+  }, [
+    node("div", { class: "workflow-card-head" }, [
+      node("span", {
+        class: "workflow-card-icon",
+        text: "◆"
+      }),
+      node("div", {}, [
+        node("strong", { text: workflow.name }),
+        node("span", {
+          text:
+            workflow.nodes.length
+            + " nodes · "
+            + randomizers
+            + " randomizers · "
+            + branches
+            + " branches"
+        })
+      ]),
+      node("span", {
+        class: "workflow-mode-pill",
+        text: workflow.automation.mode === "auto" ? "Auto" : "Step"
+      })
+    ]),
+    workflow.description
+      ? node("p", { text: workflow.description })
+      : null,
+    !validation.valid
+      ? node("div", {
+          class: "workflow-card-warning",
+          text: validation.errors[0]?.message || "Workflow needs repair."
+        })
+      : null,
+    latest
+      ? node("div", {
+          class: "workflow-card-latest",
+          text:
+            "Latest · "
+            + workflowStatusText(latest.status)
+            + " · "
+            + new Intl.DateTimeFormat(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit"
+            }).format(new Date(latest.updatedAt))
+        })
+      : null,
+    node("div", { class: "workflow-card-actions" }, [
+      latest && ["active", "paused"].includes(latest.status)
+        ? node("button", {
+            class: "secondary",
+            type: "button",
+            onClick: () => openWorkflowSession(latest.id)
+          }, "Resume")
+        : null,
+      node("button", {
+        class: "small-action",
+        type: "button",
+        onClick: () => startWorkflowEditor(workflow)
+      }, "Edit"),
+      node("button", {
+        class: "primary",
+        type: "button",
+        disabled: validation.valid ? null : "disabled",
+        onClick: () => startWorkflowSession(workflow)
+      }, "Run")
+    ])
+  ]);
+}
+
+function renderWorkflowLibrary() {
+  const content = node("main", { class: "content workflow-library-view" }, [
+    node("div", { class: "workflow-page-head" }, [
+      node("div", {}, [
+        node("div", { class: "kicker", text: "Decision Studio" }),
+        node("h1", { class: "view-title", text: "Branch decisions into workflows." }),
+        node("p", {
+          class: "view-subtitle",
+          text:
+            "Build reusable decision graphs from saved Presets, route results through conditions, "
+            + "and run the whole path automatically or one step at a time."
+        })
+      ]),
+      node("button", {
+        class: "primary",
+        type: "button",
+        onClick: () => startWorkflowEditor()
+      }, "+ New Workflow")
+    ])
+  ]);
+
+  const activeSessions = state.workflowSessions
+    .filter((session) => ["active", "paused"].includes(session.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  if (activeSessions.length) {
+    content.append(sectionHeader(
+      "In progress",
+      activeSessions.length + " workflow run" + (activeSessions.length === 1 ? "" : "s")
+    ));
+    content.append(node("div", {
+      class: "workflow-active-grid"
+    }, activeSessions.slice(0, 6).map((session) => {
+      const workflow = workflowById(session.workflowId);
+      return node("button", {
+        class: "workflow-active-card",
+        type: "button",
+        onClick: () => openWorkflowSession(session.id)
+      }, [
+        node("strong", { text: workflow?.name || session.workflowName }),
+        node("span", {
+          text:
+            workflowStatusText(session.status)
+            + " · "
+            + session.stepCount
+            + " nodes committed"
+        })
+      ]);
+    })));
   }
 
-  const prepared = prepareRandomSource();
-  const finalists = sample(items, count, prepared.source);
-  const winner = pick(finalists, prepared.source);
-  const beforeState = {
-    studioText: state.tool.studioText || items.join("\n"),
-    studioCount: state.tool.studioCount || count,
-    studioResult: cloneData(state.studioResult)
-  };
-  const afterState = {
-    ...beforeState,
-    studioResult: { finalists, winner }
-  };
-  const inputSnapshot = { items };
-  const configSnapshot = { finalistCount: count };
-  const fingerprint = fingerprintSetup(
-    "studio",
-    inputSnapshot,
-    configSnapshot
+  content.append(sectionHeader(
+    "Workflows",
+    state.workflows.length
+      ? state.workflows.length + " saved"
+      : "Create your first reusable decision graph"
+  ));
+
+  content.append(
+    state.workflows.length
+      ? node("div", { class: "workflow-card-grid" },
+          state.workflows.map(workflowCard)
+        )
+      : emptyState(
+          "No workflows yet",
+          "Start with Input → Outcome, then insert Randomizer and Branch nodes.",
+          "Create Workflow",
+          () => startWorkflowEditor()
+        )
   );
 
-  const run = createRun({
-    toolId: "studio",
-    toolName: "Decision Studio",
-    icon: "◆",
-    setupFingerprint: fingerprint,
-    inputSnapshot,
-    configSnapshot,
-    beforeState,
-    afterState,
-    result: { finalists, winner },
-    summary: winner,
-    detail: { finalists },
-    randomContext: prepared.context
-  });
+  const recent = state.workflowSessions
+    .filter((session) => !["active", "paused"].includes(session.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 8);
 
-  try {
-    await commitRunAndSession({
-      run,
-      settingsRecord: prepared.settingsRecord
-    });
-
-    if (prepared.nextSettings) state.settings = prepared.nextSettings;
-    state.runs = [
-      run,
-      ...state.runs.filter((candidate) => candidate.id !== run.id)
-    ].sort((a, b) => b.timestamp - a.timestamp);
-
-    state.studioResult = { finalists, winner };
-    announce("Decision result: " + winner);
-    render();
-  } catch {
-    announce("Could not save the Decision Studio result.");
+  if (recent.length) {
+    content.append(sectionHeader("Recent workflow runs", "Completed and ended sessions"));
+    content.append(node("div", { class: "workflow-recent-list" },
+      recent.map((session) =>
+        node("button", {
+          class: "workflow-recent-row",
+          type: "button",
+          onClick: () => openWorkflowSession(session.id)
+        }, [
+          node("span", {
+            class: "workflow-node-glyph small",
+            text: session.status === "completed" ? "✓" : "×"
+          }),
+          node("div", {}, [
+            node("strong", {
+              text: workflowById(session.workflowId)?.name || session.workflowName
+            }),
+            node("span", {
+              text:
+                workflowStatusText(session.status)
+                + " · "
+                + session.stepCount
+                + " nodes"
+            })
+          ]),
+          node("span", {
+            text: session.lastSummary || "Open run"
+          })
+        ])
+      )
+    ));
   }
+
+  return content;
 }
+
+function renderStudio() {
+  if (state.workflowEditor) return renderWorkflowEditor();
+  if (state.activeWorkflowSessionId) return renderWorkflowRunner();
+  return renderWorkflowLibrary();
+}
+
 function currentTool() {
   return resolveTool(state.toolId);
 }
