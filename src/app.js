@@ -190,6 +190,8 @@ function ensureToolState(toolId) {
       rules: [],
       rulesOpen: false,
       solverEffort: "automatic",
+      lastSolverDiagnostics: null,
+      lastConstraintScore: null,
 
       targetText: "Setup\nCleanup\nSnacks",
       ladderOutcomes: "Prize A\nPrize B\nPrize C\nPrize D",
@@ -254,6 +256,8 @@ function invalidateTool(toolId, toolState, resetSession = false) {
   toolState.error = null;
   toolState.animating = false;
   toolState.pendingWheelRotation = null;
+  toolState.lastSolverDiagnostics = null;
+  toolState.lastConstraintScore = null;
 
   if (toolId === "ladder") toolState.ladder = null;
 
@@ -1377,7 +1381,24 @@ function renderRuleStrip(tool, ts) {
             + "This is not guaranteed to be uniform over every mathematically valid arrangement. "
             + required + " required and " + preferred + " preferred rules are active. "
             + "Search effort: " + (ts.solverEffort || "automatic") + "."
-        })
+        }),
+        ts.lastSolverDiagnostics
+          ? node("div", { class: "solver-diagnostics" }, [
+              node("span", {
+                text: "Search nodes " + ts.lastSolverDiagnostics.nodes
+              }),
+              node("span", {
+                text: "Valid candidates " + ts.lastSolverDiagnostics.solutions
+              }),
+              node("span", {
+                text: "Preference score "
+                  + (ts.lastConstraintScore == null ? "—" : ts.lastConstraintScore.toFixed?.(2) ?? ts.lastConstraintScore)
+              }),
+              ts.lastSolverDiagnostics.hitLimit
+                ? node("span", { class: "warning", text: "Search budget reached" })
+                : null
+            ])
+          : null
       ])
     );
   } else if (selectionTools.has(tool.id)) {
@@ -3177,6 +3198,11 @@ async function runTool(id) {
 
     if (output.statePatch) Object.assign(ts, output.statePatch);
     ts.result = result;
+
+    if (output.fairness?.kind === "constrained") {
+      ts.lastSolverDiagnostics = output.detail?.solver || null;
+      ts.lastConstraintScore = output.detail?.score ?? null;
+    }
 
     if (id === "dice") {
       const label = result.mode === "expression"
