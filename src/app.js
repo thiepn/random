@@ -1377,6 +1377,7 @@ function listControls(tool, ts) {
     const pool = state.pools.find((item) => item.id === poolSelect.value);
     if (!pool) return;
     ts.listText = pool.items.map((item) => item.label).join("\n");
+    if (selectionTools.has(tool.id)) syncSelectionState(tool.id, ts);
     invalidateTool(tool.id, ts);
     render();
   });
@@ -1389,6 +1390,7 @@ function listControls(tool, ts) {
   textarea.value = ts.listText;
   textarea.addEventListener("input", () => {
     ts.listText = textarea.value;
+    if (selectionTools.has(tool.id)) syncSelectionState(tool.id, ts);
     invalidateTool(tool.id, ts);
   });
   textarea.addEventListener("change", render);
@@ -1411,6 +1413,294 @@ function listControls(tool, ts) {
   );
 
   return wrap;
+}
+
+function updateSelectionEntry(ts, key, patch) {
+  const entry = (ts.selectionEntries || []).find((candidate) => candidate.key === key);
+  if (!entry) return;
+  Object.assign(entry, patch);
+}
+
+function selectionRulesControl(tool, ts) {
+  const model = syncSelectionState(tool.id, ts);
+  const rules = selectionRuleSummary(model, {
+    allowRepeats: ts.allowRepeats,
+    multi: tool.id === "sampler"
+  });
+
+  const section = node("section", { class: "selection-rules" });
+  section.append(node("button", {
+    class: "selection-rules-toggle",
+    type: "button",
+    "aria-expanded": String(Boolean(ts.selectionOpen)),
+    onClick: () => {
+      ts.selectionOpen = !ts.selectionOpen;
+      render();
+    }
+  }, [
+    node("span", { text: "Selection rules" }),
+    node("span", {
+      class: "selection-rule-summary",
+      text: rules.length ? rules.join(" • ") : "Equal chances"
+    }),
+    node("span", {
+      class: "selection-chevron",
+      text: ts.selectionOpen ? "−" : "+"
+    })
+  ]));
+
+  if (!ts.selectionOpen) return section;
+
+  const toolbar = node("div", { class: "selection-toolbar" }, [
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        ts.selectionEntries = ts.selectionEntries.map((entry) => ({
+          ...entry,
+          weight: 1
+        }));
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, "Equalize"),
+    node("button", {
+      class: "small-action",
+      type: "button",
+      onClick: () => {
+        ts.selectionEntries = ts.selectionEntries.map((entry) => ({
+          ...entry,
+          weight: 1,
+          excluded: false
+        }));
+        ts.allowRepeats = false;
+        invalidateTool(tool.id, ts);
+        render();
+      }
+    }, "Reset")
+  ]);
+
+  if (tool.id === "sampler") {
+    const repeat = node("input", {
+      type: "checkbox",
+      checked: ts.allowRepeats,
+      "aria-label": "Allow repeated winners"
+    });
+    repeat.addEventListener("change", () => {
+      ts.allowRepeats = repeat.checked;
+      invalidateTool(tool.id, ts);
+      render();
+    });
+    toolbar.prepend(node("label", { class: "repeat-toggle" }, [
+      repeat,
+      node("span", { text: "Allow repeats" })
+    ]));
+  }
+
+  section.append(toolbar);
+
+  const table = node("div", {
+    class: "weight-table",
+    role: "table",
+    "aria-label": "Entry weights and probabilities"
+  });
+
+  for (const entry of model.entries) {
+    const exclude = node("input", {
+      type: "checkbox",
+      checked: entry.excluded,
+      "aria-label": "Exclude " + entry.label
+    });
+    exclude.addEventListener("change", () => {
+      updateSelectionEntry(ts, entry.key, { excluded: exclude.checked });
+      invalidateTool(tool.id, ts);
+      render();
+    });
+
+    const weight = node("input", {
+      class: "weight-input",
+      type: "number",
+      min: "0",
+      step: "0.1",
+      value: String(entry.weight),
+      "aria-label": "Weight for " + entry.label,
+      disabled: entry.excluded ? "disabled" : null
+    });
+    weight.addEventListener("change", () => {
+      const value = Number(weight.value);
+      updateSelectionEntry(ts, entry.key, { weight: value });
+      invalidateTool(tool.id, ts);
+      render();
+    });
+
+    const status = entry.excluded
+      ? "Excluded"
+      : percentage(entry.probability);
+
+    table.append(node("div", {
+      class: "weight-row" + (entry.excluded ? " is-excluded" : ""),
+      role: "row"
+    }, [
+      node("label", { class: "exclude-cell" }, [
+        exclude,
+        node("span", { class: "sr-only", text: "Exclude" })
+      ]),
+      node("div", { class: "weight-label", role: "cell" }, [
+        node("strong", { text: entry.label }),
+        node("small", {
+          text: entry.weight === 0 && !entry.excluded
+            ? "Weight 0 — cannot be selected"
+            : "Entry " + (entry.index + 1)
+        })
+      ]),
+      node("div", { class: "weight-control", role: "cell" }, [
+        node("span", { class: "weight-caption", text: "Weight" }),
+        weight
+      ]),
+      node("output", {
+        class: "probability-cell",
+        role: "cell",
+        text: status
+      })
+    ]));
+  }
+
+  section.append(table);
+  return section;
+}
+
+function genericFairnessDescription(tool, ts) {
+  switch (tool.id) {
+    case "coin":
+      return ["Uniform binary choice", "Heads and Tails each have a 50% chance."];
+    case "dice":
+      return ["Uniform dice", "Every face on each D" + ts.diceSides + " has equal probability."];
+    case "number":
+      return ["Uniform integer", "Every whole number in the configured inclusive range has equal probability."];
+    case "shuffle":
+      return ["Uniform shuffle", "Uses Fisher–Yates over the current entries."];
+    case "teams":
+    case "groups":
+      return ["Random partition", "Entries are shuffled, then distributed round-robin so group sizes differ by at most one."];
+    case "pairs":
+      return ["Random pairing", "Entries are shuffled, then paired in order. An odd final entry is unmatched."];
+    case "assignment":
+      return ["Random assignment", "Sources and targets are shuffled independently, then targets are distributed as evenly as possible."];
+    case "ladder":
+      return ["Random permutation", "The ladder topology encodes a uniformly shuffled outcome permutation."];
+    case "tournament":
+      return ["Random draw", "Entrants are shuffled before first-round slots and required byes are assigned."];
+    case "secret-santa":
+      return ["Random valid assignment", "A derangement is generated so every person gives to exactly one different person."];
+    case "elimination":
+      return ["Uniform elimination", "Each remaining entrant has equal probability of being eliminated on the next draw."];
+    case "cards":
+      return ["Shuffled deck", "A 52-card deck is Fisher–Yates shuffled once, then drawn without replacement."];
+    case "chance":
+      return ["Configured Bernoulli chance", "YES uses the exact configured " + ts.chance + "% probability."];
+    case "lottery":
+      return ["Uniform sample", "Numbers are sampled without replacement, so every valid set is drawn from the same uniform process."];
+    case "color":
+      return ["Uniform 24-bit color", "Each HEX value from #000000 through #FFFFFF is equally likely."];
+    case "date":
+      return ["Uniform calendar day", "Each included calendar date has equal probability."];
+    case "time":
+      return ["Uniform minute", "Each minute in the configured window has equal probability."];
+    case "coordinate":
+      return ["Uniform grid point", "X and Y are independently uniform over their inclusive integer ranges."];
+    case "direction":
+      return ["Uniform compass direction", "Each of the eight directions has a 12.5% chance."];
+    case "letter":
+      return ["Uniform letter", "Each letter A–Z has a 1/26 chance."];
+    case "rps":
+      return ["Uniform RPS", "Rock, Paper, and Scissors each have a 1/3 chance."];
+    default:
+      return ["Randomized operation", "This tool uses the registered Random Core operation for its result."];
+  }
+}
+
+function fairnessPanel(tool, ts) {
+  const open = Boolean(ts.fairnessOpen);
+  const panel = node("section", { class: "fairness-panel" });
+  const modeTitle = state.settings.randomness.mode === "seeded"
+    ? "Seeded deterministic"
+    : "Secure random";
+  const modeCopy = state.settings.randomness.mode === "seeded"
+    ? "Reproducible from the seed and sequence position. Predictable to anyone who knows them; this is not secure randomness."
+    : "Uses Web Crypto as the entropy source. This describes the random source, not a proof that a host or modified app cannot manipulate a setup.";
+
+  panel.append(node("button", {
+    class: "fairness-toggle",
+    type: "button",
+    "aria-expanded": String(open),
+    onClick: () => {
+      ts.fairnessOpen = !ts.fairnessOpen;
+      render();
+    }
+  }, [
+    node("span", { class: "fairness-icon", text: "◎", "aria-hidden": "true" }),
+    node("span", { class: "fairness-toggle-copy" }, [
+      node("strong", { text: "Fairness" }),
+      node("small", { text: modeTitle })
+    ]),
+    node("span", { text: open ? "−" : "+" })
+  ]));
+
+  if (!open) return panel;
+
+  panel.append(node("div", { class: "fairness-body" }, [
+    node("div", { class: "fairness-method" }, [
+      node("strong", { text: modeTitle }),
+      node("p", { text: modeCopy })
+    ])
+  ]));
+
+  if (selectionTools.has(tool.id)) {
+    const model = currentSelectionModel(tool.id, ts);
+    if (model) {
+      const selectionTitle = model.customWeights
+        ? "Weighted selection"
+        : "Equal effective chances";
+      let selectionCopy =
+        model.eligibleCount + " of " + model.entries.length + " entries are eligible. ";
+      if (tool.id === "sampler" && ts.allowRepeats) {
+        selectionCopy += "Every draw uses the displayed probabilities and selected entries remain eligible.";
+      } else if (tool.id === "sampler") {
+        selectionCopy += "Displayed percentages are first-draw chances; after each winner, that entry is removed and the remaining weights renormalize.";
+      } else {
+        selectionCopy += "Probability equals effective weight divided by total eligible weight.";
+      }
+
+      panel.querySelector(".fairness-body").append(
+        node("div", { class: "fairness-method" }, [
+          node("strong", { text: selectionTitle }),
+          node("p", { text: selectionCopy })
+        ]),
+        node("div", { class: "fairness-probabilities" },
+          model.entries.map((entry) =>
+            node("div", {
+              class: "fairness-probability-row" + (!entry.eligible ? " is-ineligible" : "")
+            }, [
+              node("span", { text: entry.label }),
+              node("strong", {
+                text: entry.excluded ? "Excluded" : percentage(entry.probability)
+              })
+            ])
+          )
+        )
+      );
+    }
+  } else {
+    const [title, copy] = genericFairnessDescription(tool, ts);
+    panel.querySelector(".fairness-body").append(
+      node("div", { class: "fairness-method" }, [
+        node("strong", { text: title }),
+        node("p", { text: copy })
+      ])
+    );
+  }
+
+  return panel;
 }
 
 function configSetter(toolId, ts, key, value, rerender = false) {
@@ -1470,6 +1760,10 @@ function buildControls(tool, ts) {
           invalidateTool(tool.id, ts);
         }
       ));
+    }
+
+    if (selectionTools.has(tool.id)) {
+      controls.append(selectionRulesControl(tool, ts));
     }
 
     if (tool.id === "secret-santa" && ts.secretAssignments) {
@@ -1639,6 +1933,8 @@ function buildControls(tool, ts) {
     style: { marginTop: "12px" },
     text: mode + ". The result is committed before its reveal animation."
   }));
+
+  controls.append(fairnessPanel(tool, ts));
 
   return controls;
 }
