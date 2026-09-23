@@ -22,7 +22,7 @@ for (const marker of [
   '"controls tool-controls tool-controls-"',
   'class: "tool-controls-head"',
   '"tool-stage tool-stage-v2 stage-family-"',
-  'dataset: {\n      tool: tool.id,\n      family',
+  'dataset: {',
   "function diceFaceNode(value, sides)",
   'class: "die die-pips"',
   "function playingCardVisual(card)",
@@ -78,16 +78,19 @@ for (const family of [
   );
 }
 
+const familyMapStart = app.indexOf(
+  "const BUILTIN_TOOL_VISUAL_FAMILY = Object.freeze({"
+);
+const familyMapEnd = app.indexOf("\n});", familyMapStart);
+assert.ok(familyMapStart >= 0 && familyMapEnd > familyMapStart);
+const familyMapSource = app.slice(familyMapStart, familyMapEnd);
+
 for (const tool of TOOLS) {
-  const explicit =
-    app.includes('tool.id === "' + tool.id + '"')
-    || app.includes('includes(tool.id)');
+  const quoted = '"' + tool.id + '":';
+  const bare = tool.id + ":";
   assert.ok(
-    explicit || [
-      "number","chance","lottery","date","time","coordinate",
-      "direction","letter","rps"
-    ].includes(tool.id),
-    "Built-in tool must resolve through V6 family logic: " + tool.id
+    familyMapSource.includes(quoted) || familyMapSource.includes(bare),
+    "Built-in tool missing explicit V6 family: " + tool.id
   );
 }
 
