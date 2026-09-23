@@ -177,6 +177,9 @@ jobs:
       - name: Design System V2 certification
         run: node tests/design-system-v2.mjs
 
+      - name: Brand and iconography V3 certification
+        run: node tests/brand-iconography-v3.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
