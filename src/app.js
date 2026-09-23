@@ -469,7 +469,11 @@ function focusIdentity(element) {
     id: element.id || null,
     name: element.getAttribute("name"),
     ariaLabel: element.getAttribute("aria-label"),
-    tagName: element.tagName
+    tagName: element.tagName,
+    text:
+      element.tagName === "BUTTON"
+        ? element.textContent?.trim() || null
+        : null
   };
 }
 
@@ -491,12 +495,24 @@ function matchingFocusable(container, identity) {
       && candidate.getAttribute("aria-label") === identity.ariaLabel
       && candidate.tagName === identity.tagName
     ) return true;
+    if (
+      identity.text
+      && candidate.tagName === "BUTTON"
+      && candidate.textContent?.trim() === identity.text
+    ) return true;
     return false;
   }) || null;
 }
 
 function finalizeModalAccessibility(modal, previousFocusIdentity = null) {
   modal.tabIndex = -1;
+
+  modal.querySelectorAll(".segmented button").forEach((button) => {
+    button.setAttribute(
+      "aria-pressed",
+      button.classList.contains("active") ? "true" : "false"
+    );
+  });
 
   const heading = modal.querySelector("h1,h2,h3");
   if (heading) {
@@ -13724,6 +13740,10 @@ function render() {
   } else {
     modalFocusSignature = null;
   }
+
+  root.toggleAttribute("inert", Boolean(modal));
+  if (modal) root.setAttribute("aria-hidden", "true");
+  else root.removeAttribute("aria-hidden");
 
   if (restoreFocusAfterClose) {
     window.requestAnimationFrame(() => {
