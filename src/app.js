@@ -26,6 +26,7 @@ import {
   renameDevice,
   getRecentPage,
   getRecentForTool,
+  getAllByIndex,
   getMany,
   deleteMatching,
   DATABASE_VERSION,
@@ -752,7 +753,7 @@ async function loadData() {
     workflowSessions,
     historyPage,
     runPage,
-    sessions,
+    activeSessions,
     pins,
     favorites,
     settings
@@ -773,11 +774,29 @@ async function loadData() {
     getRecentPage("runs", "recent", {
       limit: HISTORY_PAGE_SIZE
     }),
-    getAll("sessions"),
+    getAllByIndex("sessions", "status", "active"),
     getAll("historyPins"),
     getAll("favorites"),
     getSettings()
   ]);
+
+  const activeSessionIds = new Set(
+    activeSessions.map((session) => String(session.id))
+  );
+  const linkedSessionIds = [...new Set(
+    runPage.records
+      .map((run) => run.sessionId)
+      .filter(Boolean)
+      .map(String)
+  )].filter((id) => !activeSessionIds.has(id));
+  const linkedSessions = linkedSessionIds.length
+    ? await getMany("sessions", linkedSessionIds)
+    : [];
+  const sessions = mergeRecentRecords(
+    activeSessions,
+    linkedSessions,
+    { sortKey: "updatedAt" }
+  );
 
   const loadedRunIds = new Set(
     runPage.records.map((run) => String(run.id))
@@ -1031,6 +1050,29 @@ async function ensureRunsLoaded(runIds) {
     records,
     { sortKey: "timestamp" }
   );
+}
+
+
+async function openRunDetailById(runId) {
+  let run = historyRunById(runId);
+
+  if (!run && !String(runId).startsWith("legacy:")) {
+    try {
+      await ensureRunsLoaded([runId]);
+      run = historyRunById(runId);
+    } catch (error) {
+      announce(error?.message || "Could not load this Run.");
+      return;
+    }
+  }
+
+  if (!run) {
+    announce("This stored Run is unavailable.");
+    return;
+  }
+
+  state.modal = { type: "run-detail", runId: run.id };
+  render();
 }
 
 function presetById(id) {
@@ -5176,7 +5218,6 @@ function renderPools() {
     state.poolSearch = search.value;
   });
   search.addEventListener("change", () => {
-    editor.visibleLimit = POOL_RENDER_CHUNK;
     render();
   });
   search.addEventListener("keydown", (event) => {
@@ -5335,6 +5376,28 @@ async function loadOlderHistory() {
     ]);
 
     if (runPage) {
+      const knownSessionIds = new Set(
+        state.sessions.map((session) => String(session.id))
+      );
+      const missingSessionIds = [...new Set(
+        runPage.records
+          .map((run) => run.sessionId)
+          .filter(Boolean)
+          .map(String)
+      )].filter((id) => !knownSessionIds.has(id));
+
+      if (missingSessionIds.length) {
+        const linkedSessions = await getMany(
+          "sessions",
+          missingSessionIds
+        );
+        state.sessions = mergeRecentRecords(
+          state.sessions,
+          linkedSessions,
+          { sortKey: "updatedAt" }
+        );
+      }
+
       state.runs = mergeRecentRecords(
         state.runs,
         runPage.records,
@@ -5502,10 +5565,7 @@ function renderHistory() {
     actions.append(node("button", {
       class: "small-action",
       type: "button",
-      onClick: () => {
-        state.modal = { type: "run-detail", runId: latest.id };
-        render();
-      }
+      onClick: () => openRunDetailById(latest.id)
     }, "Details"));
 
     const summaries = node("div", { class: "history-run-preview" },
@@ -6794,13 +6854,7 @@ function renderWorkflowRunner() {
             ? node("button", {
                 class: "small-action",
                 type: "button",
-                onClick: () => {
-                  state.modal = {
-                    type: "run-detail",
-                    runId: entry.runId
-                  };
-                  render();
-                }
+                onClick: () => openRunDetailById(entry.runId)
               }, "Run")
             : null
         ])
