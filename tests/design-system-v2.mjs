@@ -3,6 +3,12 @@ import fs from "node:fs";
 
 const css = fs.readFileSync("design-system.css", "utf8");
 const styles = fs.readFileSync("styles.css", "utf8");
+const activeCoreStyles = [
+  styles,
+  fs.readFileSync("app-shell.css", "utf8"),
+  fs.readFileSync("home-arcade.css", "utf8"),
+  fs.readFileSync("tool-experience.css", "utf8")
+].join("\n");
 const phase14 = fs.readFileSync("phase14.css", "utf8");
 const index = fs.readFileSync("index.html", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
@@ -138,11 +144,11 @@ assert.equal(
   "Legacy styles.css must no longer own the v1.0 root palette."
 );
 assert.ok(
-  styles.includes("var(--color-surface-1)")
-    && styles.includes("var(--type-page-size)")
-    && styles.includes("var(--radius-stage)")
-    && styles.includes("var(--shadow-level-"),
-  "Core styles must consume V2 semantic roles."
+  activeCoreStyles.includes("var(--color-surface-1)")
+    && activeCoreStyles.includes("var(--type-page-size)")
+    && activeCoreStyles.includes("var(--radius-stage)")
+    && activeCoreStyles.includes("var(--shadow-level-"),
+  "Active core styles must consume V2 semantic roles."
 );
 
 assert.ok(
