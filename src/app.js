@@ -12859,6 +12859,49 @@ function renderModal() {
                   ? "Installed PWA"
                   : "Browser"
           })
+        ]),
+        node("div", {}, [
+          node("span", { text: "Compute" }),
+          node("strong", {
+            text: computeWorkerSupported()
+              ? "Background worker"
+              : "Main thread"
+          })
+        ]),
+        node("div", {}, [
+          node("span", { text: "History cache" }),
+          node("strong", {
+            text:
+              (state.runs.length + state.history.length)
+              + (
+                state.historyPaging.runsHasMore
+                || state.historyPaging.historyHasMore
+                  ? "+ loaded"
+                  : " loaded"
+              )
+          })
+        ]),
+        node("div", {}, [
+          node("span", { text: "Last compute" }),
+          node("strong", {
+            text:
+              state.performance.lastComputeMs == null
+                ? "—"
+                : state.performance.lastComputeMode
+                  + " · "
+                  + state.performance.lastComputeMs
+                  + " ms"
+          })
+        ]),
+        node("div", {}, [
+          node("span", { text: "Worker tasks" }),
+          node("strong", {
+            text:
+              state.performance.workerTasks
+              + " worker · "
+              + state.performance.mainThreadTasks
+              + " main"
+          })
         ])
       ]),
       node("label", { class: "control settings-device-name" }, [
