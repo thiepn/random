@@ -9164,12 +9164,72 @@ function buildCustomStage(tool, ts, wrap) {
   );
 }
 
+function diceFaceNode(value, sides) {
+  const numeric = Number(value);
+  const isPipFace =
+    Number(sides) === 6
+    && Number.isInteger(numeric)
+    && numeric >= 1
+    && numeric <= 6;
+
+  if (!isPipFace) {
+    return node("div", {
+      class: "die die-number",
+      text: String(value)
+    });
+  }
+
+  const patterns = {
+    1: [5],
+    2: [1, 9],
+    3: [1, 5, 9],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 3, 4, 6, 7, 9]
+  };
+
+  return node("div", {
+    class: "die die-pips",
+    "aria-label": String(numeric)
+  }, patterns[numeric].map((position) =>
+    node("span", {
+      class: "die-pip pip-" + position,
+      "aria-hidden": "true"
+    })
+  ));
+}
+
+function playingCardVisual(card) {
+  const text = String(card || "");
+  const suit = text.slice(-1);
+  const rank = text.slice(0, -1) || "?";
+  const red = /[♥♦]/.test(suit);
+
+  return node("div", {
+    class: "play-card playing-card " + (red ? "red-card" : "black-card"),
+    "aria-label": text || "No card drawn"
+  }, [
+    node("span", { class: "card-corner top", text: rank + suit }),
+    node("span", { class: "card-suit", text: suit || "?" }),
+    node("span", { class: "card-corner bottom", text: rank + suit })
+  ]);
+}
+
 function buildStage(tool, ts) {
+  const family = toolVisualFamily(tool);
   const stage = node("div", {
     class:
-      "tool-stage accent-"
+      "tool-stage tool-stage-v2 stage-family-"
+      + family
+      + " stage-tool-"
+      + tool.id
+      + " accent-"
       + tool.accent
       + presentationStageClasses(tool, ts),
+    dataset: {
+      tool: tool.id,
+      family
+    },
     style: presentationStageStyle(ts)
   });
   const wrap = node("div", { class: "stage-content" });
@@ -9212,7 +9272,7 @@ function buildStage(tool, ts) {
         node("div", {
           class: "dice-row " + (ts.animating ? "rolling" : "")
         }, values.map((value) =>
-          node("div", { class: "die", text: String(value) })
+          diceFaceNode(value, result?.sides || ts.diceSides)
         )),
         node("div", {
           class: "stage-label",
@@ -9298,21 +9358,37 @@ function buildStage(tool, ts) {
       }));
     }
   } else if (tool.id === "cards") {
-    const red = result?.card && /[♥♦]/.test(result.card);
     wrap.append(
       node("div", {
-        class: "card-deck",
-        text: "✦",
-        "aria-hidden": "true"
-      }),
+        class: "card-stage-visual",
+        "aria-hidden": result ? "true" : null
+      }, [
+        node("div", { class: "card-deck" }, [
+          node("span", { class: "card-deck-mark" },
+            iconNode("brand")
+          )
+        ]),
+        result
+          ? playingCardVisual(result.card)
+          : node("div", {
+              class: "play-card playing-card card-placeholder"
+            }, [
+              node("span", { class: "card-suit", text: "?" })
+            ])
+      ]),
       node("div", {
         class: "stage-label",
         text: result ? "Drawn card" : "52-card deck"
       }),
-      node("div", {
-        class: "stage-result play-card " + (red ? "red-card" : ""),
-        text: result?.card || "DRAW"
-      }),
+      result
+        ? node("div", {
+            class: "stage-result card-result-label",
+            text: result.card
+          })
+        : node("div", {
+            class: "stage-result card-result-label",
+            text: "DRAW"
+          }),
       node("div", {
         class: "stage-sub",
         text: result
