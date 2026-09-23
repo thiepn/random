@@ -25,6 +25,10 @@ assert.equal(catalog.schemaVersion, 1);
 assert.equal(catalog.grid, 24);
 assert.equal(catalog.strokeWidth, 1.8);
 assert.equal(catalog.colorModel, "currentColor");
+assert.deepEqual(
+  catalog.status,
+  ["check", "pause", "warning", "info", "offline"]
+);
 
 assert.equal(TOOLS.length, 25);
 assert.equal(TOOL_ICON_IDS.length, 25);
@@ -80,7 +84,12 @@ for (const required of [
   "lock",
   "input",
   "branch",
-  "output"
+  "output",
+  "check",
+  "pause",
+  "warning",
+  "info",
+  "offline"
 ]) {
   assert.ok(hasIcon(required), "Missing shared icon: " + required);
 }
@@ -179,7 +188,11 @@ for (const marker of [
   'iconNode("search"',
   'iconNode("settings")',
   'visualToolIcon(tool, "tool-symbol")',
-  'visualToolIcon(tool, "party-tool-icon")'
+  'visualToolIcon(tool, "party-tool-icon")',
+  'iconNode("warning")',
+  'iconNode("check")',
+  'iconNode("pause")',
+  'class: "empty-state-mark"'
 ]) {
   assert.ok(
     app.includes(marker),
