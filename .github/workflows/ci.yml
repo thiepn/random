@@ -187,6 +187,9 @@ jobs:
       - name: Home and Arcade V5 certification
         run: node tests/home-arcade-v5.mjs
 
+      - name: Tool Experience V6 certification
+        run: node tests/tool-experience-v6.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
