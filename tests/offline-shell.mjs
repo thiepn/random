@@ -65,5 +65,7 @@ assert.equal(
 );
 assert.equal(manifest.display, "standalone");
 assert.ok(manifest.id, "PWA manifest must have a stable id.");
+assert.equal(manifest.lang, "en");
+assert.equal(manifest.dir, "ltr");
 
 console.log("offline-shell tests passed");
