@@ -184,6 +184,13 @@ import {
   focusableSelector,
   nextFocusIndex
 } from "./accessibility-i18n.js";
+import {
+  assertJsonImportFile,
+  isPartyStateRequest,
+  normalizeAudienceMessage,
+  safeRouteToken,
+  sanitizeDownloadFilename
+} from "./security.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -1486,8 +1493,7 @@ function broadcastPartyAudience({
   channel.onmessage = (event) => {
     const message = event.data;
     if (
-      message?.type === "party-state-request"
-      && message.partyId === party.id
+      isPartyStateRequest(message, party.id)
       && state.view === "party"
       && state.activePartySessionId === party.id
     ) {
@@ -3411,12 +3417,11 @@ function downloadCustomExperience(experience) {
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  const safeName = experience.name
-    .replace(/[^a-z0-9_-]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "custom-experience";
   link.href = url;
-  link.download = safeName + ".randomizer.json";
+  link.download = sanitizeDownloadFilename(
+    (experience.name || "custom-experience") + ".randomizer.json",
+    "custom-experience.randomizer.json"
+  );
   document.body.append(link);
   link.click();
   link.remove();
@@ -3424,14 +3429,17 @@ function downloadCustomExperience(experience) {
 }
 
 
-const PORTABILITY_APP_VERSION = "implementation-12";
+const PORTABILITY_APP_VERSION = "implementation-15";
 
 function downloadTextFile(text, filename, type = "application/json") {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = filename;
+  link.download = sanitizeDownloadFilename(
+    filename,
+    "randomizer-export.json"
+  );
   document.body.append(link);
   link.click();
   link.remove();
@@ -3616,6 +3624,7 @@ function openPortableImportPicker() {
     if (!file) return;
 
     try {
+      assertJsonImportFile(file);
       const text = await file.text();
       const portable = await runBackgroundOrFallback(
         "portability.parse",
@@ -13896,7 +13905,7 @@ if ("serviceWorker" in navigator) {
 
 async function init() {
   const params = new URLSearchParams(location.search);
-  const requestedAudience = params.get("audience");
+  const requestedAudience = safeRouteToken(params.get("audience"));
 
   if (requestedAudience) {
     state.settings = normalizeExperienceSettings({});
@@ -13907,16 +13916,13 @@ async function init() {
     const channel = partyChannelFor(requestedAudience);
     if (channel) {
       channel.onmessage = (event) => {
-        const payload = event.data;
-        if (
-          payload
-          && payload.schemaVersion === 1
-          && payload.partyId === requestedAudience
-          && payload.tool
-        ) {
-          state.audienceState = cloneData(payload);
-          render();
-        }
+        const payload = normalizeAudienceMessage(
+          event.data,
+          requestedAudience
+        );
+        if (!payload) return;
+        state.audienceState = payload;
+        render();
       };
 
       channel.postMessage({
@@ -13937,11 +13943,13 @@ async function init() {
     getStorageStatus()
   ]);
 
-  const requestedParty = params.get("party");
-  const requestedWorkflowSession = params.get("workflowSession");
-  const requestedTemplateSession = params.get("templateSession");
-  const requestedBuilder = params.get("builder");
-  const requestedTool = params.get("tool");
+  const requestedParty = safeRouteToken(params.get("party"));
+  const requestedWorkflowSession =
+    safeRouteToken(params.get("workflowSession"));
+  const requestedTemplateSession =
+    safeRouteToken(params.get("templateSession"));
+  const requestedBuilder = safeRouteToken(params.get("builder"));
+  const requestedTool = safeRouteToken(params.get("tool"));
   const requestedView = params.get("view");
 
   if (
