@@ -5244,7 +5244,13 @@ function primaryNavigation() {
   ])));
 
   const footer = node("div", { class: "app-nav-footer" }, [
-    node("div", { class: "nav-status-row" }, [
+    node("div", {
+      class: "nav-status-row",
+      role: "status",
+      "aria-label": state.networkOnline
+        ? "Local-first. Ready when the network is not."
+        : "Offline. Local tools remain available."
+    }, [
       node("div", {
         class: "nav-status-mark",
         "aria-hidden": "true"
