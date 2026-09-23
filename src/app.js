@@ -11446,8 +11446,7 @@ function buildToolActionDock(tool, ts) {
 
   if (ts.result) {
     dock.append(node("div", {
-      class: "result-commit-chip",
-      role: "status"
+      class: "result-commit-chip"
     }, [
       iconNode("check", { className: "result-commit-icon" }),
       node("span", {
