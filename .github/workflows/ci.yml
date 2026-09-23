@@ -109,6 +109,12 @@ jobs:
       - name: Background compute equivalence certification
         run: node tests/compute-tasks.mjs
 
+      - name: Offline shell certification
+        run: node tests/offline-shell.mjs
+
+      - name: Performance budget certification
+        run: node tests/performance-budget.mjs
+
       - name: Guard decision randomness and unsafe execution
         run: |
           if grep -R "Math\.random" --include="*.js" src sw.js; then
