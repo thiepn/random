@@ -20,8 +20,11 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Fullscreen Party mode with persistent Party Sessions, Fast/Standard/Dramatic reveals, configurable countdowns, Host Lock, Wake Lock, pass-the-phone private reveals, TV/projector layouts, and an optional sanitized audience window
 - Safe declarative Custom Builder with user-created Wheels, Pickers, Dice, Deck draws, weighted tables, Number generators, bounded compound generators, drafts, Test Mode, validation, import/export, and My Creations
 - Decision Studio workflow graphs with runtime/fixed Input nodes, saved-Preset Randomizer nodes, True/False Branch nodes, terminal Outcomes, automatic or step execution, resumable workflow sessions, and bounded acyclic automation
+- Versioned, checksummed full backups with atomic merge/restore, automatic pre-restore recovery backups, and bounded import validation
+- Cross-device library transfer through ordinary JSON files or the platform Share sheet, using deterministic record merge semantics instead of requiring an account
+- Per-device local identity, storage-quota/durability visibility, PWA install controls, offline awareness, and explicit in-app service-worker update activation
 - History and favorites
-- Offline service worker + web app manifest
+- Offline service worker + hardened web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
 
 No build step is required. The repository can be served directly through GitHub Pages.
@@ -52,7 +55,8 @@ Then open `http://localhost:8080`.
 - `src/custom-experience-model.js` — safe Custom Experience schema, allowlisted primitives, appearance/input rules, validation, import/export, and custom tool identities
 - `src/custom-engine.js` — bounded execution of approved Custom Experience primitives using the same Random Core, Dice engine, and Number engine
 - `src/workflow-model.js` — Decision Studio graph schema, validation, branching conditions, workflow sessions, and bounded execution-state transitions
-- `src/storage.js` — IndexedDB persistence
+- `src/data-portability.js` — portable backup schema, checksum/integrity validation, library/full scopes, deterministic cross-device merges, and safe replacement planning
+- `src/storage.js` — IndexedDB persistence, atomic multi-store restore, storage durability/usage status, and local device identity
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
 - `styles.css` — visual system and responsive layout
@@ -77,6 +81,16 @@ IndexedDB schema v4 adds `ruleSets`, `sessionTemplates`, and `templateSessions`.
 ## Decision Studio workflows
 
 IndexedDB schema v7 adds `workflows` and `workflowSessions`. Workflow definitions are revisioned separately from their runtime sessions. Randomizer nodes reference saved Presets and execute through the same tool engine and immutable Run transaction path as normal play, so secure/seeded randomness, Pool bindings, constraints, fairness metadata, and History remain consistent. Each committed Run records its `workflowSessionId` and `workflowNodeId`, and the workflow session advances atomically with that Run. Auto mode is bounded by a per-workflow step limit and the validator rejects graph cycles; Step mode advances exactly one graph node per action.
+
+## Persistence, backup, transfer, and PWA lifecycle
+
+IndexedDB schema v8 adds a local `deviceMeta` record while keeping device identity outside portable backups. A **full backup** contains every portable collection, including immutable Runs, History, and active Session records. A **library transfer** intentionally excludes runtime history and carries reusable Pools, Views, Presets, Rule Sets, Session Templates, Custom Experiences, Workflows, favorites, and settings.
+
+Portable files use a versioned `randomizer-arcade-portable` envelope with a deterministic integrity checksum, record/depth/size limits, and unsafe-key rejection. **Merge** unions unique records, prefers higher revisions and newer timestamps, and refuses to silently overwrite divergent immutable Runs. **Restore/Replace** is atomic across the affected IndexedDB stores and automatically downloads a complete pre-restore safety backup first.
+
+The cross-device layer is transport-independent: today the app can move a library package through a downloaded file or the browser/OS Share sheet, then merge it on another device. No cloud account is required, and the portable format is the compatibility boundary for a future optional remote sync transport.
+
+The PWA shell exposes install availability, online/offline state, storage durability, quota usage, and pending updates in Settings. New service workers wait until the user chooses **Apply update**, then activate through `skipWaiting` and reload under the new controller. The manifest has a stable app ID, launch handling, display fallbacks, and shortcuts for Decision Studio and Pools.
 
 ## Party mode and audience privacy
 
