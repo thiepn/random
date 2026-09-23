@@ -4,6 +4,11 @@ on:
   push:
     branches: ["main"]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: randomizer-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -11,6 +16,7 @@ permissions:
 jobs:
   certify:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -139,3 +145,28 @@ jobs:
             echo "Unsafe dynamic execution or HTML injection is forbidden."
             exit 1
           fi
+
+
+  production-certify:
+    name: Production release certification
+    needs: certify
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Cross-feature release regression certification
+        run: node tests/cross-feature-regression.mjs
+
+      - name: Adversarial fuzz certification
+        run: node tests/adversarial-fuzz.mjs
+
+      - name: Production release certification
+        run: node tests/release-certification.mjs

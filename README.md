@@ -129,6 +129,14 @@ The document ships a restrictive meta Content Security Policy because GitHub Pag
 
 Randomizer Arcade does not add telemetry, advertising, remote accounts, or analytics in this phase. User data remains in browser storage unless the user explicitly exports or shares it. Portable-file `fnv1a32` is a deterministic **corruption/tamper-detection checksum, not an authenticity signature**: anyone who can edit a file can also recompute it, so imported files should still be treated as untrusted data. CI now certifies the trust-boundary validators, CSP presence, privacy invariants, worker protocol, and cache isolation.
 
+## Comprehensive QA and production certification
+
+Phase 16 freezes feature expansion and adds the final release gate. CI now uses two levels: the existing **certify** job runs syntax checks and all focused engine/model/regression suites, then a separate **Production release certification** job runs only after that foundation passes. Stale CI runs are cancelled, both jobs have bounded timeouts, and the workflow can also be triggered manually for explicit release checks.
+
+The release layer adds cross-feature tests that execute real chains across Custom Experiences, Presets, Tool execution, immutable Runs, Party audience state, Session Templates, and full portable backup/merge round trips. A separate adversarial suite exercises malformed portable envelopes, missing/extra stores, unsafe prototype keys, excessive nesting, hostile route tokens, forged Secret Santa audience results, and unauthorized worker task types.
+
+The final repository audit walks the complete local ES-module graph from the app and compute-worker entry points, verifies that every reachable module exists and is in the offline shell, validates manifest scope/local assets, preserves CSP/no-inline-script constraints, forbids unsafe execution/HTML sinks and `Math.random` in production code, rejects remote module dependencies, and enforces JavaScript/CSS/service-worker/manifest size budgets. The exact automated and deployed-browser release criteria are recorded in [PRODUCTION-CERTIFICATION.md](./PRODUCTION-CERTIFICATION.md).
+
 ## Party mode and audience privacy
 
 IndexedDB schema v5 adds `partySessions`. Party Runs append to their Party Session in the same transaction as the immutable Run and seeded-position update. Fast/Standard/Dramatic only override presentation. Secret Santa uses a pass-the-phone privacy gate, and the audience window receives a strict sanitized `AudienceState` over `BroadcastChannel`; it starts in a minimal mode and does not load the host's Pools, History, Presets, or other IndexedDB data. The audience window is opened with `noopener` so it cannot inspect the host window.
