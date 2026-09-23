@@ -2992,6 +2992,273 @@ function downloadCustomExperience(experience) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+
+const PORTABILITY_APP_VERSION = "implementation-12";
+
+function downloadTextFile(text, filename, type = "application/json") {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function formatStorageBytes(value) {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(
+    units.length - 1,
+    Math.floor(Math.log(bytes) / Math.log(1024))
+  );
+  const amount = bytes / (1024 ** index);
+  return (
+    amount >= 100 || index === 0
+      ? Math.round(amount)
+      : Math.round(amount * 10) / 10
+  ) + " " + units[index];
+}
+
+async function refreshStorageStatus() {
+  state.storageStatus = await getStorageStatus();
+  return state.storageStatus;
+}
+
+async function ensureDeviceIdentity() {
+  if (!state.device) state.device = await getDeviceIdentity();
+  return state.device;
+}
+
+async function createAppPortablePackage(scope = "full") {
+  const device = await ensureDeviceIdentity();
+  const stores = await dumpDatabaseStores(
+    scope === "library"
+      ? LIBRARY_STORES
+      : PORTABLE_STORAGE_STORES
+  );
+  return createPortablePackage({
+    stores,
+    scope,
+    device: {
+      id: device.deviceId,
+      name: device.name,
+      platform: device.platform
+    },
+    appVersion: PORTABILITY_APP_VERSION,
+    databaseVersion: DATABASE_VERSION
+  });
+}
+
+async function downloadPortablePackage(scope = "full", {
+  announceAfter = true
+} = {}) {
+  const portable = await createAppPortablePackage(scope);
+  const text = serializePortablePackage(portable);
+  const filename = safePortableFilename({
+    scope,
+    createdAt: portable.createdAt
+  });
+  downloadTextFile(text, filename);
+  if (announceAfter) {
+    announce(
+      scope === "full"
+        ? "Full backup downloaded."
+        : "Library transfer package downloaded."
+    );
+  }
+  return { portable, text, filename };
+}
+
+async function shareLibraryPackage() {
+  try {
+    const { portable, text, filename } =
+      await downloadOrShareLibraryPayload(false);
+    const file = new File([text], filename, {
+      type: "application/json"
+    });
+
+    if (
+      navigator.share
+      && (
+        !navigator.canShare
+        || navigator.canShare({ files: [file] })
+      )
+    ) {
+      await navigator.share({
+        title: "Randomizer Arcade library",
+        text:
+          "Randomizer Arcade transfer package from "
+          + portable.device.name,
+        files: [file]
+      });
+      announce("Library transfer shared.");
+      return;
+    }
+
+    downloadTextFile(text, filename);
+    announce("Sharing is unavailable here. Transfer package downloaded instead.");
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    announce(error?.message || "Could not share library.");
+  }
+}
+
+async function downloadOrShareLibraryPayload(download = true) {
+  const portable = await createAppPortablePackage("library");
+  const text = serializePortablePackage(portable);
+  const filename = safePortableFilename({
+    scope: "library",
+    createdAt: portable.createdAt
+  });
+  if (download) downloadTextFile(text, filename);
+  return { portable, text, filename };
+}
+
+function openPortableImportPicker() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
+  input.multiple = false;
+
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const portable = parsePortablePackage(text);
+      const summary = portablePackageSummary(portable);
+      state.modal = {
+        type: "portable-import",
+        portable,
+        summary,
+        filename: file.name,
+        mode: "merge",
+        error: null
+      };
+      render();
+    } catch (error) {
+      announce(error?.message || "Could not read this backup.");
+    }
+  }, { once: true });
+
+  input.click();
+}
+
+async function applyPortableImport(config) {
+  const portable = config.portable;
+  const local = await dumpDatabaseStores(PORTABLE_STORAGE_STORES);
+  const mode = config.mode === "replace" ? "replace" : "merge";
+
+  if (mode === "replace") {
+    // Destructive restore always emits a safety backup first.
+    const safety = await createPortablePackage({
+      stores: local,
+      scope: "full",
+      device: {
+        id: (await ensureDeviceIdentity()).deviceId,
+        name: state.device.name,
+        platform: state.device.platform
+      },
+      appVersion: PORTABILITY_APP_VERSION,
+      databaseVersion: DATABASE_VERSION
+    });
+    downloadTextFile(
+      serializePortablePackage(safety),
+      "randomizer-pre-restore-"
+        + new Date().toISOString().replace(/[:.]/g, "-")
+        + ".json"
+    );
+  }
+
+  const result = mode === "replace"
+    ? {
+        stores: replaceStoresFromPackage(local, portable),
+        totals: { added: 0, updated: 0, conflicts: 0 }
+      }
+    : mergePortableStores(local, portable);
+
+  const targetStores =
+    portable.payload.scope === "library"
+      ? LIBRARY_STORES
+      : PORTABLE_STORES;
+
+  await replaceDatabaseStores(result.stores, {
+    storeNames: targetStores
+  });
+
+  state.tool = {};
+  state.activeTemplateSessionId = null;
+  state.activePartySessionId = null;
+  state.activeWorkflowSessionId = null;
+  state.workflowEditor = null;
+  state.builder = null;
+  state.modal = null;
+  state.view = "play";
+  state.toolId = null;
+
+  await loadData();
+  await refreshStorageStatus();
+  history.replaceState({}, "", location.pathname);
+  render();
+
+  if (mode === "merge") {
+    announce(
+      "Import complete"
+      + (result.totals.conflicts
+        ? " · " + result.totals.conflicts + " conflicts kept local."
+        : ".")
+    );
+  } else {
+    announce("Restore complete. A pre-restore safety backup was downloaded.");
+  }
+}
+
+async function requestDurableStorage() {
+  const granted = await requestPersistentStorage();
+  await refreshStorageStatus();
+  announce(
+    granted
+      ? "Persistent storage granted."
+      : "The browser did not grant persistent storage."
+  );
+  render();
+}
+
+async function renameCurrentDevice(value) {
+  try {
+    state.device = await renameDevice(value);
+    announce("Device name updated.");
+    render();
+  } catch (error) {
+    announce(error?.message || "Could not rename device.");
+  }
+}
+
+async function installPwa() {
+  const prompt = state.installPrompt;
+  if (!prompt) return;
+  state.installPrompt = null;
+  try {
+    await prompt.prompt();
+    await prompt.userChoice;
+  } catch {
+    // Browser installation prompts are user-controlled.
+  }
+  render();
+}
+
+function activateWaitingServiceWorker() {
+  const waiting = state.swRegistration?.waiting;
+  if (!waiting) return;
+  state.reloadingForUpdate = true;
+  waiting.postMessage({ type: "SKIP_WAITING" });
+}
+
 async function toggleCustomFavorite(experience) {
   const next = updateCustomExperience(experience, {
     favorite: !experience.favorite
