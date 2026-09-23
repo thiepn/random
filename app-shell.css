@@ -191,11 +191,18 @@
   color:var(--color-accent-secondary)
 }
 
-.nav-label{
+.nav-button .nav-label{
   min-width:0;
   overflow:hidden;
   white-space:nowrap;
-  text-overflow:ellipsis
+  text-overflow:ellipsis;
+  font-size:inherit;
+  line-height:inherit;
+  color:inherit
+}
+
+.nav-button.active .nav-label{
+  color:var(--color-text-primary)
 }
 
 .content{
