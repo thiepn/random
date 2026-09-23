@@ -168,8 +168,13 @@
   /* Layout */
   --nav-height:76px;
   --content-max:1120px;
+  --content-max-wide:1280px;
   --content-gutter:1rem;
   --content-gutter-wide:1.75rem;
+  --shell-mobile-nav-height:74px;
+  --shell-rail-width:84px;
+  --shell-sidebar-width:236px;
+  --shell-topbar-min-height:68px;
 
   /* Layering */
   --z-content:1;

@@ -36,6 +36,7 @@ for (const entry of entries) {
 for (const required of [
   "./design-system.css",
   "./brand-icons.css",
+  "./app-shell.css",
   "./assets/brand/random-spark-mark.svg",
   "./src/icon-system.js",
   "./phase13.css",
@@ -53,6 +54,14 @@ for (const required of [
 assert.ok(
   index.includes('./design-system.css'),
   "index.html must load Design System V2."
+);
+assert.ok(
+  index.includes('./app-shell.css'),
+  "index.html must load Adaptive Shell V4."
+);
+assert.ok(
+  index.indexOf('./app-shell.css') > index.indexOf('./brand-icons.css'),
+  "Adaptive Shell V4 must load after V3 brand styles."
 );
 assert.ok(
   index.indexOf('./design-system.css') < index.indexOf('./styles.css'),

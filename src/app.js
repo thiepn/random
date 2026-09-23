@@ -5090,52 +5090,116 @@ function renderCustomImportModal(modal, config) {
   ]));
 }
 
-function topBar() {
-  const seeded = state.settings.randomness.mode === "seeded";
-  return node("header", { class: "topbar" }, [
-    node("div", { class: "brand" }, [
-      node("div", {
-        class: "brand-icon",
-        "aria-hidden": "true"
-      }, iconNode("brand", { className: "brand-mark-svg" })),
-      node("div", { class: "brand-copy" }, [
-        node("strong", { text: "Randomizer" }),
-        node("span", { text: "Arcade" })
-      ])
-    ]),
-    node("div", { class: "top-actions" }, [
-      node("button", {
-        class: "pill-button",
-        type: "button",
-        "aria-label": "Open settings",
-        onClick: () => {
-          if (state.computeBusy) {
-            announce("Finish the current randomization before changing settings.");
-            return;
-          }
-          state.modal = "settings";
-          render();
-          Promise.all([
-            ensureDeviceIdentity(),
-            refreshStorageStatus()
-          ]).then(() => {
-            if (state.modal === "settings") render();
-          }).catch(() => {});
-        }
-      }, [
-        node("span", { class: "rng-dot", "aria-hidden": "true" }),
-        node("span", { text: seeded ? "Seeded" : "Secure" })
-      ]),
-      iconButton(
-        "Open Arcade",
-        iconNode("arcade"),
-        () => setView("arcade")
-      )
+function openSettingsPanel() {
+  if (state.computeBusy) {
+    announce("Finish the current randomization before changing settings.");
+    return;
+  }
+  state.modal = "settings";
+  render();
+  Promise.all([
+    ensureDeviceIdentity(),
+    refreshStorageStatus()
+  ]).then(() => {
+    if (state.modal === "settings") render();
+  }).catch(() => {});
+}
+
+function shellViewContext() {
+  if (state.view === "tool") {
+    const tool = currentTool();
+    return {
+      eyebrow: "Randomizer",
+      title: tool?.name || "Tool"
+    };
+  }
+
+  if (state.view === "template-session") {
+    const session = templateSessionById(state.activeTemplateSessionId);
+    const template = session
+      ? sessionTemplateById(session.templateId)
+      : null;
+    return {
+      eyebrow: "Guided session",
+      title: template?.name || "Session"
+    };
+  }
+
+  const contexts = {
+    play: ["Randomizer Arcade", "Play"],
+    arcade: ["Browse", "Arcade"],
+    studio: ["Automation", "Decision Studio"],
+    pools: ["Library", "Pools"],
+    history: ["Activity", "History"],
+    creations: ["Custom tools", "My Creations"],
+    builder: ["Custom tools", "Builder"]
+  };
+  const [eyebrow, title] = contexts[state.view] || ["Randomizer Arcade", "Play"];
+  return { eyebrow, title };
+}
+
+function brandLockup(className = "") {
+  return node("div", {
+    class: ("brand " + className).trim()
+  }, [
+    node("div", {
+      class: "brand-icon",
+      "aria-hidden": "true"
+    }, iconNode("brand", { className: "brand-mark-svg" })),
+    node("div", { class: "brand-copy" }, [
+      node("strong", { text: "Randomizer" }),
+      node("span", { text: "Arcade" })
     ])
   ]);
 }
 
-function bottomNav() {
+function topBar() {
+  const seeded = state.settings.randomness.mode === "seeded";
+  const context = shellViewContext();
+
+  return node("header", { class: "topbar" }, [
+    brandLockup("topbar-brand"),
+    node("div", { class: "topbar-context" }, [
+      node("div", { class: "topbar-context-copy" }, [
+        node("span", {
+          class: "topbar-context-kicker",
+          text: context.eyebrow
+        }),
+        node("strong", {
+          class: "topbar-context-title",
+          text: context.title
+        })
+      ])
+    ]),
+    node("div", { class: "top-actions" }, [
+      node("button", {
+        class: "pill-button topbar-randomness",
+        type: "button",
+        "aria-label":
+          "Randomness mode: "
+          + (seeded ? "Seeded" : "Secure")
+          + ". Open settings",
+        title: "Randomness settings",
+        onClick: openSettingsPanel
+      }, [
+        node("span", { class: "rng-dot", "aria-hidden": "true" }),
+        node("span", {
+          class: "pill-label",
+          text: seeded ? "Seeded" : "Secure"
+        })
+      ]),
+      node("button", {
+        class: "icon-button topbar-settings",
+        type: "button",
+        "aria-label": "Open settings",
+        title: "Open settings",
+        onClick: openSettingsPanel
+      }, iconNode("settings"))
+    ])
+  ]);
+}
+
+function primaryNavigation() {
   const items = [
     ["play", "play", "Play"],
     ["arcade", "arcade", "Arcade"],
@@ -5143,19 +5207,81 @@ function bottomNav() {
     ["pools", "pools", "Pools"],
     ["history", "history", "History"]
   ];
+  const activeView = ({
+    tool: "play",
+    "template-session": "play",
+    creations: "arcade",
+    builder: "arcade"
+  })[state.view] || state.view;
 
-  return node("nav", {
-    class: "bottom-nav",
-    "aria-label": "Primary navigation"
-  }, items.map(([id, iconId, label]) => node("button", {
-    class: "nav-button " + (state.view === id ? "active" : ""),
+  const brand = node("button", {
+    class: "app-nav-brand",
     type: "button",
-    "aria-current": state.view === id ? "page" : null,
+    "aria-label": "Go to Play",
+    title: "Randomizer Arcade",
+    onClick: () => setView("play")
+  }, [
+    node("div", {
+      class: "brand-icon",
+      "aria-hidden": "true"
+    }, iconNode("brand", { className: "brand-mark-svg" })),
+    node("div", { class: "brand-copy" }, [
+      node("strong", { text: "Randomizer" }),
+      node("span", { text: "Arcade" })
+    ])
+  ]);
+
+  const navItems = node("div", {
+    class: "app-nav-items"
+  }, items.map(([id, iconId, label]) => node("button", {
+    class: "nav-button " + (activeView === id ? "active" : ""),
+    type: "button",
+    title: label,
+    "aria-current": activeView === id ? "page" : null,
     onClick: () => setView(id)
   }, [
     iconNode(iconId, { className: "nav-icon" }),
-    label
+    node("span", { class: "nav-label", text: label })
   ])));
+
+  const footer = node("div", { class: "app-nav-footer" }, [
+    node("div", {
+      class: "nav-status-row",
+      role: "status",
+      "aria-label": state.networkOnline
+        ? "Local-first. Ready when the network is not."
+        : "Offline. Local tools remain available."
+    }, [
+      node("div", {
+        class: "nav-status-mark",
+        "aria-hidden": "true"
+      }, iconNode(state.networkOnline ? "check" : "offline")),
+      node("div", { class: "nav-status-copy" }, [
+        node("strong", {
+          text: state.networkOnline ? "Local-first" : "Offline"
+        }),
+        node("span", {
+          text: state.networkOnline
+            ? "Ready when the network is not."
+            : "Local tools remain available."
+        })
+      ])
+    ])
+  ]);
+
+  return node("nav", {
+    class: "app-nav bottom-nav",
+    "aria-label": "Primary navigation"
+  }, [
+    brand,
+    node("span", {
+      class: "app-nav-section-label",
+      text: "Navigate",
+      "aria-hidden": "true"
+    }),
+    navItems,
+    footer
+  ]);
 }
 
 function sectionHeader(title, note = "") {
@@ -13808,7 +13934,10 @@ function render() {
     return;
   }
 
-  const layout = node("div", { class: "layout" });
+  const layout = node("div", {
+    class: "layout",
+    dataset: { view: state.view }
+  });
   layout.append(topBar());
 
   if (state.view === "play") layout.append(renderPlay());
@@ -13821,12 +13950,13 @@ function render() {
   else if (state.view === "builder") layout.append(renderBuilder());
   else if (state.view === "tool") layout.append(renderTool());
 
-  layout.append(bottomNav());
+  layout.append(primaryNavigation());
 
   const main = layout.querySelector("main");
   if (main) {
     main.id = "main-content";
     main.tabIndex = -1;
+    main.classList.add("shell-main");
   }
 
   applySegmentedSemantics(layout);

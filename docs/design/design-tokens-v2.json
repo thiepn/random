@@ -88,6 +88,16 @@
       "--space-11",
       "--space-12",
       "--space-13"
+    ],
+    "layout": [
+      "--content-max",
+      "--content-max-wide",
+      "--content-gutter",
+      "--content-gutter-wide",
+      "--shell-mobile-nav-height",
+      "--shell-rail-width",
+      "--shell-sidebar-width",
+      "--shell-topbar-min-height"
     ]
   },
   "shapeIntent": {

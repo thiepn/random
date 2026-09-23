@@ -181,6 +181,9 @@ jobs:
       - name: Brand and iconography V3 certification
         run: node tests/brand-iconography-v3.mjs
 
+      - name: Adaptive shell V4 certification
+        run: node tests/adaptive-shell-v4.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
