@@ -3081,8 +3081,8 @@ function homeContinuations(limit = 4) {
       kind: "Guided session",
       title: template.name,
       detail:
-        (session.stepIndex != null
-          ? "Step " + (session.stepIndex + 1)
+        (session.currentIndex != null
+          ? "Step " + (session.currentIndex + 1)
           : "In progress"),
       icon: iconNode("template", { className: "continue-icon" }),
       updatedAt: session.updatedAt || session.createdAt || 0,
