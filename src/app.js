@@ -1013,6 +1013,20 @@ function runsByIdMap() {
   return new Map(state.runs.map((run) => [run.id, run]));
 }
 
+async function ensureRunsLoaded(runIds) {
+  const loaded = new Set(state.runs.map((run) => String(run.id)));
+  const missing = [...new Set((runIds || []).filter(Boolean).map(String))]
+    .filter((id) => !loaded.has(id));
+  if (!missing.length) return;
+
+  const records = await getMany("runs", missing);
+  state.runs = mergeRecentRecords(
+    state.runs,
+    records,
+    { sortKey: "timestamp" }
+  );
+}
+
 function presetById(id) {
   return state.presets.find((preset) => preset.id === id) || null;
 }
@@ -2239,8 +2253,10 @@ async function openTemplateStep(session, stepIndex) {
   }
 
   if (runtimeStep.locked && runtimeStep.status === "complete") {
+    await ensureRunsLoaded([runtimeStep.runId]);
     const run = runById(runtimeStep.runId);
     if (run) replayStoredRun(run);
+    else announce("The stored Run for this step is unavailable.");
     return;
   }
 
@@ -9448,8 +9464,16 @@ async function rerunStoredRun(run) {
   await runTool(run.toolId);
 }
 
-function resumeStoredSession(session) {
+async function resumeStoredSession(session) {
   if (!session) return;
+
+  try {
+    await ensureRunsLoaded(session.runIds || []);
+  } catch (error) {
+    announce(error?.message || "Could not load Session history.");
+    return;
+  }
+
   state.view = "tool";
   state.toolId = session.toolId;
   state.modal = null;
