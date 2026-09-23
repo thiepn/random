@@ -14,7 +14,7 @@
 .tool-stage.effects-low::after{display:none}
 
 .fx-particles{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none}
-.fx-particle{position:absolute;left:50%;top:48%;width:6px;height:6px;margin:-3px;border-radius:2px;background:var(--accent,var(--color-accent-secondary));box-shadow:0 0 10px color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 55%,transparent);opacity:0;transform:rotate(var(--particle-angle)) translateX(0) rotate(var(--particle-angle-neg));animation:particleBurst 300ms var(--ease-decelerate) calc(var(--impact-delay) - 100ms + var(--particle-delay)) both}
+.fx-particle{position:absolute;left:50%;top:48%;width:6px;height:6px;margin:-3px;border-radius:2px;background:var(--accent,var(--color-accent-secondary));box-shadow:0 0 10px color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 55%,transparent);opacity:0;transform:rotate(var(--particle-angle)) translateX(0) rotate(var(--particle-angle-neg));animation:particleBurst 180ms var(--ease-decelerate) calc(var(--impact-delay) - 100ms + var(--particle-delay)) both}
 .fx-particle:nth-child(3n+2){width:4px;height:9px;border-radius:999px;background:var(--color-warning)}.fx-particle:nth-child(3n){background:var(--accent-pink)}
 @keyframes particleBurst{0%{opacity:0;transform:rotate(var(--particle-angle)) translateX(0) rotate(var(--particle-angle-neg)) scale(.45)}22%{opacity:1}100%{opacity:0;transform:rotate(var(--particle-angle)) translateX(var(--particle-distance)) rotate(var(--particle-angle-neg)) scale(.9)}}
 
