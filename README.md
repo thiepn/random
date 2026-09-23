@@ -2,6 +2,10 @@
 
 A vibrant, local-first randomizer and decision toolbox built as an installable PWA.
 
+**Stable release: v1.0.0** — production-certified on 2026-09-23. See [CHANGELOG.md](./CHANGELOG.md), [RELEASE-NOTES-v1.0.0.md](./RELEASE-NOTES-v1.0.0.md), [PRODUCTION-CERTIFICATION.md](./PRODUCTION-CERTIFICATION.md), and [MAINTENANCE.md](./MAINTENANCE.md).
+
+The v1.0.0 baseline freezes the initial architecture. Default follow-up work is targeted maintenance and patch releases; broad feature expansion should be deliberately scoped as a later minor release.
+
 ## Current foundation
 
 - Secure Web Crypto randomness with unbiased bounded integers
