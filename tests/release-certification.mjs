@@ -13,6 +13,7 @@ for (const file of [
   "RELEASE-NOTES-v1.0.0.md",
   "index.html",
   "manifest.webmanifest",
+  "design-system.css",
   "sw.js",
   "src/app.js",
   "src/security.js",
@@ -173,9 +174,7 @@ const jsBytes = productionJs.reduce(
   0
 );
 const cssFiles = fs.readdirSync(".")
-  .filter((name) =>
-    name === "styles.css" || /^phase\d+\.css$/.test(name)
-  );
+  .filter((name) => name.endsWith(".css"));
 const cssBytes = cssFiles.reduce(
   (sum, file) => sum + fs.statSync(file).size,
   0
