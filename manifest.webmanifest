@@ -17,8 +17,76 @@
     }
   ],
   "shortcuts": [
-    { "name": "Flip Coin", "url": "./?tool=coin", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "Roll Dice", "url": "./?tool=dice", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
-    { "name": "Spin Wheel", "url": "./?tool=wheel", "icons": [{ "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+    {
+      "name": "Flip Coin",
+      "url": "./?tool=coin",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Roll Dice",
+      "url": "./?tool=dice",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Spin Wheel",
+      "url": "./?tool=wheel",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Decision Studio",
+      "short_name": "Studio",
+      "url": "./?view=studio",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Pools",
+      "short_name": "Pools",
+      "url": "./?view=pools",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "id": "./",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "categories": [
+    "utilities",
+    "productivity",
+    "games"
   ]
 }
