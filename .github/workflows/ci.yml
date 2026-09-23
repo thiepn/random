@@ -40,6 +40,10 @@ jobs:
           node --check src/custom-engine.js
           node --check src/workflow-model.js
           node --check src/data-portability.js
+          node --check src/performance-model.js
+          node --check src/compute-tasks.js
+          node --check src/worker-client.js
+          node --check src/compute-worker.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -98,6 +102,12 @@ jobs:
 
       - name: Persistence and portability certification
         run: node tests/data-portability.mjs
+
+      - name: Performance policy certification
+        run: node tests/performance-model.mjs
+
+      - name: Background compute equivalence certification
+        run: node tests/compute-tasks.mjs
 
       - name: Guard decision randomness and unsafe execution
         run: |
