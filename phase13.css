@@ -1,4 +1,3 @@
-/* Rendering containment retained after V8 workbench migration */
 .tool-card,.creation-card,.workflow-card,.history-group-card,.pool-card,.session-template-card,.saved-setup-card{content-visibility:auto;contain-intrinsic-size:auto 120px}
 .history-run-preview-row,.workflow-path-row{contain:layout paint style}
 .pool-editor-table,.pool-editor-row{contain:layout style}
