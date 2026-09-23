@@ -224,6 +224,7 @@ const state = {
   swRegistration: null,
   updateAvailable: false,
   reloadingForUpdate: false,
+  computeBusy: false,
   performance: {
     workerTasks: 0,
     mainThreadTasks: 0,
@@ -4757,6 +4758,10 @@ function topBar() {
         class: "pill-button",
         type: "button",
         onClick: () => {
+          if (state.computeBusy) {
+            announce("Finish the current randomization before changing settings.");
+            return;
+          }
           state.modal = "settings";
           render();
           Promise.all([
@@ -7061,6 +7066,10 @@ function renderTool() {
       favorite ? "favorite-star" : ""
     ),
     iconButton("Randomness settings", "⚙", () => {
+      if (state.computeBusy) {
+        announce("Finish the current randomization before changing settings.");
+        return;
+      }
       state.modal = "settings";
       render();
     })
@@ -10290,6 +10299,10 @@ async function runTool(id) {
   let ts = ensureToolState(id);
 
   if (ts.computing) return;
+  if (state.computeBusy) {
+    announce("Another randomization is still committing.");
+    return;
+  }
 
   if (ts.animating || ts.presentation) {
     if (skipPresentation(id)) return;
@@ -10339,6 +10352,7 @@ async function runTool(id) {
   }
 
   ts.computing = true;
+  state.computeBusy = true;
   if (state.toolId === id || state.view === "party") render();
 
   try {
@@ -10627,11 +10641,13 @@ async function runTool(id) {
     }
 
     ts.computing = false;
+    state.computeBusy = false;
     render();
     announce(tool.name + " result: " + summary);
   } catch (error) {
     ts = ensureToolState(id);
     ts.computing = false;
+    state.computeBusy = false;
     ts.error = error?.message || "This randomizer could not run.";
     render();
     announce("Error: " + ts.error);
