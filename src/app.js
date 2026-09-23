@@ -3218,7 +3218,7 @@ function presetCard(preset) {
   })[binding] || binding;
 
   return node("article", {
-    class: "saved-setup-card accent-" + (tool?.accent || "cyan")
+    class: "saved-setup-card workbench-row accent-" + (tool?.accent || "cyan")
   }, [
     node("div", {
       class: "saved-setup-icon"
@@ -3276,7 +3276,7 @@ function templateCard(template) {
   const latest = relatedSessions[0] || null;
 
   return node("article", {
-    class: "session-template-card"
+    class: "session-template-card workbench-row"
   }, [
     node("div", {
       class: "session-template-icon"
@@ -4079,7 +4079,7 @@ function customCreationCard(experience) {
   const tool = experienceAsTool(experience);
   return node("article", {
     class:
-      "creation-card accent-"
+      "creation-card workbench-row accent-"
       + tool.accent
       + (experience.status === "draft" ? " is-draft" : "")
   }, [
@@ -4193,22 +4193,40 @@ function renderCreations() {
     class: "content workbench-view creations-view"
   }, [
     node("div", { class: "workbench-header creation-page-head" }, [
-      node("div", {}, [
-        node("div", {
-          class: "kicker",
+      node("div", { class: "workbench-header-copy" }, [
+        node("span", {
+          class: "workbench-eyebrow",
           text: "Safe declarative builder"
         }),
-        node("h1", {
-          class: "view-title",
-          text: "My Creations"
-        }),
+        node("h1", { text: "My Creations" }),
         node("p", {
-          class: "view-subtitle",
           text:
             "Build randomizers from approved primitives. No custom JavaScript, HTML, or CSS."
-        })
+        }),
+        node("div", { class: "workbench-stats" }, [
+          node("span", {}, [
+            node("strong", { text: String(state.customExperiences.length) }),
+            node("small", { text: "total" })
+          ]),
+          node("span", {}, [
+            node("strong", {
+              text: String(state.customExperiences.filter(
+                (item) => item.status === "published"
+              ).length)
+            }),
+            node("small", { text: "published" })
+          ]),
+          node("span", {}, [
+            node("strong", {
+              text: String(state.customExperiences.filter(
+                (item) => item.status === "draft"
+              ).length)
+            }),
+            node("small", { text: "drafts" })
+          ])
+        ])
       ]),
-      node("div", { class: "button-row" }, [
+      node("div", { class: "workbench-header-actions" }, [
         node("button", {
           class: "primary",
           type: "button",
@@ -4252,22 +4270,26 @@ function renderCreations() {
   )));
 
   content.append(node("div", {
-    class: "segmented creation-filter"
+    class: "workbench-commandbar creation-commandbar"
   }, [
-    ["all", "All"],
-    ["published", "Published"],
-    ["drafts", "Drafts"],
-    ["favorites", "Favorites"]
-  ].map(([value, label]) =>
-    node("button", {
-      class: state.creationFilter === value ? "active" : "",
-      type: "button",
-      onClick: () => {
-        state.creationFilter = value;
-        render();
-      }
-    }, label)
-  )));
+    node("div", {
+      class: "segmented creation-filter"
+    }, [
+      ["all", "All"],
+      ["published", "Published"],
+      ["drafts", "Drafts"],
+      ["favorites", "Favorites"]
+    ].map(([value, label]) =>
+      node("button", {
+        class: state.creationFilter === value ? "active" : "",
+        type: "button",
+        onClick: () => {
+          state.creationFilter = value;
+          render();
+        }
+      }, label)
+    ))
+  ]));
 
   if (!filtered.length) {
     content.append(emptyState(
@@ -4278,7 +4300,7 @@ function renderCreations() {
   }
 
   content.append(node("div", {
-    class: "creation-grid"
+    class: "creation-grid workbench-table"
   }, filtered.map(customCreationCard)));
 
   return content;
@@ -4755,24 +4777,44 @@ function renderBuilder() {
   content.append(node("div", {
     class: "workbench-header builder-head"
   }, [
-    iconButton("Back to My Creations", "←", () => setView("creations")),
-    node("div", {}, [
-      node("div", {
-        class: "kicker",
-        text: draft.status === "published" ? "Published creation" : "Draft creation"
+    iconButton(
+      "Back to My Creations",
+      iconNode("back"),
+      () => setView("creations")
+    ),
+    node("div", { class: "workbench-header-copy" }, [
+      node("span", {
+        class: "workbench-eyebrow",
+        text: draft.status === "published"
+          ? "Published creation"
+          : "Draft creation"
       }),
       node("h1", {
-        class: "view-title",
         text: draft.name || "Untitled Creation"
       }),
       node("p", {
-        class: "view-subtitle",
         text:
           "Declarative only · "
           + draft.primitive
           + " · revision "
           + draft.revision
-      })
+      }),
+      node("div", { class: "workbench-stats" }, [
+        node("span", {}, [
+          node("strong", {
+            text: validation.valid ? "Ready" : "Needs work"
+          }),
+          node("small", { text: "validation" })
+        ]),
+        node("span", {}, [
+          node("strong", { text: String(builder.testIndex) }),
+          node("small", { text: "test runs" })
+        ]),
+        node("span", {}, [
+          node("strong", { text: draft.appearance.layout }),
+          node("small", { text: "stage" })
+        ])
+      ])
     ])
   ]));
 
@@ -4791,7 +4833,7 @@ function renderBuilder() {
   ]));
 
   const identity = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "1. Identity" })
   ]);
@@ -4826,7 +4868,7 @@ function renderBuilder() {
   );
 
   const primitivePanel = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "2. Randomization" })
   ]);
@@ -4886,7 +4928,7 @@ function renderBuilder() {
   }
 
   const rulesPanel = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "3. Rules" }),
     node("p", {
@@ -4970,7 +5012,7 @@ function renderBuilder() {
   );
 
   const appearance = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "4. Appearance" }),
     node("div", { class: "builder-grid" }, [
@@ -5012,7 +5054,7 @@ function renderBuilder() {
   ]);
 
   const test = node("section", {
-    class: "builder-panel builder-test-panel"
+    class: "builder-panel workbench-panel builder-test-panel"
   }, [
     node("div", { class: "builder-panel-head" }, [
       node("div", {}, [
@@ -5084,7 +5126,7 @@ function renderBuilder() {
       appearance
     ]),
     node("aside", {
-      class: "builder-inspector",
+      class: "builder-inspector workbench-inspector",
       "aria-label": "Builder test and validation"
     }, [
       test,
@@ -6251,7 +6293,17 @@ function renderPools() {
     return content;
   }
 
-  const list = node("div", { class: "pool-list pool-list-v2" });
+  const list = node("div", {
+    class: "pool-list pool-list-v2 workbench-table"
+  }, [
+    node("div", {
+      class: "workbench-table-head pool-table-head",
+      "aria-hidden": "true"
+    }, [
+      node("span", { text: "Pool / structure" }),
+      node("span", { text: "Actions" })
+    ])
+  ]);
 
   for (const pool of activePools) {
     const stats = poolStats(pool);
@@ -6266,7 +6318,7 @@ function renderPools() {
     ]);
 
     list.append(node("article", {
-      class: "pool-item pool-card-v2" + (pool.archived ? " is-archived" : "")
+      class: "pool-item pool-card-v2 workbench-row" + (pool.archived ? " is-archived" : "")
     }, [
       node("div", { class: "pool-icon", text: pool.icon || "◎" }),
       node("div", { class: "pool-copy" }, [
@@ -6515,7 +6567,7 @@ function renderHistory() {
     state.historyRenderLimit,
     HISTORY_RENDER_CHUNK
   );
-  const list = node("div", { class: "history-group-list" });
+  const list = node("div", { class: "history-group-list workbench-timeline" });
 
   for (const group of groupWindow.visible) {
     const pinKey = historyGroupPinKey(group);
@@ -6576,7 +6628,7 @@ function renderHistory() {
 
     list.append(node("article", {
       class:
-        "history-group-card"
+        "history-group-card workbench-row"
         + (pinned ? " is-pinned" : "")
         + (group.kind === "session" ? " is-session" : "")
     }, [
@@ -7073,31 +7125,63 @@ function workflowNodeEditorCard(editor, nodeDef, index) {
     ]));
   }
 
-  card.append(config);
+  if (selected) {
+    card.append(config);
 
-  if (nodeDef.type === "branch") {
-    card.append(node("div", { class: "workflow-edges" }, [
-      workflowTargetSelect(draft, nodeDef, "true", "True →"),
-      workflowTargetSelect(draft, nodeDef, "false", "False →")
+    if (nodeDef.type === "branch") {
+      card.append(node("div", { class: "workflow-edges" }, [
+        workflowTargetSelect(draft, nodeDef, "true", "True →"),
+        workflowTargetSelect(draft, nodeDef, "false", "False →")
+      ]));
+    } else if (nodeDef.type !== "output") {
+      card.append(node("div", { class: "workflow-edges" }, [
+        workflowTargetSelect(draft, nodeDef, "next", "Next →")
+      ]));
+    }
+
+    card.append(node("div", { class: "workflow-node-footer" }, [
+      node("span", { text: "Node " + (index + 1) + " · inspector open" }),
+      node("button", {
+        class: "danger subtle-danger",
+        type: "button",
+        disabled: draft.nodes.length <= 1 ? "disabled" : null,
+        onClick: (event) => {
+          event.stopPropagation();
+          removeWorkflowEditorNode(nodeDef.id);
+        }
+      }, "Remove")
     ]));
-  } else if (nodeDef.type !== "output") {
-    card.append(node("div", { class: "workflow-edges" }, [
-      workflowTargetSelect(draft, nodeDef, "next", "Next →")
+  } else {
+    const outgoing = draft.edges.filter(
+      (edge) => edge.from === nodeDef.id
+    );
+    const summary = nodeDef.type === "tool"
+      ? "Preset · " + (
+          presetById(nodeDef.config.presetId)?.name
+          || "Choose a Preset"
+        )
+      : nodeDef.type === "branch"
+        ? "Condition · " + nodeDef.config.condition.kind
+        : nodeDef.type === "input"
+          ? (
+              nodeDef.config.mode === "fixed"
+                ? (nodeDef.config.fixedItems?.length || 0) + " fixed items"
+                : "Runtime prompt"
+            )
+          : nodeDef.config.title || "Terminal outcome";
+
+    card.append(node("div", {
+      class: "workflow-node-summary"
+    }, [
+      node("span", { text: summary }),
+      node("span", {
+        class: "workflow-node-summary-edge",
+        text:
+          outgoing.length
+          + (outgoing.length === 1 ? " connection" : " connections")
+      })
     ]));
   }
-
-  card.append(node("div", { class: "workflow-node-footer" }, [
-    node("span", { text: "Node " + (index + 1) }),
-    node("button", {
-      class: "danger subtle-danger",
-      type: "button",
-      disabled: draft.nodes.length <= 1 ? "disabled" : null,
-      onClick: (event) => {
-        event.stopPropagation();
-        removeWorkflowEditorNode(nodeDef.id);
-      }
-    }, "Remove")
-  ]));
 
   return card;
 }
@@ -7162,27 +7246,30 @@ function renderWorkflowEditor() {
   const validation = workflowValidation(draft, true);
   const strict = workflowValidation(draft);
 
-  const content = node("main", { class: "content workbench-view workflow-editor-view" }, [
-    node("div", { class: "workbench-header workflow-page-head" }, [
-      node("div", {}, [
-        node("div", { class: "kicker", text: "Decision Studio · Graph editor" }),
-        node("h1", { class: "view-title", text: "Build a workflow" }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            "Connect runtime input, saved Presets, conditional branches, and terminal outcomes. "
-            + "Automation is bounded and cycles are rejected."
-        })
-      ]),
+  const content = node("main", {
+    class: "content workbench-view workflow-editor-view"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Decision Studio · Graph editor",
+    title: draft.name || "Build a workflow",
+    copy:
+      "Connect runtime input, saved Presets, conditional branches, and terminal outcomes. "
+      + "Automation is bounded and cycles are rejected.",
+    stats: [
+      [draft.nodes.length, "nodes"],
+      [draft.edges.length, "connections"],
+      [strict.valid ? "Ready" : strict.errors.length, strict.valid ? "status" : "issues"]
+    ],
+    actions: [
       node("button", {
         class: "secondary",
         type: "button",
         onClick: closeWorkflowEditor
       }, "Close")
-    ])
-  ]);
+    ]
+  }));
 
-  const identity = node("section", { class: "controls workflow-editor-identity" });
+  const identity = node("section", { class: "controls workbench-panel workflow-editor-identity" });
   const name = node("input", {
     class: "field",
     type: "text",
@@ -7249,7 +7336,7 @@ function renderWorkflowEditor() {
     ])
   );
 
-  const paletteBar = node("section", { class: "workflow-node-palette" }, [
+  const paletteBar = node("section", { class: "workflow-node-palette workbench-panel" }, [
     node("div", {}, [
       node("strong", { text: "Add node" }),
       node("span", { text: "New nodes insert after the selected linear node when possible." })
@@ -7278,7 +7365,7 @@ function renderWorkflowEditor() {
     ])
   ]);
 
-  const graph = node("section", { class: "workflow-graph" }, [
+  const graph = node("section", { class: "workflow-graph workbench-canvas" }, [
     node("div", { class: "workflow-graph-head" }, [
       node("div", {}, [
         node("strong", { text: "Workflow graph" }),
@@ -7710,30 +7797,33 @@ function renderWorkflowRunner() {
     (nodeDef) => nodeDef.id === session.currentNodeId
   ) || null;
 
-  const content = node("main", { class: "content workbench-view workflow-runner-view" }, [
-    node("div", { class: "workbench-header workflow-page-head" }, [
-      node("div", {}, [
-        node("div", { class: "kicker", text: "Decision Studio · Workflow run" }),
-        node("h1", { class: "view-title", text: workflow.name }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            workflowStatusText(session.status)
-            + " · "
-            + session.stepCount
-            + " executed node"
-            + (session.stepCount === 1 ? "" : "s")
-            + " · "
-            + (workflow.automation.mode === "auto" ? "Auto" : "Step")
-        })
-      ]),
+  const content = node("main", {
+    class: "content workbench-view workflow-runner-view"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Decision Studio · Workflow run",
+    title: workflow.name,
+    copy:
+      workflowStatusText(session.status)
+      + " · "
+      + session.stepCount
+      + " executed node"
+      + (session.stepCount === 1 ? "" : "s")
+      + " · "
+      + (workflow.automation.mode === "auto" ? "Auto" : "Step"),
+    stats: [
+      [session.stepCount, "committed"],
+      [workflow.automation.mode === "auto" ? "Auto" : "Step", "mode"],
+      [session.path.length, "path entries"]
+    ],
+    actions: [
       node("button", {
         class: "secondary",
         type: "button",
         onClick: closeWorkflowRunner
       }, "Studio")
-    ])
-  ]);
+    ]
+  }));
 
   if (session.error) {
     content.append(toolError(session.error));
@@ -7751,7 +7841,7 @@ function renderWorkflowRunner() {
     });
 
     content.append(node("section", {
-      class: "controls workflow-input-gate"
+      class: "controls workbench-panel workflow-input-gate"
     }, [
       node("div", {}, [
         node("strong", {
@@ -7770,7 +7860,7 @@ function renderWorkflowRunner() {
     ]));
   } else if (session.status === "active" && current) {
     content.append(node("section", {
-      class: "workflow-current-node workflow-node-" + current.type
+      class: "workflow-current-node workbench-panel workflow-node-" + current.type
     }, [
       workflowNodeIcon(current.type, "workflow-node-glyph"),
       node("div", {}, [
@@ -7802,7 +7892,7 @@ function renderWorkflowRunner() {
     ]));
   } else if (session.status === "paused") {
     content.append(node("section", {
-      class: "workflow-current-node"
+      class: "workflow-current-node workbench-panel"
     }, [
       node("div", {}, [
         node("small", { text: "Paused" }),
@@ -7840,7 +7930,7 @@ function renderWorkflowRunner() {
     ]));
   }
 
-  const path = node("section", { class: "workflow-run-path" }, [
+  const path = node("section", { class: "workflow-run-path workbench-panel" }, [
     node("div", { class: "workflow-graph-head" }, [
       node("div", {}, [
         node("strong", { text: "Execution path" }),
@@ -7929,7 +8019,7 @@ function workflowCard(workflow) {
   const randomizers = workflow.nodes.filter((nodeDef) => nodeDef.type === "tool").length;
 
   return node("article", {
-    class: "workflow-card" + (validation.valid ? "" : " is-invalid")
+    class: "workflow-card workbench-row" + (validation.valid ? "" : " is-invalid")
   }, [
     node("div", { class: "workflow-card-head" }, [
       iconNode("studio", { className: "workflow-card-icon" }),
@@ -7998,34 +8088,44 @@ function workflowCard(workflow) {
 }
 
 function renderWorkflowLibrary() {
-  const content = node("main", { class: "content workbench-view workflow-library-view" }, [
-    node("div", { class: "workbench-header workflow-page-head" }, [
-      node("div", {}, [
-        node("div", { class: "kicker", text: "Decision Studio" }),
-        node("h1", { class: "view-title", text: "Branch decisions into workflows." }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            "Build reusable decision graphs from saved Presets, route results through conditions, "
-            + "and run the whole path automatically or one step at a time."
-        })
-      ]),
+  const activeSessions = state.workflowSessions
+    .filter((session) => ["active", "paused"].includes(session.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const recent = state.workflowSessions
+    .filter((session) => !["active", "paused"].includes(session.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 8);
+  const usablePresets = workflowPresetChoices();
+
+  const content = node("main", {
+    class: "content workbench-view workflow-library-view"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Decision Studio",
+    title: "Branch decisions into workflows.",
+    copy:
+      "Build reusable decision graphs from saved Presets, route results through conditions, "
+      + "and run the whole path automatically or one step at a time.",
+    stats: [
+      [state.workflows.length, "workflows"],
+      [activeSessions.length, "in progress"],
+      [usablePresets.length, "usable presets"]
+    ],
+    actions: [
       node("button", {
         class: "primary",
         type: "button",
         onClick: () => startWorkflowEditor()
       }, "+ New Workflow")
-    ])
-  ]);
-
-  const activeSessions = state.workflowSessions
-    .filter((session) => ["active", "paused"].includes(session.status))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+    ]
+  }));
 
   if (activeSessions.length) {
     content.append(sectionHeader(
       "In progress",
-      activeSessions.length + " workflow run" + (activeSessions.length === 1 ? "" : "s")
+      activeSessions.length
+        + " workflow run"
+        + (activeSessions.length === 1 ? "" : "s")
     ));
     content.append(node("div", {
       class: "workflow-active-grid"
@@ -8036,13 +8136,25 @@ function renderWorkflowLibrary() {
         type: "button",
         onClick: () => openWorkflowSession(session.id)
       }, [
-        node("strong", { text: workflow?.name || session.workflowName }),
         node("span", {
-          text:
-            workflowStatusText(session.status)
-            + " · "
-            + session.stepCount
-            + " nodes committed"
+          class: "workflow-active-icon",
+          "aria-hidden": "true"
+        }, iconNode(
+          session.status === "paused" ? "pause" : "studio"
+        )),
+        node("div", {}, [
+          node("strong", { text: workflow?.name || session.workflowName }),
+          node("span", {
+            text:
+              workflowStatusText(session.status)
+              + " · "
+              + session.stepCount
+              + " nodes committed"
+          })
+        ]),
+        node("span", {
+          class: "workflow-active-cta",
+          text: "Open"
         })
       ]);
     })));
@@ -8057,9 +8169,9 @@ function renderWorkflowLibrary() {
 
   content.append(
     state.workflows.length
-      ? node("div", { class: "workflow-card-grid" },
-          state.workflows.map(workflowCard)
-        )
+      ? node("div", {
+          class: "workflow-card-grid workbench-table"
+        }, state.workflows.map(workflowCard))
       : emptyState(
           "No workflows yet",
           "Start with Input → Outcome, then insert Randomizer and Branch nodes.",
@@ -8068,13 +8180,11 @@ function renderWorkflowLibrary() {
         )
   );
 
-  const recent = state.workflowSessions
-    .filter((session) => !["active", "paused"].includes(session.status))
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, 8);
-
   if (recent.length) {
-    content.append(sectionHeader("Recent workflow runs", "Completed and ended sessions"));
+    content.append(sectionHeader(
+      "Recent workflow runs",
+      "Completed and ended sessions"
+    ));
     content.append(node("div", { class: "workflow-recent-list" },
       recent.map((session) =>
         node("button", {

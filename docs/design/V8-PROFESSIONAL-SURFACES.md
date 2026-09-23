@@ -104,6 +104,11 @@ Test Mode remains deterministic and does not create Runs.
 
 Decision Studio becomes a graph workbench:
 
+- nodes are compact when unselected;
+- selecting a node expands its configuration inline as an inspector;
+- compact nodes still expose type, start status, incoming count and outgoing connection count;
+- Enter/Space keyboard selection remains supported;
+
 - workflow library rows;
 - in-progress cards;
 - configuration/palette sidebar;
