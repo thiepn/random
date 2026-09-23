@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "system": "Randomizer Arcade Icon System V1",
+  "releaseTrack": "v1.1.0",
+  "grid": 24,
+  "strokeWidth": 1.8,
+  "linecap": "round",
+  "linejoin": "round",
+  "colorModel": "currentColor",
+  "principles": [
+    "simple silhouettes at 16–32 CSS pixels",
+    "rounded line geometry",
+    "no external icon dependency",
+    "tool accents inherited from semantic CSS",
+    "decorative SVG hidden from assistive technology when adjacent text names it",
+    "custom experience glyphs remain user-controlled compatibility content"
+  ],
+  "brand": {
+    "id": "brand",
+    "name": "Random Spark",
+    "concept": "A four-point chance spark with two orbiting probability nodes."
+  },
+  "navigation": [
+    "play",
+    "arcade",
+    "studio",
+    "pools",
+    "history"
+  ],
+  "categories": {
+    "classics": "category-classics",
+    "people": "category-people",
+    "generators": "category-generators",
+    "games": "category-games"
+  },
+  "tools": {
+    "coin": "coin",
+    "dice": "dice",
+    "wheel": "wheel",
+    "picker": "picker",
+    "number": "number",
+    "shuffle": "shuffle",
+    "teams": "teams",
+    "pairs": "pairs",
+    "cards": "cards",
+    "chance": "chance",
+    "lottery": "lottery",
+    "color": "color",
+    "date": "date",
+    "direction": "direction",
+    "letter": "letter",
+    "sampler": "sampler",
+    "groups": "groups",
+    "assignment": "assignment",
+    "elimination": "elimination",
+    "ladder": "ladder",
+    "secret-santa": "secret-santa",
+    "tournament": "tournament",
+    "time": "time",
+    "coordinate": "coordinate",
+    "rps": "rps"
+  },
+  "workflow": [
+    "input",
+    "branch",
+    "output"
+  ],
+  "actions": [
+    "back",
+    "search",
+    "settings",
+    "star",
+    "star-filled",
+    "template",
+    "lock"
+  ],
+  "status": [
+    "check",
+    "pause",
+    "warning",
+    "info",
+    "offline"
+  ]
+}

@@ -35,6 +35,9 @@ for (const entry of entries) {
 
 for (const required of [
   "./design-system.css",
+  "./brand-icons.css",
+  "./assets/brand/random-spark-mark.svg",
+  "./src/icon-system.js",
   "./phase13.css",
   "./phase14.css",
   "./src/performance-model.js",
