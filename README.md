@@ -22,6 +22,7 @@ A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not cha
 - [V6 Tool Experience V2](./docs/design/V6-TOOL-EXPERIENCE.md)
 - [V7 Results, Motion & Game Feel V2](./docs/design/V7-RESULTS-MOTION.md)
 - [V8 Professional Surfaces](./docs/design/V8-PROFESSIONAL-SURFACES.md)
+- [V9 Themes & Visual Resilience](./docs/design/V9-THEMES-RESILIENCE.md)
 
 Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
 
@@ -38,6 +39,8 @@ Selected direction: **Expressive Utility Arcade** — tactile, precise, playful,
 **V7 motion:** presentation now follows one anticipation → action → reveal → settle timeline with impact-synchronized sound/haptics, decelerating Wheel ticks, restrained celebration, History handoff, and a true opacity-only reduced-motion path.
 
 **V8 workbench:** Pools, History, Presets/Templates, Builder and Decision Studio now use a dense professional surface language with command bars, rows, inspectors, graph canvas/node ports and activity timelines rather than repeated rounded cards.
+
+**V9 resilience:** System/Light/Dark themes, eight persistent accents, live OS preference updates, 320px-to-ultrawide breakpoints, landscape/PWA safe areas, long-text hardening, Light-mode contrast certification, forced-colors fallbacks and global reduced-motion handling now complete the cross-environment visual layer.
 
 ## Current foundation
 
@@ -62,7 +65,7 @@ Selected direction: **Expressive Utility Arcade** — tactile, precise, playful,
 - Per-device local identity, storage-quota/durability visibility, PWA install controls, offline awareness, and explicit in-app service-worker update activation
 - Background module-worker execution for heavy constrained/list randomization and large backup parsing/merge/serialization, with deterministic seeded equivalence and safe main-thread fallback
 - IndexedDB v11 recent/tool/group indexes, paged History loading, active/latest Session hydration, lazy historical Run loading, bounded Pool editor rendering, and capped result/Fairness DOM previews
-- Accessibility hardening with skip navigation, deterministic modal focus trapping/restoration, inert modal backgrounds, keyboard-operable graph nodes, 44px coarse-pointer targets, higher-contrast controls, and persistent display preferences
+- Accessibility hardening with skip navigation, deterministic modal focus trapping/restoration, inert modal backgrounds, keyboard-operable graph nodes, 44px coarse-pointer targets, persistent System/Light/Dark themes, eight accent choices, higher-contrast controls, Reduced Motion, Forced Colors, safe-area handling, and resilient display preferences
 - Regional-format internationalization architecture for locale-aware dates, numbers, and storage sizes across system, US English, German, French, and Korean formats while accurately keeping the current UI language English
 - History and favorites
 - Offline service worker + hardened web app manifest
