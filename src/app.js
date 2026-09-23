@@ -338,6 +338,7 @@ let wakeLockSentinel = null;
 let audienceChannel = null;
 let modalReturnFocus = null;
 let modalFocusSignature = null;
+let modalA11yCounter = 0;
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
@@ -503,7 +504,8 @@ function finalizeModalAccessibility(modal, previousFocusIdentity = null) {
   const heading = modal.querySelector("h1,h2,h3");
   if (heading) {
     if (!heading.id) {
-      heading.id = "modal-title-" + Math.random().toString(36).slice(2, 9);
+      modalA11yCounter += 1;
+      heading.id = "modal-title-" + modalA11yCounter;
     }
     modal.setAttribute("aria-labelledby", heading.id);
   } else {
@@ -513,7 +515,8 @@ function finalizeModalAccessibility(modal, previousFocusIdentity = null) {
   const description = modal.querySelector("p");
   if (description) {
     if (!description.id) {
-      description.id = "modal-description-" + Math.random().toString(36).slice(2, 9);
+      modalA11yCounter += 1;
+      description.id = "modal-description-" + modalA11yCounter;
     }
     modal.setAttribute("aria-describedby", description.id);
   }
