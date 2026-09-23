@@ -12897,6 +12897,7 @@ async function init() {
   const requestedTemplateSession = params.get("templateSession");
   const requestedBuilder = params.get("builder");
   const requestedTool = params.get("tool");
+  const requestedView = params.get("view");
 
   if (
     requestedParty
@@ -12928,7 +12929,9 @@ async function init() {
   ) {
     const workflowSession = workflowSessionById(requestedWorkflowSession);
     state.activeWorkflowSessionId = workflowSession.id;
-    state.workflowInputText = (workflowSession.inputItems || []).join("\n");
+    state.workflowInputText = workflowSession.pauseReason === "input"
+      ? (workflowSession.nodeInputs?.[workflowSession.currentNodeId] || []).join("\n")
+      : "";
     state.view = "studio";
     state.toolId = null;
   } else if (
@@ -12959,6 +12962,11 @@ async function init() {
     state.toolId = requestedTool;
     ensureToolState(requestedTool);
     maybeResumeLatestSession(requestedTool);
+  } else if (
+    ["play", "arcade", "studio", "pools", "history"].includes(requestedView)
+  ) {
+    state.view = requestedView;
+    state.toolId = null;
   }
 
   render();
