@@ -193,6 +193,9 @@ jobs:
       - name: Results and Motion V7 certification
         run: node tests/results-motion-v7.mjs
 
+      - name: Professional Surfaces V8 certification
+        run: node tests/professional-surfaces-v8.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
