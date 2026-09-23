@@ -1,3 +1,9 @@
+import {
+  SECURITY_LIMITS,
+  SecurityBoundaryError,
+  assertSafeStructuredData
+} from "./security.js";
+
 export const PORTABILITY_SCHEMA_VERSION = 1;
 export const PORTABILITY_FORMAT = "randomizer-arcade-portable";
 
@@ -34,7 +40,7 @@ export const PORTABILITY_SCOPES = Object.freeze([
   "library"
 ]);
 
-export const MAX_PORTABLE_JSON_BYTES = 32 * 1024 * 1024;
+export const MAX_PORTABLE_JSON_BYTES = SECURITY_LIMITS.portableFileBytes;
 export const MAX_PORTABLE_RECORDS = 100000;
 export const MAX_PORTABLE_DEPTH = 80;
 
@@ -105,6 +111,43 @@ export function portableChecksum(value) {
   return "fnv1a32:" + (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+function assertPortableBoundary(value) {
+  try {
+    assertSafeStructuredData(value, {
+      label: "Portable package",
+      maxDepth: MAX_PORTABLE_DEPTH,
+      maxNodes: 4000000,
+      maxArrayLength: MAX_PORTABLE_RECORDS,
+      maxObjectKeys: 4096,
+      maxStringBytes: MAX_PORTABLE_JSON_BYTES,
+      maxTotalBytes: MAX_PORTABLE_JSON_BYTES * 2,
+      allowUndefined: true
+    });
+  } catch (error) {
+    if (error instanceof SecurityBoundaryError) {
+      throw new PortabilityError(
+        error.message,
+        "PORTABLE_UNSAFE_DATA",
+        { causeCode: error.code }
+      );
+    }
+    throw error;
+  }
+}
+
+function assertOnlyKeys(value, allowed, label) {
+  const allowedSet = new Set(allowed);
+  for (const key of Object.keys(value || {})) {
+    if (!allowedSet.has(key)) {
+      throw new PortabilityError(
+        label + " contains an unexpected field: " + key + ".",
+        "PORTABLE_UNEXPECTED_FIELD",
+        { field: key }
+      );
+    }
+  }
+}
+
 function normalizeDevice(device = {}) {
   return {
     id: String(device.id || "unknown"),
@@ -144,6 +187,13 @@ function sanitizedStores(stores, scope) {
         throw new PortabilityError(
           "A stored record is missing its id.",
           "PORTABLE_RECORD_ID_REQUIRED",
+          { store }
+        );
+      }
+      if (String(record.id).length > 1024) {
+        throw new PortabilityError(
+          "A stored record id is too long.",
+          "PORTABLE_RECORD_ID_INVALID",
           { store }
         );
       }
@@ -243,6 +293,22 @@ export function validatePortablePackage(value) {
       "PORTABLE_INVALID"
     );
   }
+  assertPortableBoundary(value);
+  assertOnlyKeys(
+    value,
+    [
+      "format",
+      "schemaVersion",
+      "createdAt",
+      "appVersion",
+      "databaseVersion",
+      "device",
+      "payload",
+      "checksum"
+    ],
+    "Portable package"
+  );
+
   if (value.format !== PORTABILITY_FORMAT) {
     throw new PortabilityError(
       "This file is not a Randomizer Arcade portable package.",
@@ -256,6 +322,18 @@ export function validatePortablePackage(value) {
     );
   }
 
+  if (
+    !value.payload
+    || typeof value.payload !== "object"
+    || Array.isArray(value.payload)
+  ) {
+    throw new PortabilityError(
+      "Portable package payload is invalid.",
+      "PORTABLE_PAYLOAD_INVALID"
+    );
+  }
+  assertOnlyKeys(value.payload, ["scope", "stores"], "Portable payload");
+
   const scope = PORTABILITY_SCOPES.includes(value.payload?.scope)
     ? value.payload.scope
     : null;
@@ -266,7 +344,49 @@ export function validatePortablePackage(value) {
     );
   }
 
-  const stores = sanitizedStores(value.payload?.stores || {}, scope);
+  const rawStores = value.payload?.stores;
+  if (
+    !rawStores
+    || typeof rawStores !== "object"
+    || Array.isArray(rawStores)
+  ) {
+    throw new PortabilityError(
+      "Portable package stores are invalid.",
+      "PORTABLE_STORES_INVALID"
+    );
+  }
+
+  const expectedStores = storesForScope(scope);
+  assertOnlyKeys(rawStores, expectedStores, "Portable stores");
+  for (const store of expectedStores) {
+    if (!Array.isArray(rawStores[store])) {
+      throw new PortabilityError(
+        "Portable package is missing store: " + store + ".",
+        "PORTABLE_STORE_MISSING",
+        { store }
+      );
+    }
+  }
+
+  if (
+    value.device != null
+    && (
+      typeof value.device !== "object"
+      || Array.isArray(value.device)
+    )
+  ) {
+    throw new PortabilityError(
+      "Portable package device metadata is invalid.",
+      "PORTABLE_DEVICE_INVALID"
+    );
+  }
+  assertOnlyKeys(
+    value.device || {},
+    ["id", "name", "platform"],
+    "Portable device metadata"
+  );
+
+  const stores = sanitizedStores(rawStores, scope);
   const createdAt = String(value.createdAt || "");
   if (!Number.isFinite(Date.parse(createdAt))) {
     throw new PortabilityError(
