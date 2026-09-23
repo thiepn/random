@@ -13116,7 +13116,10 @@ function renderModal(previousFocusIdentity = null) {
       })
     );
 
-    const modes = node("div", { class: "segmented" });
+    const modes = node("div", {
+      class: "segmented",
+      "aria-label": "Randomness mode"
+    });
 
     for (const mode of ["secure", "seeded"]) {
       modes.append(node("button", {
@@ -13162,7 +13165,8 @@ function renderModal(previousFocusIdentity = null) {
     );
 
     const revealModes = node("div", {
-      class: "segmented settings-reveal-modes"
+      class: "segmented settings-reveal-modes",
+      "aria-label": "Reveal mode"
     }, [
       ["instant", "Instant"],
       ["normal", "Normal"],
@@ -13694,12 +13698,18 @@ function render() {
   document.querySelectorAll(".modal-backdrop").forEach((item) => item.remove());
 
   if (state.view === "audience") {
-    root.replaceChildren(renderAudience());
+    const main = renderAudience();
+    main.id = "main-content";
+    main.tabIndex = -1;
+    root.replaceChildren(main);
     return;
   }
 
   if (state.view === "party") {
-    root.replaceChildren(renderParty());
+    const main = renderParty();
+    main.id = "main-content";
+    main.tabIndex = -1;
+    root.replaceChildren(main);
     return;
   }
 
