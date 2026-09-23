@@ -61,6 +61,16 @@ assert.equal(
   "Wheel presentation must not use constant-interval ticking."
 );
 
+const runToolStart=app.indexOf("async function runTool(id) {");
+const runToolEnd=app.indexOf("\nfunction finishAnimation(",runToolStart);
+assert.ok(runToolStart>=0 && runToolEnd>runToolStart);
+const runToolSource=app.slice(runToolStart,runToolEnd);
+assert.ok(
+  runToolSource.indexOf("await commitRunAndSession({")
+    < runToolSource.indexOf("const plan = beginPresentation("),
+  "Run must remain committed before V7 presentation begins."
+);
+
 for(const marker of [
   "stageEnvelope","stageImpactHalo","resultReveal","resultShowtime",
   "coinFaceInk","diceFaceInk","wheelPointerFeel","physicalCardDraw",
