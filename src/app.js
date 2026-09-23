@@ -7115,31 +7115,63 @@ function workflowNodeEditorCard(editor, nodeDef, index) {
     ]));
   }
 
-  card.append(config);
+  if (selected) {
+    card.append(config);
 
-  if (nodeDef.type === "branch") {
-    card.append(node("div", { class: "workflow-edges" }, [
-      workflowTargetSelect(draft, nodeDef, "true", "True →"),
-      workflowTargetSelect(draft, nodeDef, "false", "False →")
+    if (nodeDef.type === "branch") {
+      card.append(node("div", { class: "workflow-edges" }, [
+        workflowTargetSelect(draft, nodeDef, "true", "True →"),
+        workflowTargetSelect(draft, nodeDef, "false", "False →")
+      ]));
+    } else if (nodeDef.type !== "output") {
+      card.append(node("div", { class: "workflow-edges" }, [
+        workflowTargetSelect(draft, nodeDef, "next", "Next →")
+      ]));
+    }
+
+    card.append(node("div", { class: "workflow-node-footer" }, [
+      node("span", { text: "Node " + (index + 1) + " · inspector open" }),
+      node("button", {
+        class: "danger subtle-danger",
+        type: "button",
+        disabled: draft.nodes.length <= 1 ? "disabled" : null,
+        onClick: (event) => {
+          event.stopPropagation();
+          removeWorkflowEditorNode(nodeDef.id);
+        }
+      }, "Remove")
     ]));
-  } else if (nodeDef.type !== "output") {
-    card.append(node("div", { class: "workflow-edges" }, [
-      workflowTargetSelect(draft, nodeDef, "next", "Next →")
+  } else {
+    const outgoing = draft.edges.filter(
+      (edge) => edge.from === nodeDef.id
+    );
+    const summary = nodeDef.type === "tool"
+      ? "Preset · " + (
+          presetById(nodeDef.config.presetId)?.name
+          || "Choose a Preset"
+        )
+      : nodeDef.type === "branch"
+        ? "Condition · " + nodeDef.config.condition.kind
+        : nodeDef.type === "input"
+          ? (
+              nodeDef.config.mode === "fixed"
+                ? (nodeDef.config.fixedItems?.length || 0) + " fixed items"
+                : "Runtime prompt"
+            )
+          : nodeDef.config.title || "Terminal outcome";
+
+    card.append(node("div", {
+      class: "workflow-node-summary"
+    }, [
+      node("span", { text: summary }),
+      node("span", {
+        class: "workflow-node-summary-edge",
+        text:
+          outgoing.length
+          + (outgoing.length === 1 ? " connection" : " connections")
+      })
     ]));
   }
-
-  card.append(node("div", { class: "workflow-node-footer" }, [
-    node("span", { text: "Node " + (index + 1) }),
-    node("button", {
-      class: "danger subtle-danger",
-      type: "button",
-      disabled: draft.nodes.length <= 1 ? "disabled" : null,
-      onClick: (event) => {
-        event.stopPropagation();
-        removeWorkflowEditorNode(nodeDef.id);
-      }
-    }, "Remove")
-  ]));
 
   return card;
 }
