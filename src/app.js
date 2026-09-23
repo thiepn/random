@@ -6136,32 +6136,20 @@ function workingSetFromView(pool, view) {
   return createWorkingSet(pool, { itemIds: items.map((item) => item.id) });
 }
 
-function workbenchHeader({
-  eyebrow,
-  title,
-  copy,
-  actions = [],
-  stats = []
-}) {
-  return node("header", { class: "workbench-header" }, [
-    node("div", { class: "workbench-header-copy" }, [
-      eyebrow ? node("span", { class: "workbench-eyebrow", text: eyebrow }) : null,
-      node("h1", { text: title }),
-      copy ? node("p", { text: copy }) : null,
-      stats.length
-        ? node("div", { class: "workbench-stats" },
-            stats.map(([value, label]) =>
-              node("span", {}, [
-                node("strong", { text: String(value) }),
-                node("small", { text: label })
-              ])
-            )
-          )
-        : null
+function workbenchHeader({eyebrow,title,copy,actions=[],stats=[]}) {
+  return node("header",{class:"workbench-header"},[
+    node("div",{class:"workbench-header-copy"},[
+      eyebrow?node("span",{class:"workbench-eyebrow",text:eyebrow}):null,
+      node("h1",{text:title}),
+      copy?node("p",{text:copy}):null,
+      stats.length?node("div",{class:"workbench-stats"},
+        stats.map(([value,label])=>node("span",{},[
+          node("strong",{text:String(value)}),
+          node("small",{text:label})
+        ]))
+      ):null
     ]),
-    actions.length
-      ? node("div", { class: "workbench-header-actions" }, actions)
-      : null
+    actions.length?node("div",{class:"workbench-header-actions"},actions):null
   ]);
 }
 
