@@ -57,6 +57,25 @@ assert.equal(
   "Accessibility IDs must not introduce Math.random."
 );
 
+
+for (const label of [
+  '"aria-label": "Open settings"',
+  '"Unpin History group"',
+  '"Favorite creation"',
+  '"Remove compound step "',
+  '"Remove template step "'
+]) {
+  assert.ok(
+    app.includes(label),
+    "Icon-only interaction requires a spoken label: " + label
+  );
+}
+
+assert.ok(
+  app.includes("localizedNumberResultValues"),
+  "Number-tool presentation must use the selected regional format."
+);
+
 for (const required of [
   ".skip-link",
   '[data-contrast="more"]',
