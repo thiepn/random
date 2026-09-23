@@ -24,7 +24,7 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Cross-device library transfer through ordinary JSON files or the platform Share sheet, using deterministic record merge semantics instead of requiring an account
 - Per-device local identity, storage-quota/durability visibility, PWA install controls, offline awareness, and explicit in-app service-worker update activation
 - Background module-worker execution for heavy constrained/list randomization and large backup parsing/merge/serialization, with deterministic seeded equivalence and safe main-thread fallback
-- IndexedDB v9 recent-record indexes, paged History loading, targeted Run hydration for active/resumed Sessions, bounded Pool editor rendering, and capped result/Fairness DOM previews
+- IndexedDB v11 recent/tool/group indexes, paged History loading, active/latest Session hydration, lazy historical Run loading, bounded Pool editor rendering, and capped result/Fairness DOM previews
 - History and favorites
 - Offline service worker + hardened web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -61,7 +61,7 @@ Then open `http://localhost:8080`.
 - `src/performance-model.js` — centralized paging, rendering, workload, and worker-offload thresholds
 - `src/compute-tasks.js` — deterministic pure task dispatcher shared by worker execution and CI equivalence tests
 - `src/worker-client.js` / `src/compute-worker.js` — lazy module-worker lifecycle, bounded task timeouts, error propagation, and background execution
-- `src/storage.js` — IndexedDB persistence, v9/v10 recent/status/tool-history indexes, cursor pagination, targeted batch reads, atomic restore, storage durability/usage status, and local device identity
+- `src/storage.js` — IndexedDB persistence, v11 recent/status/tool/group indexes, cursor pagination, bounded Session hydration, targeted batch reads, atomic restore, storage durability/usage status, and local device identity
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
 - `styles.css` — visual system and responsive layout
@@ -89,7 +89,7 @@ IndexedDB schema v7 adds `workflows` and `workflowSessions`. Workflow definition
 
 ## Persistence, backup, transfer, and PWA lifecycle
 
-IndexedDB schema v8 added a local `deviceMeta` record while keeping device identity outside portable backups. Schema v9 added compound recent-record indexes for Runs/legacy History and recent/status indexes for runtime Sessions so large histories no longer require full-store startup reads. Schema v10 adds tool-specific recent-history indexes so history-aware rules can retrieve their exact configured lookback without reloading the full database. A **full backup** contains every portable collection, including immutable Runs, History, and active Session records. A **library transfer** intentionally excludes runtime history and carries reusable Pools, Views, Presets, Rule Sets, Session Templates, Custom Experiences, Workflows, favorites, and settings.
+IndexedDB schema v8 added a local `deviceMeta` record while keeping device identity outside portable backups. Schema v9 added compound recent-record indexes for Runs/legacy History and recent/status indexes for runtime Sessions. Schema v10 added tool-specific recent-history indexes for exact history-aware rule lookbacks. Schema v11 adds latest-per-template/workflow compound indexes so startup keeps only active plus latest runtime Sessions in memory instead of loading lifetime Session history. A **full backup** contains every portable collection, including immutable Runs, History, and active Session records. A **library transfer** intentionally excludes runtime history and carries reusable Pools, Views, Presets, Rule Sets, Session Templates, Custom Experiences, Workflows, favorites, and settings.
 
 Portable files use a versioned `randomizer-arcade-portable` envelope with a deterministic integrity checksum, record/depth/size limits, and unsafe-key rejection. **Merge** unions unique records, prefers higher revisions and newer timestamps, and refuses to silently overwrite divergent immutable Runs. **Restore/Replace** is atomic across the affected IndexedDB stores and automatically downloads a complete pre-restore safety backup first.
 
@@ -101,9 +101,9 @@ The PWA shell exposes install availability, online/offline state, storage durabi
 
 Phase 13 moves expensive pure work away from interaction rendering without changing decision semantics. Constrained tools with sufficiently large inputs, very large list operations, and large compound Custom Experiences are dispatched to a lazily-created **module Web Worker**. The worker reconstructs the same Secure or Seeded RNG from a serializable random specification and calls the same Tool/Custom engines; seeded worker/main-thread equivalence is certified in CI. A global in-flight compute lock prevents overlapping seeded commits or Settings mutations from racing the sequence position.
 
-Large portable backup parsing, merging, and serialization also use the same worker infrastructure above size/record thresholds. Unsupported or unavailable Worker environments keep a bounded main-thread fallback, while worker timeouts/errors propagate instead of silently re-rolling a decision.
+Large portable backup parsing, merging, and serialization also use the same worker infrastructure above size/record thresholds. Unsupported Worker environments and worker creation/post/crash failures fall back to the same main-thread engine. Worker timeouts and actual task errors still propagate instead of silently retrying expensive or invalid work.
 
-IndexedDB no longer loads the full `runs` and legacy `history` stores during startup. The app reads recent pages through compound `[timestamp,id]` indexes, keeps cursor state for **Load older History**, and batch-hydrates Run IDs required by active or explicitly resumed Sessions. Tool-specific `[toolId,timestamp]` indexes preserve the full 1–100-run lookback semantics of history-aware constraints without loading unrelated Runs. Standalone-history deletion still scans the complete store transactionally, so pagination does not leave hidden old records behind.
+IndexedDB no longer loads the full `runs`, legacy `history`, stateful `sessions`, Party Sessions, or lifetime Workflow/Template Session stores during startup. The app reads recent Run/History pages through compound `[timestamp,id]` indexes, loads active stateful/Party Sessions through status indexes, and keeps only active plus latest-per-definition Template/Workflow Sessions through v11 compound indexes. Historical Runs and deep-linked older Sessions are batch-hydrated on demand. Tool-specific `[toolId,timestamp]` indexes preserve the full configured lookback semantics of history-aware constraints without loading unrelated Runs. Standalone-history deletion still scans the complete store transactionally, so pagination does not leave hidden old records behind.
 
 Rendering is similarly bounded: History groups and Pool editor rows grow progressively, large result lists/Fairness probability tables render capped previews while preserving the complete immutable data, and library cards use CSS `content-visibility` containment for off-screen work. Settings exposes the current compute path, loaded History cache, and last compute duration for diagnostics.
 
