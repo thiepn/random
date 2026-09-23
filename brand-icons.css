@@ -151,3 +151,50 @@
   width:22px;
   height:22px
 }
+
+
+.empty-state-mark{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  margin:0 auto var(--space-6);
+  border-radius:var(--radius-component);
+  background:color-mix(in srgb,var(--color-accent-primary) 10%,transparent);
+  color:var(--color-accent-secondary)
+}
+.empty-state-mark .ra-icon{
+  width:24px;
+  height:24px
+}
+
+.tool-error{
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr);
+  align-items:start;
+  column-gap:var(--space-5)
+}
+.tool-error-mark{
+  color:var(--color-danger);
+  padding-top:1px
+}
+.tool-error-mark .ra-icon{
+  width:20px;
+  height:20px
+}
+.tool-error-copy{
+  display:flex;
+  flex-direction:column;
+  gap:var(--space-2)
+}
+
+.audience-status-mark,
+.audience-private-mark{
+  display:grid;
+  place-items:center
+}
+.audience-status-mark .ra-icon,
+.audience-private-mark .ra-icon{
+  width:42px;
+  height:42px
+}
