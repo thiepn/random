@@ -1,5 +1,5 @@
 const DB_NAME = "randomizer-arcade";
-export const DATABASE_VERSION = 8;
+export const DATABASE_VERSION = 9;
 export const PORTABLE_STORAGE_STORES = Object.freeze([
   "pools",
   "poolViews",
@@ -19,6 +19,31 @@ export const PORTABLE_STORAGE_STORES = Object.freeze([
   "presets",
   "settings"
 ]);
+const INDEX_DEFINITIONS = Object.freeze({
+  runs: [
+    ["recent", ["timestamp", "id"], { unique: false }]
+  ],
+  history: [
+    ["recent", ["timestamp", "id"], { unique: false }]
+  ],
+  sessions: [
+    ["recent", ["updatedAt", "id"], { unique: false }],
+    ["status", "status", { unique: false }]
+  ],
+  templateSessions: [
+    ["recent", ["updatedAt", "id"], { unique: false }],
+    ["status", "status", { unique: false }]
+  ],
+  partySessions: [
+    ["recent", ["updatedAt", "id"], { unique: false }],
+    ["status", "status", { unique: false }]
+  ],
+  workflowSessions: [
+    ["recent", ["updatedAt", "id"], { unique: false }],
+    ["status", "status", { unique: false }]
+  ]
+});
+
 const STORES = [
   "pools",
   "poolViews",
@@ -58,9 +83,22 @@ function openDb() {
     const request = indexedDB.open(DB_NAME, DATABASE_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      for (const store of STORES) {
-        if (!db.objectStoreNames.contains(store)) {
-          db.createObjectStore(store, { keyPath: "id" });
+      const tx = request.transaction;
+
+      for (const storeName of STORES) {
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: "id" });
+        }
+      }
+
+      for (const [storeName, definitions] of Object.entries(
+        INDEX_DEFINITIONS
+      )) {
+        const store = tx.objectStore(storeName);
+        for (const [name, keyPath, options] of definitions) {
+          if (!store.indexNames.contains(name)) {
+            store.createIndex(name, keyPath, options);
+          }
         }
       }
     };
@@ -103,6 +141,122 @@ export async function getOne(store, id) {
     const request = db.transaction(store, "readonly").objectStore(store).get(id);
     request.onsuccess = () => resolve(request.result || null);
     request.onerror = () => reject(request.error);
+  });
+}
+
+
+export async function getRecentPage(
+  store,
+  indexName = "recent",
+  {
+    limit = 240,
+    before = null
+  } = {}
+) {
+  const safeLimit = Math.max(1, Math.min(2000, Number(limit) || 240));
+  const db = await openDb();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const index = tx.objectStore(store).index(indexName);
+    const range = before == null
+      ? null
+      : IDBKeyRange.upperBound(before, true);
+    const request = index.openCursor(range, "prev");
+    const rows = [];
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) {
+        const records = rows.map((row) => row.value);
+        resolve({
+          records,
+          hasMore: false,
+          nextCursor: null
+        });
+        return;
+      }
+
+      rows.push({
+        key: structuredClone(cursor.key),
+        value: cursor.value
+      });
+
+      if (rows.length > safeLimit) {
+        const records = rows
+          .slice(0, safeLimit)
+          .map((row) => row.value);
+        resolve({
+          records,
+          hasMore: true,
+          nextCursor: rows[safeLimit - 1].key
+        });
+        return;
+      }
+
+      cursor.continue();
+    };
+  });
+}
+
+export async function getAllByIndex(
+  store,
+  indexName,
+  value
+) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const request = tx
+      .objectStore(store)
+      .index(indexName)
+      .getAll(value);
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteMatching(store, predicate) {
+  if (typeof predicate !== "function") {
+    throw new TypeError("deleteMatching requires a predicate.");
+  }
+
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    const objectStore = tx.objectStore(store);
+    const request = objectStore.openCursor();
+    let deleted = 0;
+    let explicitError = null;
+
+    request.onerror = () => {
+      explicitError = request.error;
+      tx.abort();
+    };
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+
+      try {
+        if (predicate(cursor.value)) {
+          cursor.delete();
+          deleted += 1;
+        }
+        cursor.continue();
+      } catch (error) {
+        explicitError = error;
+        tx.abort();
+      }
+    };
+
+    tx.oncomplete = () => resolve(deleted);
+    tx.onerror = () => reject(explicitError || tx.error);
+    tx.onabort = () => reject(
+      explicitError
+      || tx.error
+      || new Error("IndexedDB deletion transaction aborted.")
+    );
   });
 }
 
