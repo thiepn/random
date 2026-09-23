@@ -428,6 +428,10 @@
   height:12px
 }
 
+.tool-card-standard{
+  min-height:var(--tool-card-min)
+}
+
 .tool-card-wide,
 .tool-card-feature{
   min-height:12rem
