@@ -857,11 +857,15 @@ function finishPresentation(toolId, token = null, shouldRender = true) {
   const ts = ensureToolState(toolId);
   if (token && ts.presentation?.token !== token) return;
 
+  const wasWheelReveal =
+    toolId === "wheel"
+    || ts.presentation?.kind === "wheel";
+
   clearPresentationTimers(toolId);
   cancelHaptics();
 
   ts.animating = false;
-  if (toolId === "wheel") {
+  if (wasWheelReveal) {
     ts.pendingWheelRotation = null;
     ts.previousWheelRotation = ts.wheelRotation;
   }
@@ -976,8 +980,7 @@ function beginPresentation(toolId, ts, result, { silent = false } = {}) {
   }
 
   if (
-    toolId === "wheel"
-    && plan.tickSchedule?.length
+    plan.tickSchedule?.length
     && settings.presentation.sound
     && !silent
   ) {
@@ -8241,7 +8244,10 @@ function teamsResult(groups, prefix = "Team") {
     const visible = group.slice(0, perGroupLimit);
     return node("div", {
       class: "team-card",
-      style: { "--accent": palette[index % palette.length] }
+      style: {
+        "--accent": palette[index % palette.length],
+        "--reveal-index": String(index)
+      }
     }, [
       node("strong", { text: prefix + " " + (index + 1) }),
       ...visible.map((person) =>
@@ -11436,6 +11442,20 @@ function buildToolActionDock(tool, ts) {
 
   if (secondary.childElementCount) {
     dock.append(secondary);
+  }
+
+  if (ts.result) {
+    dock.append(node("div", {
+      class: "result-commit-chip",
+      role: "status"
+    }, [
+      iconNode("check", { className: "result-commit-icon" }),
+      node("span", {
+        text: ts.presentation
+          ? "Result committed · reveal in progress"
+          : "Result committed · available in History"
+      })
+    ]));
   }
 
   return dock;
