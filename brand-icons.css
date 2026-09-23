@@ -115,3 +115,10 @@
     color:Highlight
   }
 }
+
+
+.brand-mark img{
+  width:42px;
+  height:42px;
+  display:block
+}
