@@ -143,16 +143,22 @@ for (const [name, definition] of Object.entries(ICON_DEFINITIONS)) {
   }
 }
 
+const iconSource = fs.readFileSync("src/icon-system.js", "utf8");
+assert.equal(
+  /https?:\/\//i.test(iconSource),
+  false,
+  "Icon runtime must not contain remote URL dependencies."
+);
 assert.match(
-  fs.readFileSync("src/icon-system.js", "utf8"),
+  iconSource,
   /viewBox:\s*"0 0 24 24"/
 );
 assert.match(
-  fs.readFileSync("src/icon-system.js", "utf8"),
+  iconSource,
   /stroke:\s*"currentColor"/
 );
 assert.match(
-  fs.readFileSync("src/icon-system.js", "utf8"),
+  iconSource,
   /"stroke-width":\s*"1\.8"/
 );
 
