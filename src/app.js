@@ -25,6 +25,7 @@ import {
   getDeviceIdentity,
   renameDevice,
   getRecentPage,
+  getRecentForTool,
   getMany,
   deleteMatching,
   DATABASE_VERSION,
@@ -7474,7 +7475,7 @@ function constraintContext(tool, ts) {
   };
 }
 
-function historyPairsForTool(tool, ts) {
+async function historyPairsForTool(tool, ts) {
   const active = (ts.rules || []).filter(
     (rule) => rule.enabled !== false && rule.type === "historyAvoid"
   );
@@ -7484,21 +7485,30 @@ function historyPairsForTool(tool, ts) {
     ...active.map((rule) => Number(rule.params?.depth) || 5)
   );
 
-  const canonical = state.runs
-    .filter((run) => run.toolId === tool.id)
-    .map((run) => ({
-      toolId: run.toolId,
-      detail: run.detail,
-      timestamp: run.timestamp
-    }));
+  const [persistedRuns, persistedLegacy] = await Promise.all([
+    getRecentForTool("runs", tool.id, depth),
+    getRecentForTool("history", tool.id, depth)
+  ]);
 
-  const legacy = state.history
-    .filter((entry) => entry.toolId === tool.id)
-    .map((entry) => ({
-      toolId: entry.toolId,
-      detail: entry.detail,
-      timestamp: entry.timestamp
-    }));
+  const canonical = mergeRecentRecords(
+    state.runs.filter((run) => run.toolId === tool.id),
+    persistedRuns,
+    { sortKey: "timestamp", limit: depth }
+  ).map((run) => ({
+    toolId: run.toolId,
+    detail: run.detail,
+    timestamp: run.timestamp
+  }));
+
+  const legacy = mergeRecentRecords(
+    state.history.filter((entry) => entry.toolId === tool.id),
+    persistedLegacy,
+    { sortKey: "timestamp", limit: depth }
+  ).map((entry) => ({
+    toolId: entry.toolId,
+    detail: entry.detail,
+    timestamp: entry.timestamp
+  }));
 
   const relevant = [...canonical, ...legacy]
     .sort((a, b) => b.timestamp - a.timestamp)
@@ -10344,18 +10354,20 @@ async function runTool(id) {
     outcomes: parseList(ts.ladderOutcomes)
   };
 
-  if (constraintTools.has(id)) {
-    const context = constraintContext(tool, ts);
-    config.constraintItems = context.items;
-    config.constraintFields = context.fields;
-    config.historyPairs = [...historyPairsForTool(tool, ts)];
-  }
-
   ts.computing = true;
   state.computeBusy = true;
   if (state.toolId === id || state.view === "party") render();
 
   try {
+    if (constraintTools.has(id)) {
+      const context = constraintContext(tool, ts);
+      config.constraintItems = context.items;
+      config.constraintFields = context.fields;
+      config.historyPairs = [
+        ...await historyPairsForTool(tool, ts)
+      ];
+    }
+
     let session = null;
     let expectedSessionRevision = null;
     let templateSession = ts.templateSessionId
