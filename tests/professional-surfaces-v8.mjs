@@ -29,7 +29,21 @@ for(const marker of [
   'class: "workflow-editor-workspace"',
   'class: "workflow-editor-sidebar"',
   'class: "workflow-editor-canvas"',
-  '"aria-label": "Workflow configuration"'
+  '"aria-label": "Workflow configuration"',
+  'class: "pool-list pool-list-v2 workbench-table"',
+  'class: "workbench-table-head pool-table-head"',
+  'class: "history-group-list workbench-timeline"',
+  'class: "saved-setup-card workbench-row',
+  'class: "session-template-card workbench-row"',
+  'class: "workbench-commandbar creation-commandbar"',
+  'class: "builder-panel workbench-panel"',
+  'class: "builder-inspector workbench-inspector"',
+  'class: "workflow-card-grid workbench-table"',
+  '"workflow-card workbench-row"',
+  'class: "workflow-graph workbench-canvas"',
+  'class: "workflow-node-summary"',
+  'class: "controls workbench-panel workflow-input-gate"',
+  'class: "workflow-run-path workbench-panel"'
 ]){
   assert.ok(app.includes(marker),"Missing V8 structure: "+marker);
 }
@@ -51,7 +65,12 @@ for(const marker of [
   ".workbench-view",
   ".workbench-header",
   ".workbench-stats",
-  ".workbench-commandbar"
+  ".workbench-commandbar",
+  ".workbench-table{",
+  ".workbench-view .workbench-row{",
+  ".workbench-panel{",
+  ".workbench-inspector{",
+  ".workbench-canvas{"
 ]){
   assert.ok(core.includes(marker),"Missing workbench primitive: "+marker);
 }
@@ -96,6 +115,24 @@ for(const marker of [
   ".workflow-path-list::before"
 ]) assert.ok(studio.includes(marker),"Missing V8 Studio styling: "+marker);
 
+const nodeStart=app.indexOf("function workflowNodeEditorCard");
+const nodeEnd=app.indexOf("\nasync function saveWorkflowEditor",nodeStart);
+assert.ok(nodeStart>=0&&nodeEnd>nodeStart);
+const nodeSource=app.slice(nodeStart,nodeEnd);
+for(const marker of [
+  'tabindex: "0"',
+  'event.key === "Enter" || event.key === " "',
+  "if (selected) {",
+  "card.append(config)",
+  'class: "workflow-node-summary"'
+]){
+  assert.ok(nodeSource.includes(marker),"Missing compact-node contract: "+marker);
+}
+assert.ok(
+  nodeSource.indexOf("if (selected) {")<nodeSource.indexOf("card.append(config)"),
+  "Node configuration must expand only after selection."
+);
+
 assert.ok(
   containment.includes(".pool-card-v2"),
   "Rendering containment must follow the V8 Pool row class."
@@ -121,6 +158,22 @@ for(const css of [pools,history,presets,builder,studio]){
   assert.equal(/https?:\/\//i.test(css),false);
   assert.ok(css.includes("@media(forced-colors:active)"));
 }
+
+assert.equal(
+  pools.includes(".pool-list-v2{display:grid;gap:0;border:1px solid"),
+  false,
+  "Pools should use shared V8 table ownership."
+);
+assert.equal(
+  builder.includes(".creation-grid{display:grid;gap:0;border:1px solid"),
+  false,
+  "Creations should use shared V8 table ownership."
+);
+assert.equal(
+  studio.includes(".workflow-card-grid{display:grid;gap:0;border:1px solid"),
+  false,
+  "Studio should use shared V8 table ownership."
+);
 
 const rootCss=fs.readdirSync(".").filter(name=>name.endsWith(".css"));
 const totalCss=rootCss.reduce((sum,name)=>sum+fs.statSync(name).size,0);
