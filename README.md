@@ -6,6 +6,16 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 
 The v1.0.0 baseline freezes the initial architecture. Default follow-up work is targeted maintenance and patch releases; broad feature expansion should be deliberately scoped as a later minor release.
 
+## v1.1 visual redesign track
+
+A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not change product behavior; it freezes the visual problem definition and redesign rules before production styling begins.
+
+- [V1 Visual Audit](./docs/design/V1-VISUAL-AUDIT.md)
+- [Visual Redesign Contract](./docs/design/REDESIGN-CONTRACT.md)
+- [Machine-readable Visual Baseline](./docs/design/visual-baseline.json)
+
+Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
+
 ## Current foundation
 
 - Secure Web Crypto randomness with unbiased bounded integers
