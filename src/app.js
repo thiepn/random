@@ -10185,15 +10185,50 @@ async function runTool(id) {
     const customExperience = tool.custom
       ? customExperienceFromToolId(id)
       : null;
-    const output = customExperience
-      ? executeCustomExperience(
-          customExperience,
-          {
-            inputItems: parseList(ts.customInputText)
-          },
-          prepared.source
-        )
-      : executeTool(id, config, prepared.source);
+    const computeStart =
+      globalThis.performance?.now
+        ? globalThis.performance.now()
+        : Date.now();
+    const offload = shouldOffloadTool(
+      id,
+      config,
+      customExperience
+    ) && computeWorkerSupported();
+
+    let output;
+    if (offload) {
+      output = await runComputeTask("tool.execute", {
+        toolId: id,
+        config,
+        customExperience,
+        customInputItems: parseList(ts.customInputText),
+        randomSpec: prepared.workerRandomSpec
+      });
+      state.performance.workerTasks += 1;
+      state.performance.lastComputeMode = "worker";
+    } else {
+      output = customExperience
+        ? executeCustomExperience(
+            customExperience,
+            {
+              inputItems: parseList(ts.customInputText)
+            },
+            prepared.source
+          )
+        : executeTool(id, config, prepared.source);
+      state.performance.mainThreadTasks += 1;
+      state.performance.lastComputeMode = "main";
+    }
+
+    const computeEnd =
+      globalThis.performance?.now
+        ? globalThis.performance.now()
+        : Date.now();
+    state.performance.lastComputeMs = Math.max(
+      0,
+      Math.round((computeEnd - computeStart) * 10) / 10
+    );
+
     let result = output.result;
     let summary = output.summary;
 
