@@ -1,4 +1,4 @@
-const CACHE = "randomizer-shell-v17";
+const CACHE = "randomizer-shell-v18";
 const SHELL = [
   "./",
   "./index.html",
