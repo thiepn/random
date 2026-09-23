@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "baselineRelease": "1.0.0",
+  "auditDate": "2026-09-23",
+  "auditType": "source-backed visual-system baseline",
+  "liveCaptureAvailable": false,
+  "liveCaptureNote": "The deployed GitHub Pages URL could not be captured from the available browser environment. Screenshot-only judgments are explicitly deferred to browser visual QA.",
+  "product": {
+    "name": "Randomizer Arcade",
+    "builtInTools": 25,
+    "categories": 4,
+    "primaryViews": [
+      "play",
+      "arcade",
+      "pools",
+      "history",
+      "studio",
+      "template-session",
+      "creations",
+      "builder",
+      "tool",
+      "party",
+      "audience"
+    ],
+    "renderFunctionsObserved": 30
+  },
+  "cssBaseline": {
+    "stylesheets": 15,
+    "hexColorOccurrences": 123,
+    "rgbOrRgbaOccurrences": 243,
+    "borderRadiusDeclarations": 141,
+    "borderDeclarations": 130,
+    "boxShadowDeclarations": 30,
+    "gradientOccurrences": 39,
+    "mediaQueryBlocks": 45,
+    "keyframeBlocks": 24
+  },
+  "currentVisualSignals": [
+    "dark-only canvas",
+    "cyan-purple primary accent language",
+    "high rounded-rectangle usage",
+    "high one-pixel translucent-border usage",
+    "frequent translucent dark cards",
+    "frequent gradients and glow",
+    "mixed Unicode/symbol tool icons",
+    "mobile bottom navigation promoted to a narrow desktop rail",
+    "tool-stage plus controls split layout on desktop",
+    "phase-by-phase stylesheet accumulation"
+  ],
+  "targetDirection": {
+    "name": "Expressive Utility Arcade",
+    "keywords": [
+      "tactile",
+      "precise",
+      "playful",
+      "confident",
+      "tool-specific",
+      "high-hierarchy",
+      "restrained-depth"
+    ]
+  },
+  "requiredViewports": [
+    { "name": "small-mobile", "width": 320, "height": 700 },
+    { "name": "mobile", "width": 390, "height": 844 },
+    { "name": "large-mobile", "width": 430, "height": 932 },
+    { "name": "mobile-landscape", "width": 844, "height": 390 },
+    { "name": "tablet", "width": 768, "height": 1024 },
+    { "name": "tablet-landscape", "width": 1024, "height": 768 },
+    { "name": "desktop", "width": 1280, "height": 800 },
+    { "name": "desktop-large", "width": 1440, "height": 1000 },
+    { "name": "desktop-wide", "width": 1920, "height": 1080 }
+  ],
+  "requiredInteractionStates": [
+    "default",
+    "hover",
+    "focus-visible",
+    "pressed",
+    "selected",
+    "disabled",
+    "loading",
+    "empty",
+    "error",
+    "success",
+    "offline",
+    "update-available",
+    "reduced-motion",
+    "higher-contrast"
+  ]
+}
