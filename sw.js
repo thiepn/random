@@ -1,4 +1,4 @@
-const CACHE = "randomizer-shell-v14";
+const CACHE = "randomizer-shell-v15";
 const SHELL = [
   "./",
   "./index.html",
@@ -13,7 +13,7 @@ const SHELL = [
   "./phase8.css",
   "./phase9.css",
   "./phase10.css",
-  "./phase11.css",
+  "./phase11.css",\n  "./phase12.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./src/app.js",
@@ -32,10 +32,16 @@ const SHELL = [
   "./src/party-model.js",
   "./src/custom-experience-model.js",
   "./src/custom-engine.js",
-  "./src/workflow-model.js",
+  "./src/workflow-model.js",\n  "./src/data-portability.js",
   "./src/storage.js",
   "./src/registry.js"
 ];
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
