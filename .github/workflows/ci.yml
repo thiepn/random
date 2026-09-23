@@ -43,6 +43,7 @@ jobs:
           node --check src/performance-model.js
           node --check src/compute-tasks.js
           node --check src/worker-client.js
+          node --check src/accessibility-i18n.js
           node --check src/compute-worker.js
           node --check src/storage.js
           node --check src/registry.js
@@ -108,6 +109,12 @@ jobs:
 
       - name: Large-scale storage regression certification
         run: node tests/storage-scale.mjs
+
+      - name: Accessibility and regional-format certification
+        run: node tests/accessibility-i18n.mjs
+
+      - name: Accessibility interaction regression certification
+        run: node tests/accessibility-regression.mjs
 
       - name: Background compute equivalence certification
         run: node tests/compute-tasks.mjs
