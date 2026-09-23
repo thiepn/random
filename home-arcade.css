@@ -534,7 +534,15 @@
 
 .home-saved-grid,
 .home-template-grid{
-  grid-template-columns:1fr
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(16rem,19rem);
+  grid-template-columns:none;
+  gap:var(--space-3);
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  padding:1px 1px var(--space-3);
+  scrollbar-width:thin
 }
 
 .arcade-hero-v2{
