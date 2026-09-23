@@ -10985,8 +10985,28 @@ function customControls(tool, ts) {
 }
 
 function buildControls(tool, ts) {
-  const controls = node("div", { class: "controls" });
+  const family = toolVisualFamily(tool);
+  const controls = node("div", {
+    class:
+      "controls tool-controls tool-controls-"
+      + family
+  });
   const grid = node("div", { class: "control-grid" });
+
+  controls.append(node("div", { class: "tool-controls-head" }, [
+    node("div", {}, [
+      node("span", { text: "Setup" }),
+      node("strong", { text: "Tune this randomizer" })
+    ]),
+    node("small", {
+      text:
+        family === "people" || family === "competition"
+          ? "Inputs, rules & fairness"
+          : family === "private"
+            ? "Private setup & reveal"
+            : "Inputs & options"
+    })
+  ]));
 
   const templateBar = templateContextBar(tool, ts);
   if (templateBar) controls.append(templateBar);
@@ -11257,9 +11277,31 @@ function buildControls(tool, ts) {
     })()
   ]));
 
-  const actions = node("div", { class: "button-row" });
+
+  const mode = state.settings.randomness.mode === "seeded"
+    ? "Seeded sequence · " + state.settings.randomness.seed
+    : "Secure Web Crypto randomness";
+
+  controls.append(node("div", {
+    class: "notice",
+    style: { marginTop: "12px" },
+    text: mode + ". The result is committed before its reveal animation."
+  }));
+
+  controls.append(fairnessPanel(tool, ts));
+
+  return controls;
+}
+
+function buildToolActionDock(tool, ts) {
+  const dock = node("div", {
+    class:
+      "tool-action-dock tool-action-"
+      + toolVisualFamily(tool)
+  });
+
   const primary = node("button", {
-    class: "primary action-button",
+    class: "primary action-button tool-primary-action",
     type: "button",
     onClick: () => runTool(tool.id)
   }, ts.computing ? "WORKING…" : actionLabel(tool.id, ts));
@@ -11272,10 +11314,14 @@ function buildControls(tool, ts) {
     primary.disabled = true;
   }
 
-  actions.append(primary);
+  dock.append(primary);
+
+  const secondary = node("div", {
+    class: "tool-action-secondary"
+  });
 
   if (tool.id === "cards" && ts.deck && !ts.replayRunId) {
-    actions.append(node("button", {
+    secondary.append(node("button", {
       class: "secondary",
       type: "button",
       onClick: () => {
@@ -11299,7 +11345,7 @@ function buildControls(tool, ts) {
     && ts.eliminationRemaining
     && !ts.replayRunId
   ) {
-    actions.append(node("button", {
+    secondary.append(node("button", {
       class: "secondary",
       type: "button",
       onClick: () => {
@@ -11319,7 +11365,7 @@ function buildControls(tool, ts) {
   }
 
   if (ts.result) {
-    actions.append(
+    secondary.append(
       node("button", {
         class: "secondary",
         type: "button",
@@ -11343,21 +11389,11 @@ function buildControls(tool, ts) {
     );
   }
 
-  controls.append(actions);
+  if (secondary.childElementCount) {
+    dock.append(secondary);
+  }
 
-  const mode = state.settings.randomness.mode === "seeded"
-    ? "Seeded sequence · " + state.settings.randomness.seed
-    : "Secure Web Crypto randomness";
-
-  controls.append(node("div", {
-    class: "notice",
-    style: { marginTop: "12px" },
-    text: mode + ". The result is committed before its reveal animation."
-  }));
-
-  controls.append(fairnessPanel(tool, ts));
-
-  return controls;
+  return dock;
 }
 
 function actionLabel(id, ts) {
