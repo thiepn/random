@@ -84,7 +84,7 @@
 .tool-action-dock.is-presenting .result-commit-chip{animation:commitImpact var(--settle-duration) ease-out var(--impact-delay) both}
 @keyframes commitImpact{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 
-.tool-stage.is-reduced-reveal *{animation:none!important;transition:none!important;transform:none!important;filter:none!important}
+.tool-stage.is-reduced-reveal *{animation:none!important;transition:none!important;filter:none!important}
 .tool-stage.is-reduced-reveal .stage-result,.tool-stage.is-reduced-reveal .stage-label,.tool-stage.is-reduced-reveal .stage-sub,.tool-stage.is-reduced-reveal .result-row,.tool-stage.is-reduced-reveal .team-card,.tool-stage.is-reduced-reveal .match-card,.tool-stage.is-reduced-reveal .playing-card,.tool-stage.is-reduced-reveal .card-deck,.tool-stage.is-reduced-reveal .ladder-rung,.tool-stage.is-reduced-reveal .ladder-path-segment{animation:reducedReveal var(--present-duration) linear both!important;opacity:1!important}
 @keyframes reducedReveal{from{opacity:.35}to{opacity:1}}
 .tool-stage.is-reduced-reveal::after,.tool-stage.is-reduced-reveal .fx-particles{display:none!important}
