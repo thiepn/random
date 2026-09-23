@@ -31,7 +31,8 @@ for (const required of [
   'root.toggleAttribute("inert"',
   'main.id = "main-content"',
   'root.setAttribute("aria-busy"',
-  'button.setAttribute(\n      "aria-pressed"',
+  '"aria-pressed"',
+  "applySegmentedSemantics",
   'tabindex: "0"',
   'event.key === "Enter" || event.key === " "'
 ]) {
