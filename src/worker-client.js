@@ -1,4 +1,8 @@
 import { WORKER_TIMEOUT_MS } from "./performance-model.js";
+import {
+  validateComputeRequestMessage,
+  validateComputeResponseMessage
+} from "./security.js";
 
 let worker = null;
 let workerUnavailable = false;
@@ -42,6 +46,18 @@ function destroyWorker(error = null) {
   if (error) rejectPending(error);
 }
 
+function protocolError(error, code) {
+  return new ComputeWorkerError(
+    error?.message || "Background compute protocol validation failed.",
+    {
+      code,
+      details: {
+        causeCode: error?.code || null
+      }
+    }
+  );
+}
+
 function ensureWorker() {
   if (!computeWorkerSupported()) return null;
   if (worker) return worker;
@@ -58,11 +74,23 @@ function ensureWorker() {
   }
 
   worker.addEventListener("message", (event) => {
-    const message = event.data || {};
-    const entry = pending.get(message.id);
+    const raw = event.data || {};
+    const id = typeof raw.id === "string" ? raw.id : null;
+    const entry = id ? pending.get(id) : null;
     if (!entry) return;
 
-    pending.delete(message.id);
+    let message;
+    try {
+      message = validateComputeResponseMessage(raw, id);
+    } catch (error) {
+      destroyWorker(protocolError(
+        error,
+        "COMPUTE_WORKER_PROTOCOL_INVALID"
+      ));
+      return;
+    }
+
+    pending.delete(id);
     clearTimeout(entry.timer);
 
     if (message.ok) {
@@ -107,6 +135,20 @@ export function runComputeTask(
   requestCounter += 1;
   const id = "compute:" + requestCounter;
 
+  let request;
+  try {
+    request = validateComputeRequestMessage({
+      id,
+      type,
+      payload
+    });
+  } catch (error) {
+    return Promise.reject(protocolError(
+      error,
+      "COMPUTE_WORKER_REQUEST_INVALID"
+    ));
+  }
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id);
@@ -125,11 +167,7 @@ export function runComputeTask(
     });
 
     try {
-      target.postMessage({
-        id,
-        type,
-        payload
-      });
+      target.postMessage(request);
     } catch (error) {
       clearTimeout(timer);
       pending.delete(id);

@@ -44,6 +44,7 @@ jobs:
           node --check src/compute-tasks.js
           node --check src/worker-client.js
           node --check src/accessibility-i18n.js
+          node --check src/security.js
           node --check src/compute-worker.js
           node --check src/storage.js
           node --check src/registry.js
@@ -118,6 +119,9 @@ jobs:
 
       - name: Background compute equivalence certification
         run: node tests/compute-tasks.mjs
+
+      - name: Security, privacy and integrity certification
+        run: node tests/security.mjs
 
       - name: Offline shell certification
         run: node tests/offline-shell.mjs
