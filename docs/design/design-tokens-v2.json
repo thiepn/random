@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "name": "Randomizer Arcade Design System V2",
+  "direction": "Expressive Utility Arcade",
+  "theme": "dark-foundation",
+  "fontPolicy": "offline system stacks only; no runtime font network dependency",
+  "semanticGroups": {
+    "typography": [
+      "--type-display-size",
+      "--type-page-size",
+      "--type-result-size",
+      "--type-section-size",
+      "--type-body-size",
+      "--type-support-size",
+      "--type-label-size",
+      "--type-caption-size"
+    ],
+    "surfaces": [
+      "--color-canvas",
+      "--color-canvas-raised",
+      "--color-surface-1",
+      "--color-surface-2",
+      "--color-surface-3",
+      "--color-surface-interactive",
+      "--color-surface-hover",
+      "--color-overlay"
+    ],
+    "text": [
+      "--color-text-primary",
+      "--color-text-secondary",
+      "--color-text-tertiary",
+      "--color-text-disabled",
+      "--color-text-on-accent"
+    ],
+    "stroke": [
+      "--color-stroke-subtle",
+      "--color-stroke-default",
+      "--color-stroke-strong",
+      "--color-stroke-emphasis"
+    ],
+    "semanticColor": [
+      "--color-accent-primary",
+      "--color-accent-secondary",
+      "--color-info",
+      "--color-success",
+      "--color-warning",
+      "--color-danger"
+    ],
+    "shape": [
+      "--radius-control",
+      "--radius-component",
+      "--radius-card",
+      "--radius-feature",
+      "--radius-stage",
+      "--radius-pill",
+      "--radius-circle"
+    ],
+    "elevation": [
+      "--shadow-level-0",
+      "--shadow-level-1",
+      "--shadow-level-2",
+      "--shadow-level-3",
+      "--shadow-overlay"
+    ],
+    "motion": [
+      "--duration-instant",
+      "--duration-fast",
+      "--duration-standard",
+      "--duration-slow",
+      "--duration-reveal",
+      "--ease-standard",
+      "--ease-emphasized",
+      "--ease-decelerate",
+      "--ease-accelerate"
+    ],
+    "spacing": [
+      "--space-0",
+      "--space-1",
+      "--space-2",
+      "--space-3",
+      "--space-4",
+      "--space-5",
+      "--space-6",
+      "--space-7",
+      "--space-8",
+      "--space-9",
+      "--space-10",
+      "--space-11",
+      "--space-12",
+      "--space-13"
+    ]
+  },
+  "shapeIntent": {
+    "control": "compact controls and fields",
+    "component": "standard interactive components",
+    "card": "independent objects",
+    "feature": "feature surfaces and large cards",
+    "stage": "result and tool stages",
+    "pill": "chips, statuses and compact segmented choices",
+    "circle": "physical circular objects only"
+  },
+  "depthIntent": {
+    "0": "canvas or flat content",
+    "1": "subtle raised interactive content",
+    "2": "important raised surface",
+    "3": "hero/result emphasis",
+    "overlay": "dialog or transient foreground"
+  },
+  "legacyAliasPolicy": "V2 maps v1.0 token names to semantic roles. V3-V10 progressively migrate component CSS and remove compatibility aliases only when unused."
+}
