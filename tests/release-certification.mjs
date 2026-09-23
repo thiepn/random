@@ -196,6 +196,8 @@ for (const requiredStep of [
   "Cross-feature release regression certification",
   "Adversarial fuzz certification",
   "Version baseline certification",
+  "Visual redesign contract certification",
+  "Design System V2 certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
