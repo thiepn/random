@@ -18,7 +18,14 @@ import {
   clear,
   getSettings,
   saveSettings,
-  requestPersistentStorage
+  requestPersistentStorage,
+  dumpDatabaseStores,
+  replaceDatabaseStores,
+  getStorageStatus,
+  getDeviceIdentity,
+  renameDevice,
+  DATABASE_VERSION,
+  PORTABLE_STORAGE_STORES
 } from "./storage.js";
 import {
   normalizePool,
@@ -135,6 +142,17 @@ import {
   customResultItems,
   prepareCustomListEntries
 } from "./custom-engine.js";
+import {
+  createPortablePackage,
+  serializePortablePackage,
+  parsePortablePackage,
+  mergePortableStores,
+  replaceStoresFromPackage,
+  portablePackageSummary,
+  safePortableFilename,
+  LIBRARY_STORES,
+  PORTABLE_STORES
+} from "./data-portability.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -172,6 +190,14 @@ const state = {
   historyFilter: "all",
   favorites: [],
   settings: null,
+  device: null,
+  storageStatus: null,
+  networkOnline:
+    typeof navigator === "undefined" ? true : navigator.onLine !== false,
+  installPrompt: null,
+  swRegistration: null,
+  updateAvailable: false,
+  reloadingForUpdate: false,
   search: "",
   modal: null,
   tool: {},
