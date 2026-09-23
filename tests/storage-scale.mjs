@@ -77,16 +77,23 @@ assert.equal(
   "Startup must not load the complete Workflow Session store."
 );
 
-assert.equal(
-  /function renderPools\([\s\S]*?editor\.visibleLimit/.test(
-    app.slice(
-      app.indexOf("function renderPools()"),
-      app.indexOf("function poolById", app.indexOf("function renderPools()"))
-    )
-  ),
-  false,
-  "Pool library search must not reference the Pool editor state."
-);
+{
+  const renderPoolsStart = app.indexOf("function renderPools()");
+  const renderPoolsEnd = app.indexOf(
+    "function historyGroupPinKey",
+    renderPoolsStart
+  );
+  assert.ok(renderPoolsStart >= 0 && renderPoolsEnd > renderPoolsStart);
+  const renderPoolsSource = app.slice(
+    renderPoolsStart,
+    renderPoolsEnd
+  );
+  assert.equal(
+    renderPoolsSource.includes("editor.visibleLimit"),
+    false,
+    "Pool library search must not reference the Pool editor state."
+  );
+}
 
 assert.ok(
   app.includes("async function openRunDetailById"),
