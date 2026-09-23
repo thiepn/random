@@ -50,9 +50,27 @@ import {
     capabilities: { reducedMotion: false }
   });
   assert.equal(normal.kind, "wheel");
-  assert.equal(normal.duration, 1750);
+  assert.equal(normal.duration, 1850);
   assert.ok(normal.particles > 0);
-  assert.ok(normal.tickMs > 0);
+  assert.ok(normal.tickSchedule.length > 0);
+  assert.equal(
+    normal.anticipationMs + normal.revealMs + normal.settleMs,
+    normal.duration
+  );
+  assert.equal(normal.activeMs, normal.anticipationMs + normal.revealMs);
+  assert.ok(normal.impactMs > normal.anticipationMs);
+  assert.ok(normal.impactMs <= normal.activeMs);
+  assert.ok(normal.cueAtMs <= normal.hapticAtMs);
+
+  const intervals = normal.tickSchedule.slice(1).map(
+    (value, index) => value - normal.tickSchedule[index]
+  );
+  assert.ok(
+    intervals.every((value, index) =>
+      index === 0 || value >= intervals[index - 1] - 2
+    ),
+    "Wheel tick spacing should generally decelerate."
+  );
 
   const instant = presentationPlan({
     toolId: "wheel",
@@ -60,7 +78,10 @@ import {
     capabilities: { reducedMotion: false }
   });
   assert.equal(instant.duration, 0);
-  assert.equal(instant.tickMs, 0);
+  assert.deepEqual(instant.tickSchedule, []);
+  assert.equal(instant.anticipationMs, 0);
+  assert.equal(instant.revealMs, 0);
+  assert.equal(instant.settleMs, 0);
 }
 
 {
@@ -76,8 +97,13 @@ import {
     capabilities: { reducedMotion: false }
   });
   assert.equal(reduced.kind, "fade");
+  assert.equal(reduced.sourceKind, "teams");
   assert.equal(reduced.duration, 180);
   assert.equal(reduced.particles, 0);
+  assert.equal(reduced.anticipationMs, 0);
+  assert.equal(reduced.revealMs, 120);
+  assert.equal(reduced.settleMs, 60);
+  assert.deepEqual(reduced.tickSchedule, []);
 }
 
 {
@@ -94,7 +120,8 @@ import {
   });
   assert.equal(winner.celebration, true);
   assert.equal(winner.cue, "winner");
-  assert.ok(winner.duration >= 2200);
+  assert.ok(winner.duration >= 2100);
+  assert.ok(winner.impactMs < winner.duration);
 }
 
 assert.deepEqual(hapticPattern("coin", "off"), []);

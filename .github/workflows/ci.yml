@@ -190,6 +190,9 @@ jobs:
       - name: Tool Experience V6 certification
         run: node tests/tool-experience-v6.mjs
 
+      - name: Results and Motion V7 certification
+        run: node tests/results-motion-v7.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 

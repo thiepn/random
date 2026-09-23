@@ -175,7 +175,14 @@ textarea.field{min-height:130px;resize:vertical;line-height:1.5}
   .tool-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  html{scroll-behavior:auto!important}
+  *:not(.is-reduced-reveal):not(.is-reduced-reveal *),
+  *:not(.is-reduced-reveal):not(.is-reduced-reveal *)::before,
+  *:not(.is-reduced-reveal):not(.is-reduced-reveal *)::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important
+  }
 }
 @media (forced-colors:active){
   .primary,.brand-icon,.brand-mark{forced-color-adjust:auto;background:ButtonFace;color:ButtonText;border:2px solid ButtonText}
