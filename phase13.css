@@ -1,4 +1,4 @@
-.tool-card,.creation-card,.workflow-card,.history-group-card,.pool-card,.session-template-card,.saved-setup-card{content-visibility:auto;contain-intrinsic-size:auto 120px}
+.tool-card,.creation-card,.workflow-card,.history-group-card,.pool-card-v2,.session-template-card,.saved-setup-card{content-visibility:auto;contain-intrinsic-size:auto 120px}
 .history-run-preview-row,.workflow-path-row{contain:layout paint style}
 .pool-editor-table,.pool-editor-row{contain:layout style}
 .pool-render-more{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);margin:var(--space-5) 0;padding:var(--space-4) 0;border-top:1px solid var(--color-stroke-subtle)}
