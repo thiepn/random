@@ -4898,6 +4898,7 @@ function openPoolEditor(poolId) {
     active: "all",
     tagFilter: "",
     selected: new Set(),
+    visibleLimit: POOL_RENDER_CHUNK,
     viewName: ""
   };
   render();
@@ -5020,7 +5021,10 @@ function renderPools() {
   search.addEventListener("input", () => {
     state.poolSearch = search.value;
   });
-  search.addEventListener("change", render);
+  search.addEventListener("change", () => {
+    editor.visibleLimit = POOL_RENDER_CHUNK;
+    render();
+  });
   search.addEventListener("keydown", (event) => {
     if (event.key === "Enter") render();
   });
@@ -10601,6 +10605,7 @@ function renderPoolEditorModal(modal, editor) {
   activeFilter.value = editor.active;
   activeFilter.addEventListener("change", () => {
     editor.active = activeFilter.value;
+    editor.visibleLimit = POOL_RENDER_CHUNK;
     render();
   });
 
@@ -10613,6 +10618,7 @@ function renderPoolEditorModal(modal, editor) {
   });
   tagFilter.addEventListener("change", () => {
     editor.tagFilter = tagFilter.value.trim();
+    editor.visibleLimit = POOL_RENDER_CHUNK;
     render();
   });
 
@@ -10777,6 +10783,12 @@ function renderPoolEditorModal(modal, editor) {
     }).map((item) => item.id)
   );
   const visible = draft.items.filter((item) => visibleIds.has(item.id));
+  const visibleWindow = progressiveSlice(
+    visible,
+    editor.visibleLimit || POOL_RENDER_CHUNK,
+    POOL_RENDER_CHUNK
+  );
+  const renderedVisible = visibleWindow.visible;
 
   const selected = editor.selected;
   const bulkTag = node("input", {
@@ -10787,7 +10799,13 @@ function renderPoolEditorModal(modal, editor) {
 
   modal.append(node("div", { class: "pool-bulk-bar" }, [
     node("span", {
-      text: selected.size + " selected · " + visible.length + " visible"
+      text:
+        selected.size
+        + " selected · "
+        + visible.length
+        + " matches · "
+        + renderedVisible.length
+        + " rendered"
     }),
     node("button", {
       class: "small-action",
@@ -10856,7 +10874,7 @@ function renderPoolEditorModal(modal, editor) {
   ]));
 
   const table = node("div", { class: "pool-editor-table" });
-  for (const item of visible) {
+  for (const item of renderedVisible) {
     const selectItem = node("input", {
       type: "checkbox",
       checked: selected.has(item.id),
@@ -10950,6 +10968,28 @@ function renderPoolEditorModal(modal, editor) {
   }
 
   modal.append(table);
+
+  if (visibleWindow.hasMore) {
+    modal.append(node("div", {
+      class: "pool-render-more"
+    }, [
+      node("span", {
+        text:
+          visibleWindow.shown
+          + " of "
+          + visibleWindow.total
+          + " matching items rendered"
+      }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => {
+          editor.visibleLimit = visibleWindow.nextLimit;
+          render();
+        }
+      }, "Render more")
+    ]));
+  }
 
   const newItem = node("input", {
     class: "field",
