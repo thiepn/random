@@ -19,6 +19,7 @@ const SHELL = [
   "./phase13.css",
   "./phase14.css",
   "./brand-icons.css",
+  "./app-shell.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./assets/brand/random-spark-mark.svg",
