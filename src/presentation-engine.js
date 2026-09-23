@@ -4,31 +4,31 @@ const HAPTIC_LEVELS = new Set(["off", "light", "standard", "strong"]);
 const MOTION_LEVELS = new Set(["system", "reduced", "full"]);
 
 const PROFILES = {
-  coin: { normal: 780, showtime: 1450, cue: "coin", kind: "coin" },
-  dice: { normal: 720, showtime: 1350, cue: "dice", kind: "dice" },
-  wheel: { normal: 1750, showtime: 3200, cue: "wheel", kind: "wheel" },
-  picker: { normal: 620, showtime: 1250, cue: "pick", kind: "pick" },
-  sampler: { normal: 760, showtime: 1450, cue: "pick", kind: "pick" },
-  shuffle: { normal: 820, showtime: 1550, cue: "shuffle", kind: "shuffle" },
-  teams: { normal: 920, showtime: 1750, cue: "teams", kind: "teams" },
-  groups: { normal: 920, showtime: 1750, cue: "teams", kind: "teams" },
-  pairs: { normal: 760, showtime: 1450, cue: "pairs", kind: "pairs" },
-  assignment: { normal: 840, showtime: 1550, cue: "assignment", kind: "assignment" },
-  cards: { normal: 680, showtime: 1250, cue: "card", kind: "card" },
-  ladder: { normal: 1150, showtime: 2400, cue: "ladder", kind: "ladder" },
-  elimination: { normal: 840, showtime: 1800, cue: "elimination", kind: "elimination" },
-  tournament: { normal: 980, showtime: 1900, cue: "tournament", kind: "tournament" },
-  "secret-santa": { normal: 420, showtime: 750, cue: "private", kind: "private" },
-  number: { normal: 420, showtime: 780, cue: "generator", kind: "generator" },
-  chance: { normal: 480, showtime: 900, cue: "generator", kind: "generator" },
-  lottery: { normal: 680, showtime: 1300, cue: "generator", kind: "generator" },
-  color: { normal: 420, showtime: 780, cue: "generator", kind: "generator" },
-  date: { normal: 420, showtime: 780, cue: "generator", kind: "generator" },
-  time: { normal: 420, showtime: 780, cue: "generator", kind: "generator" },
-  coordinate: { normal: 420, showtime: 780, cue: "generator", kind: "generator" },
-  direction: { normal: 520, showtime: 1000, cue: "generator", kind: "generator" },
-  letter: { normal: 420, showtime: 780, cue: "generator", kind: "generator" },
-  rps: { normal: 560, showtime: 1050, cue: "generator", kind: "generator" }
+  coin: { normal: 860, showtime: 1450, anticipation: .29, settle: .24, cue: "coin", kind: "coin" },
+  dice: { normal: 820, showtime: 1360, anticipation: .22, settle: .25, cue: "dice", kind: "dice" },
+  wheel: { normal: 1850, showtime: 3200, anticipation: .07, settle: .18, cue: "wheel", kind: "wheel" },
+  picker: { normal: 620, showtime: 1120, anticipation: .22, settle: .28, cue: "pick", kind: "pick" },
+  sampler: { normal: 760, showtime: 1320, anticipation: .2, settle: .27, cue: "pick", kind: "pick" },
+  shuffle: { normal: 820, showtime: 1420, anticipation: .16, settle: .24, cue: "shuffle", kind: "shuffle" },
+  teams: { normal: 920, showtime: 1650, anticipation: .18, settle: .25, cue: "teams", kind: "teams" },
+  groups: { normal: 920, showtime: 1650, anticipation: .18, settle: .25, cue: "teams", kind: "teams" },
+  pairs: { normal: 760, showtime: 1320, anticipation: .18, settle: .25, cue: "pairs", kind: "pairs" },
+  assignment: { normal: 840, showtime: 1420, anticipation: .18, settle: .24, cue: "assignment", kind: "assignment" },
+  cards: { normal: 760, showtime: 1260, anticipation: .25, settle: .25, cue: "card", kind: "card" },
+  ladder: { normal: 1150, showtime: 2200, anticipation: .12, settle: .2, cue: "ladder", kind: "ladder" },
+  elimination: { normal: 840, showtime: 1750, anticipation: .22, settle: .26, cue: "elimination", kind: "elimination" },
+  tournament: { normal: 980, showtime: 1800, anticipation: .14, settle: .24, cue: "tournament", kind: "tournament" },
+  "secret-santa": { normal: 420, showtime: 720, anticipation: .12, settle: .3, cue: "private", kind: "private" },
+  number: { normal: 460, showtime: 780, anticipation: .18, settle: .34, cue: "generator", kind: "generator" },
+  chance: { normal: 500, showtime: 860, anticipation: .2, settle: .3, cue: "generator", kind: "generator" },
+  lottery: { normal: 680, showtime: 1180, anticipation: .18, settle: .26, cue: "generator", kind: "generator" },
+  color: { normal: 460, showtime: 780, anticipation: .18, settle: .34, cue: "generator", kind: "generator" },
+  date: { normal: 460, showtime: 780, anticipation: .18, settle: .34, cue: "generator", kind: "generator" },
+  time: { normal: 460, showtime: 780, anticipation: .18, settle: .34, cue: "generator", kind: "generator" },
+  coordinate: { normal: 460, showtime: 780, anticipation: .18, settle: .34, cue: "generator", kind: "generator" },
+  direction: { normal: 540, showtime: 920, anticipation: .2, settle: .3, cue: "generator", kind: "generator" },
+  letter: { normal: 460, showtime: 780, anticipation: .18, settle: .34, cue: "generator", kind: "generator" },
+  rps: { normal: 560, showtime: 960, anticipation: .2, settle: .3, cue: "generator", kind: "generator" }
 };
 
 const HAPTIC_PATTERNS = {
@@ -104,6 +104,62 @@ export function effectiveEffectsLevel(settings, capabilities = {}) {
   return "high";
 }
 
+function splitTimeline(duration, profile, reducedMotion) {
+  if (duration <= 0) {
+    return {
+      anticipationMs: 0,
+      revealMs: 0,
+      settleMs: 0,
+      activeMs: 0,
+      impactMs: 0
+    };
+  }
+
+  if (reducedMotion) {
+    return {
+      anticipationMs: 0,
+      revealMs: Math.min(duration, 120),
+      settleMs: Math.max(0, duration - Math.min(duration, 120)),
+      activeMs: duration,
+      impactMs: Math.min(duration, 90)
+    };
+  }
+
+  const anticipationMs = Math.round(
+    duration * Number(profile.anticipation ?? .18)
+  );
+  const settleMs = Math.round(
+    duration * Number(profile.settle ?? .28)
+  );
+  const revealMs = Math.max(1, duration - anticipationMs - settleMs);
+  const activeMs = anticipationMs + revealMs;
+  const impactMs = Math.min(
+    duration,
+    anticipationMs + Math.round(revealMs * .72)
+  );
+
+  return {
+    anticipationMs,
+    revealMs,
+    settleMs,
+    activeMs,
+    impactMs
+  };
+}
+
+function wheelTickSchedule(activeMs, mode) {
+  if (activeMs <= 0) return [];
+  const count = mode === "showtime" ? 18 : 12;
+  const end = Math.max(0, activeMs - 70);
+
+  return Array.from({ length: count }, (_, index) => {
+    const progress = (index + 1) / (count + 1);
+    return Math.round(end * Math.pow(progress, 1.48));
+  }).filter((value, index, values) =>
+    index === 0 || value - values[index - 1] >= 34
+  );
+}
+
 export function presentationPlan({
   toolId,
   settings,
@@ -113,7 +169,9 @@ export function presentationPlan({
   const normalized = normalizeExperienceSettings(settings).presentation;
   const profile = PROFILES[toolId] || {
     normal: 480,
-    showtime: 900,
+    showtime: 860,
+    anticipation: .18,
+    settle: .3,
     cue: "generator",
     kind: "generator"
   };
@@ -134,25 +192,17 @@ export function presentationPlan({
       : profile.normal;
 
   let kind = profile.kind;
-  let particles =
-    normalized.mode === "instant" || profile.kind === "private"
-      ? 0
-      : effects === "high"
-        ? 12
-        : 0;
   let celebration = false;
 
   if (reducedMotion) {
     duration = normalized.mode === "instant" ? 0 : 180;
     kind = "fade";
-    particles = 0;
   }
 
   if (toolId === "elimination" && result?.winner) {
     celebration = !reducedMotion;
     if (!reducedMotion && normalized.mode === "showtime") {
-      duration = Math.max(duration, 2200);
-      particles = effects === "high" ? 22 : 0;
+      duration = Math.max(duration, 2100);
     }
   }
 
@@ -162,23 +212,43 @@ export function presentationPlan({
     && ["teams", "groups", "tournament", "ladder"].includes(toolId)
   ) {
     celebration = true;
-    particles = effects === "high" ? 18 : particles;
   }
+
+  const timeline = splitTimeline(duration, profile, reducedMotion);
+  const particleBase =
+    normalized.mode === "showtime" ? 12 : 6;
+  let particles =
+    normalized.mode === "instant"
+    || profile.kind === "private"
+    || effects !== "high"
+      ? 0
+      : celebration
+        ? Math.min(18, particleBase + 4)
+        : particleBase;
 
   if (reducedMotion) {
     particles = 0;
     celebration = false;
-    kind = "fade";
-    duration = normalized.mode === "instant" ? 0 : 180;
   }
 
-  const staggerMs = normalized.mode === "instant"
+  const staggerMs = normalized.mode === "instant" || reducedMotion
     ? 0
-    : reducedMotion
-      ? 0
-      : normalized.mode === "showtime"
-        ? 95
-        : 55;
+    : normalized.mode === "showtime"
+      ? 82
+      : 48;
+
+  const cue = celebration
+    && toolId === "elimination"
+    && result?.winner
+      ? "winner"
+      : profile.cue;
+
+  const cueAtMs = duration > 0 && !reducedMotion
+    ? Math.max(0, timeline.impactMs - 90)
+    : 0;
+  const hapticAtMs = duration > 0 && !reducedMotion
+    ? timeline.impactMs
+    : 0;
 
   return {
     toolId,
@@ -187,19 +257,18 @@ export function presentationPlan({
     reducedMotion,
     duration,
     kind,
-    cue: celebration && toolId === "elimination" && result?.winner
-      ? "winner"
-      : profile.cue,
-    haptic: celebration && toolId === "elimination" && result?.winner
-      ? "winner"
-      : profile.cue,
+    cue,
+    haptic: cue,
     particles,
     celebration,
     staggerMs,
-    tickMs:
+    ...timeline,
+    cueAtMs,
+    hapticAtMs,
+    tickSchedule:
       toolId === "wheel" && duration > 0 && !reducedMotion
-        ? (normalized.mode === "showtime" ? 80 : 65)
-        : 0
+        ? wheelTickSchedule(timeline.activeMs, normalized.mode)
+        : []
   };
 }
 
