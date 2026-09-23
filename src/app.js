@@ -13013,7 +13013,7 @@ function renderRunDetailModal(modal, config) {
   modal.append(actions);
 }
 
-function renderModal() {
+function renderModal(previousFocusIdentity = null) {
   if (!state.modal) return null;
 
   const backdrop = node("div", {
@@ -13559,12 +13559,39 @@ function renderModal() {
     })));
   }
 
+  finalizeModalAccessibility(modal, previousFocusIdentity);
   backdrop.append(modal);
   return backdrop;
 }
 
 function render() {
   if (!state.settings) return;
+
+  applyAccessibilityPreferences();
+  root.setAttribute("aria-busy", state.computeBusy ? "true" : "false");
+
+  const existingBackdrop = document.querySelector(".modal-backdrop");
+  const existingModal = existingBackdrop?.querySelector(".modal") || null;
+  const nextSignature = modalSignature();
+  const sameModal =
+    Boolean(existingModal)
+    && Boolean(nextSignature)
+    && modalFocusSignature === nextSignature;
+  const previousModalFocus =
+    sameModal && existingModal?.contains(document.activeElement)
+      ? focusIdentity(document.activeElement)
+      : null;
+
+  if (!existingBackdrop && state.modal) {
+    modalReturnFocus = focusIdentity(document.activeElement);
+  }
+
+  const restoreFocusAfterClose =
+    Boolean(existingBackdrop)
+    && !state.modal
+    && modalReturnFocus
+      ? modalReturnFocus
+      : null;
 
   document.querySelectorAll(".modal-backdrop").forEach((item) => item.remove());
 
@@ -13592,10 +13619,38 @@ function render() {
   else if (state.view === "tool") layout.append(renderTool());
 
   layout.append(bottomNav());
+
+  const main = layout.querySelector("main");
+  if (main) {
+    main.id = "main-content";
+    main.tabIndex = -1;
+  }
+
+  layout.querySelectorAll(".segmented button").forEach((button) => {
+    button.setAttribute(
+      "aria-pressed",
+      button.classList.contains("active") ? "true" : "false"
+    );
+  });
+
   root.replaceChildren(layout);
 
-  const modal = renderModal();
-  if (modal) document.body.append(modal);
+  const modal = renderModal(previousModalFocus);
+  if (modal) {
+    document.body.append(modal);
+    modalFocusSignature = nextSignature;
+  } else {
+    modalFocusSignature = null;
+  }
+
+  if (restoreFocusAfterClose) {
+    window.requestAnimationFrame(() => {
+      matchingFocusable(document, restoreFocusAfterClose)?.focus({
+        preventScroll: true
+      });
+    });
+    modalReturnFocus = null;
+  }
 }
 
 function refreshPwaUpdateState() {
