@@ -15,10 +15,14 @@ A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not cha
 - [Machine-readable Visual Baseline](./docs/design/visual-baseline.json)
 - [V2 Design System](./docs/design/V2-DESIGN-SYSTEM.md)
 - [V2 Token Inventory](./docs/design/design-tokens-v2.json)
+- [V3 Brand & Iconography](./docs/design/V3-BRAND-ICONOGRAPHY.md)
+- [V3 Icon Catalog](./docs/design/icon-catalog-v3.json)
 
 Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
 
 **V2 foundation:** semantic typography, color, spacing, shape, elevation, and motion roles now live in `design-system.css`. Legacy phase styles consume compatibility aliases while later redesign phases progressively replace them.
+
+**V3 identity:** Random Spark is the application mark, and all built-in navigation/categories/tools now have a coherent local SVG identity. Legacy glyph fields remain only as compatibility/user-content fallbacks.
 
 ## Current foundation
 
