@@ -4373,6 +4373,126 @@ function renderBuilder() {
   return content;
 }
 
+function renderPortableImportModal(modal, config) {
+  modal.classList.add("setup-modal", "portable-import-modal");
+  const summary = config.summary;
+
+  modal.append(
+    node("h2", { text: "Import Randomizer data" }),
+    node("p", {
+      text:
+        summary.scope === "full"
+          ? "This is a full app backup, including reusable content, history, and active sessions."
+          : "This is a library transfer package containing reusable content and settings, without run history."
+    })
+  );
+
+  if (config.error) modal.append(toolError(config.error));
+
+  modal.append(node("div", { class: "portable-package-summary" }, [
+    node("div", {}, [
+      node("span", { text: "File" }),
+      node("strong", { text: config.filename || "Portable package" })
+    ]),
+    node("div", {}, [
+      node("span", { text: "Source device" }),
+      node("strong", { text: summary.device?.name || "Unknown device" })
+    ]),
+    node("div", {}, [
+      node("span", { text: "Created" }),
+      node("strong", {
+        text: summary.createdAt
+          ? new Intl.DateTimeFormat(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short"
+            }).format(new Date(summary.createdAt))
+          : "Unknown"
+      })
+    ]),
+    node("div", {}, [
+      node("span", { text: "Records" }),
+      node("strong", { text: String(summary.records) })
+    ])
+  ]));
+
+  const modes = node("div", {
+    class: "segmented portable-import-modes",
+    "aria-label": "Import strategy"
+  }, [
+    ["merge", "Merge safely"],
+    ["replace", summary.scope === "full" ? "Restore backup" : "Replace library"]
+  ].map(([value, label]) =>
+    node("button", {
+      class: config.mode === value ? "active" : "",
+      type: "button",
+      disabled: config.busy ? "disabled" : null,
+      onClick: () => {
+        config.mode = value;
+        render();
+      }
+    }, label)
+  ));
+
+  modal.append(
+    modes,
+    node("div", {
+      class:
+        "portable-import-explanation "
+        + (config.mode === "replace" ? "is-destructive" : "is-merge")
+    }, [
+      node("strong", {
+        text:
+          config.mode === "replace"
+            ? "Replacement restore"
+            : "Deterministic merge"
+      }),
+      node("span", {
+        text:
+          config.mode === "replace"
+            ? (
+                summary.scope === "full"
+                  ? "Replaces all portable app data. A full safety backup is downloaded automatically before anything is changed."
+                  : "Replaces reusable library content while preserving local history and active run records. A safety backup is downloaded first."
+              )
+            : "Keeps newer revisions, unions unique records, never silently overwrites conflicting immutable Runs, and keeps local data on unresolved ties."
+      })
+    ])
+  );
+
+  modal.append(node("div", { class: "modal-actions" }, [
+    node("button", {
+      class: "secondary",
+      type: "button",
+      disabled: config.busy ? "disabled" : null,
+      onClick: () => {
+        state.modal = null;
+        render();
+      }
+    }, "Cancel"),
+    node("button", {
+      class: config.mode === "replace" ? "danger" : "primary",
+      type: "button",
+      disabled: config.busy ? "disabled" : null,
+      onClick: async () => {
+        config.busy = true;
+        config.error = null;
+        render();
+        try {
+          await applyPortableImport(config);
+        } catch (error) {
+          config.busy = false;
+          config.error = error?.message || "Import failed.";
+          render();
+        }
+      }
+    }, config.busy
+      ? "Importing…"
+      : config.mode === "replace"
+        ? "Restore"
+        : "Merge Import")
+  ]));
+}
+
 function renderCustomImportModal(modal, config) {
   modal.classList.add("setup-modal");
   modal.append(
@@ -4445,6 +4565,12 @@ function topBar() {
         onClick: () => {
           state.modal = "settings";
           render();
+          Promise.all([
+            ensureDeviceIdentity(),
+            refreshStorageStatus()
+          ]).then(() => {
+            if (state.modal === "settings") render();
+          }).catch(() => {});
         }
       }, [
         node("span", { class: "rng-dot", "aria-hidden": "true" }),
@@ -12138,6 +12264,11 @@ function renderModal() {
 
   if (
     typeof state.modal === "object"
+    && state.modal.type === "portable-import"
+  ) {
+    renderPortableImportModal(modal, state.modal);
+  } else if (
+    typeof state.modal === "object"
     && state.modal.type === "import-custom-experience"
   ) {
     renderCustomImportModal(modal, state.modal);
@@ -12311,6 +12442,148 @@ function renderModal() {
         text: "Auto effects reduce particles and secondary effects on lower-end devices or when Reduced Motion is active."
       })
     );
+
+    modal.append(
+      node("h3", {
+        class: "settings-section-title",
+        text: "Data & devices"
+      }),
+      node("p", {
+        class: "settings-section-copy",
+        text:
+          "Randomizer is local-first. Backups and transfer packages are ordinary files that you control; no account or cloud service is required."
+      })
+    );
+
+    const storage = state.storageStatus;
+    const device = state.device;
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches
+      || navigator.standalone === true;
+
+    const deviceName = node("input", {
+      class: "field",
+      type: "text",
+      value: device?.name || "This device",
+      "aria-label": "Device name",
+      placeholder: "This device"
+    });
+    deviceName.addEventListener("change", () => {
+      renameCurrentDevice(deviceName.value);
+    });
+
+    modal.append(node("section", {
+      class: "settings-data-panel"
+    }, [
+      node("div", { class: "settings-data-status-grid" }, [
+        node("div", {}, [
+          node("span", { text: "Storage" }),
+          node("strong", {
+            text: storage
+              ? formatStorageBytes(storage.usage)
+                + (storage.quota
+                  ? " / " + formatStorageBytes(storage.quota)
+                  : "")
+              : "Checking…"
+          })
+        ]),
+        node("div", {}, [
+          node("span", { text: "Durability" }),
+          node("strong", {
+            text: storage?.persisted ? "Persistent" : "Best effort"
+          })
+        ]),
+        node("div", {}, [
+          node("span", { text: "Network" }),
+          node("strong", {
+            text: state.networkOnline ? "Online" : "Offline"
+          })
+        ]),
+        node("div", {}, [
+          node("span", { text: "App" }),
+          node("strong", {
+            text:
+              state.updateAvailable
+                ? "Update ready"
+                : standalone
+                  ? "Installed PWA"
+                  : "Browser"
+          })
+        ])
+      ]),
+      node("label", { class: "control settings-device-name" }, [
+        node("span", {
+          text:
+            "Device name"
+            + (device?.deviceId
+              ? " · " + device.deviceId.slice(0, 8)
+              : "")
+        }),
+        deviceName
+      ]),
+      node("div", { class: "settings-device-actions" }, [
+        !storage?.persisted
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: requestDurableStorage
+            }, "Protect local storage")
+          : null,
+        state.installPrompt
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: installPwa
+            }, "Install app")
+          : null,
+        state.updateAvailable
+          ? node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: activateWaitingServiceWorker
+            }, "Apply update")
+          : null
+      ].filter(Boolean)),
+      node("div", { class: "settings-backup-actions" }, [
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: async () => {
+            try {
+              await downloadPortablePackage("full");
+            } catch (error) {
+              announce(error?.message || "Could not create backup.");
+            }
+          }
+        }, "Download full backup"),
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: openPortableImportPicker
+        }, "Import / restore"),
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: shareLibraryPackage
+        }, "Share library"),
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: async () => {
+            try {
+              await downloadPortablePackage("library");
+            } catch (error) {
+              announce(error?.message || "Could not create transfer package.");
+            }
+          }
+        }, "Download transfer file")
+      ]),
+      node("div", {
+        class: "notice settings-data-note",
+        text:
+          "Full backup includes run history and active sessions. Library transfer contains reusable Pools, Presets, Rule Sets, Session Templates, Custom Experiences, Workflows, favorites, and settings. Device identity stays local to each device."
+      })
+    ]));
 
     modal.append(node("div", { class: "modal-actions" }, [
       node("button", {
