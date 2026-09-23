@@ -4233,20 +4233,20 @@ function renderCreations() {
   content.append(node("div", {
     class: "builder-starters"
   }, [
-    ["wheel", "◉", "Wheel"],
-    ["picker", "✦", "Picker"],
-    ["dice", "⬡", "Custom Dice"],
-    ["deck", "▰", "Deck"],
-    ["table", "▦", "Random Table"],
-    ["number", "#", "Number"],
-    ["compound", "◇", "Compound"]
-  ].map(([kind, icon, label]) =>
+    ["wheel", "wheel", "Wheel"],
+    ["picker", "picker", "Picker"],
+    ["dice", "dice", "Custom Dice"],
+    ["deck", "cards", "Deck"],
+    ["table", "arcade", "Random Table"],
+    ["number", "number", "Number"],
+    ["compound", "studio", "Compound"]
+  ].map(([kind, iconId, label]) =>
     node("button", {
       class: "starter-card",
       type: "button",
       onClick: () => openBuilder(null, kind)
     }, [
-      node("span", { text: icon }),
+      iconNode(iconId, { className: "starter-icon" }),
       node("strong", { text: label })
     ])
   )));
@@ -6543,7 +6543,7 @@ function renderHistory() {
         type: "button",
         "aria-label": pinned ? "Unpin History group" : "Pin History group",
         onClick: () => toggleHistoryPin(pinKey)
-      }, pinned ? "★" : "☆")
+      }, iconNode(pinned ? "star-filled" : "star"))
     ]);
 
     if (group.kind === "session" && session) {
@@ -8095,9 +8095,10 @@ function renderWorkflowLibrary() {
           onClick: () => openWorkflowSession(session.id)
         }, [
           node("span", {
-            class: "workflow-node-glyph small",
-            text: session.status === "completed" ? "✓" : "×"
-          }),
+            class: "workflow-node-glyph small"
+          }, iconNode(
+            session.status === "completed" ? "check" : "warning"
+          )),
           node("div", {}, [
             node("strong", {
               text: workflowById(session.workflowId)?.name || session.workflowName
