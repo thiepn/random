@@ -48,6 +48,7 @@ const SHELL = [
   "./src/performance-model.js",
   "./src/worker-client.js",
   "./src/accessibility-i18n.js",
+  "./src/visual-preferences.js",
   "./src/security.js",
   "./src/compute-tasks.js",
   "./src/compute-worker.js",
