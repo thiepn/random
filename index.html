@@ -26,8 +26,10 @@
   <link rel="stylesheet" href="./phase11.css">
   <link rel="stylesheet" href="./phase12.css">
   <link rel="stylesheet" href="./phase13.css">
+  <link rel="stylesheet" href="./phase14.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <noscript>This app requires JavaScript to run its local randomization tools.</noscript>
   <div id="app" class="app-shell">
     <div class="boot-screen" aria-live="polite">
@@ -36,7 +38,7 @@
       <span>Loading your arcade…</span>
     </div>
   </div>
-  <div id="announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="announcer" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>
