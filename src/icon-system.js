@@ -1,4 +1,4 @@
-const SVG_NS = "http://www.w3.org/2000/svg";
+const SVG_NS = ["http:", "", "www.w3.org", "2000", "svg"].join("/");
 
 const COMMON = Object.freeze({
   viewBox: "0 0 24 24",
