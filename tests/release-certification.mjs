@@ -17,6 +17,7 @@ for (const file of [
   "brand-icons.css",
   "app-shell.css",
   "home-arcade.css",
+  "tool-experience.css",
   "sw.js",
   "src/app.js",
   "src/security.js",
@@ -204,6 +205,7 @@ for (const requiredStep of [
   "Brand and iconography V3 certification",
   "Adaptive shell V4 certification",
   "Home and Arcade V5 certification",
+  "Tool Experience V6 certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
