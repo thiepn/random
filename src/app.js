@@ -3218,7 +3218,7 @@ function presetCard(preset) {
   })[binding] || binding;
 
   return node("article", {
-    class: "saved-setup-card accent-" + (tool?.accent || "cyan")
+    class: "saved-setup-card workbench-row accent-" + (tool?.accent || "cyan")
   }, [
     node("div", {
       class: "saved-setup-icon"
@@ -3276,7 +3276,7 @@ function templateCard(template) {
   const latest = relatedSessions[0] || null;
 
   return node("article", {
-    class: "session-template-card"
+    class: "session-template-card workbench-row"
   }, [
     node("div", {
       class: "session-template-icon"
@@ -4079,7 +4079,7 @@ function customCreationCard(experience) {
   const tool = experienceAsTool(experience);
   return node("article", {
     class:
-      "creation-card accent-"
+      "creation-card workbench-row accent-"
       + tool.accent
       + (experience.status === "draft" ? " is-draft" : "")
   }, [
@@ -4300,7 +4300,7 @@ function renderCreations() {
   }
 
   content.append(node("div", {
-    class: "creation-grid"
+    class: "creation-grid workbench-table"
   }, filtered.map(customCreationCard)));
 
   return content;
@@ -4833,7 +4833,7 @@ function renderBuilder() {
   ]));
 
   const identity = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "1. Identity" })
   ]);
@@ -4868,7 +4868,7 @@ function renderBuilder() {
   );
 
   const primitivePanel = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "2. Randomization" })
   ]);
@@ -4928,7 +4928,7 @@ function renderBuilder() {
   }
 
   const rulesPanel = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "3. Rules" }),
     node("p", {
@@ -5012,7 +5012,7 @@ function renderBuilder() {
   );
 
   const appearance = node("section", {
-    class: "builder-panel"
+    class: "builder-panel workbench-panel"
   }, [
     node("h2", { text: "4. Appearance" }),
     node("div", { class: "builder-grid" }, [
@@ -5054,7 +5054,7 @@ function renderBuilder() {
   ]);
 
   const test = node("section", {
-    class: "builder-panel builder-test-panel"
+    class: "builder-panel workbench-panel builder-test-panel"
   }, [
     node("div", { class: "builder-panel-head" }, [
       node("div", {}, [
@@ -5126,7 +5126,7 @@ function renderBuilder() {
       appearance
     ]),
     node("aside", {
-      class: "builder-inspector",
+      class: "builder-inspector workbench-inspector",
       "aria-label": "Builder test and validation"
     }, [
       test,
@@ -6293,7 +6293,7 @@ function renderPools() {
     return content;
   }
 
-  const list = node("div", { class: "pool-list pool-list-v2" });
+  const list = node("div", { class: "pool-list pool-list-v2 workbench-table" });
 
   for (const pool of activePools) {
     const stats = poolStats(pool);
@@ -6308,7 +6308,7 @@ function renderPools() {
     ]);
 
     list.append(node("article", {
-      class: "pool-item pool-card-v2" + (pool.archived ? " is-archived" : "")
+      class: "pool-item pool-card-v2 workbench-row" + (pool.archived ? " is-archived" : "")
     }, [
       node("div", { class: "pool-icon", text: pool.icon || "◎" }),
       node("div", { class: "pool-copy" }, [
@@ -6557,7 +6557,7 @@ function renderHistory() {
     state.historyRenderLimit,
     HISTORY_RENDER_CHUNK
   );
-  const list = node("div", { class: "history-group-list" });
+  const list = node("div", { class: "history-group-list workbench-timeline" });
 
   for (const group of groupWindow.visible) {
     const pinKey = historyGroupPinKey(group);
@@ -6618,7 +6618,7 @@ function renderHistory() {
 
     list.append(node("article", {
       class:
-        "history-group-card"
+        "history-group-card workbench-row"
         + (pinned ? " is-pinned" : "")
         + (group.kind === "session" ? " is-session" : "")
     }, [
@@ -7259,7 +7259,7 @@ function renderWorkflowEditor() {
     ]
   }));
 
-  const identity = node("section", { class: "controls workflow-editor-identity" });
+  const identity = node("section", { class: "controls workbench-panel workflow-editor-identity" });
   const name = node("input", {
     class: "field",
     type: "text",
@@ -7326,7 +7326,7 @@ function renderWorkflowEditor() {
     ])
   );
 
-  const paletteBar = node("section", { class: "workflow-node-palette" }, [
+  const paletteBar = node("section", { class: "workflow-node-palette workbench-panel" }, [
     node("div", {}, [
       node("strong", { text: "Add node" }),
       node("span", { text: "New nodes insert after the selected linear node when possible." })
@@ -7355,7 +7355,7 @@ function renderWorkflowEditor() {
     ])
   ]);
 
-  const graph = node("section", { class: "workflow-graph" }, [
+  const graph = node("section", { class: "workflow-graph workbench-canvas" }, [
     node("div", { class: "workflow-graph-head" }, [
       node("div", {}, [
         node("strong", { text: "Workflow graph" }),
@@ -8009,7 +8009,7 @@ function workflowCard(workflow) {
   const randomizers = workflow.nodes.filter((nodeDef) => nodeDef.type === "tool").length;
 
   return node("article", {
-    class: "workflow-card" + (validation.valid ? "" : " is-invalid")
+    class: "workflow-card workbench-row" + (validation.valid ? "" : " is-invalid")
   }, [
     node("div", { class: "workflow-card-head" }, [
       iconNode("studio", { className: "workflow-card-icon" }),
