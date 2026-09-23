@@ -12780,6 +12780,75 @@ function render() {
   if (modal) document.body.append(modal);
 }
 
+function refreshPwaUpdateState() {
+  const available = Boolean(state.swRegistration?.waiting);
+  if (state.updateAvailable !== available) {
+    state.updateAvailable = available;
+    if (state.modal === "settings") render();
+  }
+}
+
+async function registerAppServiceWorker() {
+  if (!("serviceWorker" in navigator)) return null;
+
+  try {
+    const registration = await navigator.serviceWorker.register("./sw.js");
+    state.swRegistration = registration;
+    refreshPwaUpdateState();
+
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      if (!worker) return;
+
+      worker.addEventListener("statechange", () => {
+        if (
+          worker.state === "installed"
+          && navigator.serviceWorker.controller
+        ) {
+          state.updateAvailable = true;
+          if (state.modal === "settings") render();
+        }
+      });
+    });
+
+    registration.update().catch(() => {});
+    return registration;
+  } catch {
+    return null;
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  state.installPrompt = event;
+  if (state.modal === "settings") render();
+});
+
+window.addEventListener("appinstalled", () => {
+  state.installPrompt = null;
+  announce("Randomizer installed.");
+  if (state.modal === "settings") render();
+});
+
+window.addEventListener("online", () => {
+  state.networkOnline = true;
+  if (state.modal === "settings") render();
+});
+
+window.addEventListener("offline", () => {
+  state.networkOnline = false;
+  if (state.modal === "settings") render();
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (state.reloadingForUpdate) {
+      state.reloadingForUpdate = false;
+      location.reload();
+    }
+  });
+}
+
 async function init() {
   const params = new URLSearchParams(location.search);
   const requestedAudience = params.get("audience");
@@ -12813,13 +12882,15 @@ async function init() {
 
     render();
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
-    }
+    registerAppServiceWorker();
     return;
   }
 
   await loadData();
+  [state.device, state.storageStatus] = await Promise.all([
+    getDeviceIdentity(),
+    getStorageStatus()
+  ]);
 
   const requestedParty = params.get("party");
   const requestedWorkflowSession = params.get("workflowSession");
@@ -12908,9 +12979,7 @@ async function init() {
     }
   }
 
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
-  }
+  registerAppServiceWorker();
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && state.modal) {
