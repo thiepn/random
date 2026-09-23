@@ -8046,6 +8046,34 @@ function currentTool() {
   return resolveTool(state.toolId);
 }
 
+const BUILTIN_TOOL_VISUAL_FAMILY = Object.freeze({
+  coin: "coin",
+  dice: "dice",
+  wheel: "wheel",
+  picker: "list",
+  number: "generator",
+  shuffle: "list",
+  teams: "people",
+  pairs: "people",
+  cards: "cards",
+  chance: "generator",
+  lottery: "generator",
+  color: "color",
+  date: "generator",
+  direction: "generator",
+  letter: "generator",
+  sampler: "list",
+  groups: "people",
+  assignment: "people",
+  elimination: "competition",
+  ladder: "competition",
+  "secret-santa": "private",
+  tournament: "competition",
+  time: "generator",
+  coordinate: "generator",
+  rps: "generator"
+});
+
 function toolVisualFamily(tool) {
   if (tool?.custom) {
     const experience = customExperienceFromToolId(tool.id);
@@ -8063,20 +8091,7 @@ function toolVisualFamily(tool) {
     return "generator";
   }
 
-  if (tool.id === "coin") return "coin";
-  if (tool.id === "dice") return "dice";
-  if (tool.id === "wheel") return "wheel";
-  if (tool.id === "cards") return "cards";
-  if (tool.id === "color") return "color";
-  if (["picker", "sampler", "shuffle"].includes(tool.id)) return "list";
-  if (["teams", "groups", "pairs", "assignment"].includes(tool.id)) {
-    return "people";
-  }
-  if (["elimination", "ladder", "tournament"].includes(tool.id)) {
-    return "competition";
-  }
-  if (tool.id === "secret-santa") return "private";
-  return "generator";
+  return BUILTIN_TOOL_VISUAL_FAMILY[tool?.id] || "generator";
 }
 
 function toolFamilyLabel(family) {
