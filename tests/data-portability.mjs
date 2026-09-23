@@ -60,7 +60,7 @@ function stores() {
   assert.equal(pkg.schemaVersion, 1);
   assert.equal(pkg.payload.scope, "full");
   assert.equal(pkg.payload.stores.pools.length, 1);
-  assert.equal(pkg.checksum, portableChecksum(pkg.payload));
+  assert.match(pkg.checksum, /^fnv1a32:[0-9a-f]{8}$/);
 
   const text = serializePortablePackage(pkg);
   const parsed = parsePortablePackage(text);
@@ -168,6 +168,13 @@ function stores() {
 
   assert.throws(
     () => validatePortablePackage(tampered),
+    /integrity check failed/i
+  );
+
+  const metadataTampered = structuredClone(pkg);
+  metadataTampered.device.name = "Different device";
+  assert.throws(
+    () => validatePortablePackage(metadataTampered),
     /integrity check failed/i
   );
 }
