@@ -86,7 +86,7 @@ The underlying tool ID, click behavior, favorite state, description and accent c
 
 Presets and Session Templates remain available from Home but are visually grouped as reusable/guided content rather than being treated as another randomizer grid.
 
-The Home preview intentionally limits the number of cards shown. Full underlying state remains untouched.
+The compact panels remain horizontally browsable and render the complete Preset and Session Template collections so V5 does not hide previously accessible saved items.
 
 ## Arcade
 
