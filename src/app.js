@@ -6293,7 +6293,18 @@ function renderPools() {
     return content;
   }
 
-  const list = node("div", { class: "pool-list pool-list-v2 workbench-table" });
+  const list = node("div", {
+    class: "pool-list pool-list-v2 workbench-table"
+  }, [
+    node("div", {
+      class: "workbench-table-head pool-table-head",
+      "aria-hidden": "true"
+    }, [
+      node("span", { text: "Pool" }),
+      node("span", { text: "Structure" }),
+      node("span", { text: "Actions" })
+    ])
+  ]);
 
   for (const pool of activePools) {
     const stats = poolStats(pool);
