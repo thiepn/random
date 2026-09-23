@@ -41,6 +41,10 @@ for (const source of [
 }
 
 assert.ok(
+  app.includes("const seenToolSessions = new Set();"),
+  "Continue must deduplicate active sessions per stateful tool."
+);
+assert.ok(
   app.includes("[...state.runs].sort("),
   "Recent tools must derive from existing Runs."
 );
