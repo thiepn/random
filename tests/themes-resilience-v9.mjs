@@ -4,11 +4,14 @@ import fs from "node:fs";
 const css=fs.readFileSync("visual-resilience.css","utf8");
 const index=fs.readFileSync("index.html","utf8");
 const app=fs.readFileSync("src/app.js","utf8");
+const visual=fs.readFileSync("src/visual-preferences.js","utf8");
+const runtime=app+"\n"+visual;
 const sw=fs.readFileSync("sw.js","utf8");
 
 assert.ok(index.includes('./visual-resilience.css'));
 assert.ok(index.indexOf('./tool-experience.css')<index.indexOf('./visual-resilience.css'));
 assert.ok(sw.includes('"./visual-resilience.css"'));
+assert.ok(sw.includes('"./src/visual-preferences.js"'));
 assert.match(index,/viewport-fit=cover/);
 assert.doesNotMatch(index,/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/i);
 
@@ -42,7 +45,7 @@ for(const marker of [
   'class: "segmented settings-theme-modes"',
   'class: "settings-accent-picker"',
   '"aria-label": "Accent color"'
-]) assert.ok(app.includes(marker),"Missing V9 runtime contract: "+marker);
+]) assert.ok(runtime.includes(marker),"Missing V9 runtime contract: "+marker);
 
 for(const [token,value] of [
   ["--color-canvas","#f6f7fb"],
