@@ -93,4 +93,19 @@ assert.ok(
   "Evicted Runs must be hydrated lazily before opening details."
 );
 
+for (const code of [
+  "COMPUTE_WORKER_UNAVAILABLE",
+  "COMPUTE_WORKER_POST_FAILED",
+  "COMPUTE_WORKER_CRASHED"
+]) {
+  assert.ok(
+    app.includes(code),
+    "Tool execution must fall back safely for " + code
+  );
+}
+assert.ok(
+  app.includes('state.performance.lastComputeMode = "main-fallback"'),
+  "Worker fallback diagnostics must identify main-thread fallback."
+);
+
 console.log("storage-scale regression tests passed");
