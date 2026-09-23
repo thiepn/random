@@ -1,5 +1,5 @@
 const DB_NAME = "randomizer-arcade";
-export const DATABASE_VERSION = 9;
+export const DATABASE_VERSION = 10;
 export const PORTABLE_STORAGE_STORES = Object.freeze([
   "pools",
   "poolViews",
@@ -21,10 +21,12 @@ export const PORTABLE_STORAGE_STORES = Object.freeze([
 ]);
 const INDEX_DEFINITIONS = Object.freeze({
   runs: [
-    ["recent", ["timestamp", "id"], { unique: false }]
+    ["recent", ["timestamp", "id"], { unique: false }],
+    ["toolRecent", ["toolId", "timestamp"], { unique: false }]
   ],
   history: [
-    ["recent", ["timestamp", "id"], { unique: false }]
+    ["recent", ["timestamp", "id"], { unique: false }],
+    ["toolRecent", ["toolId", "timestamp"], { unique: false }]
   ],
   sessions: [
     ["recent", ["updatedAt", "id"], { unique: false }],
@@ -258,6 +260,38 @@ export async function getAllByIndex(
       .getAll(value);
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = () => reject(request.error);
+  });
+}
+
+
+export async function getRecentForTool(
+  store,
+  toolId,
+  limit = 100
+) {
+  const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+  const db = await openDb();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const index = tx.objectStore(store).index("toolRecent");
+    const range = IDBKeyRange.bound(
+      [String(toolId), 0],
+      [String(toolId), Number.MAX_SAFE_INTEGER]
+    );
+    const request = index.openCursor(range, "prev");
+    const output = [];
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor || output.length >= safeLimit) {
+        resolve(output);
+        return;
+      }
+      output.push(cursor.value);
+      cursor.continue();
+    };
   });
 }
 
