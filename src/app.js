@@ -3079,6 +3079,74 @@ async function ensureDeviceIdentity() {
   return state.device;
 }
 
+function portableRecordCount(portable) {
+  try {
+    return portablePackageSummary(portable).records;
+  } catch {
+    return 0;
+  }
+}
+
+async function runBackgroundOrFallback(
+  type,
+  payload,
+  fallback,
+  {
+    enabled = true,
+    timeoutMs = 30000
+  } = {}
+) {
+  if (!enabled || !computeWorkerSupported()) {
+    return fallback();
+  }
+
+  const started =
+    globalThis.performance?.now
+      ? globalThis.performance.now()
+      : Date.now();
+
+  try {
+    const result = await runComputeTask(
+      type,
+      payload,
+      { timeoutMs }
+    );
+    state.performance.workerTasks += 1;
+    state.performance.lastComputeMode = "worker";
+    return result;
+  } catch (error) {
+    if ([
+      "COMPUTE_WORKER_UNAVAILABLE",
+      "COMPUTE_WORKER_POST_FAILED",
+      "COMPUTE_WORKER_CRASHED"
+    ].includes(error?.code)) {
+      state.performance.mainThreadTasks += 1;
+      state.performance.lastComputeMode = "main-fallback";
+      return fallback();
+    }
+    throw error;
+  } finally {
+    const ended =
+      globalThis.performance?.now
+        ? globalThis.performance.now()
+        : Date.now();
+    state.performance.lastComputeMs = Math.max(
+      0,
+      Math.round((ended - started) * 10) / 10
+    );
+  }
+}
+
+async function serializePortableSmart(portable) {
+  const records = portableRecordCount(portable);
+  return runBackgroundOrFallback(
+    "portability.serialize",
+    { portable },
+    () => serializePortablePackage(portable),
+    { enabled: records >= 1000 }
+  );
+}
+
 async function createAppPortablePackage(scope = "full") {
   const device = await ensureDeviceIdentity();
   const stores = await dumpDatabaseStores(
@@ -3103,7 +3171,7 @@ async function downloadPortablePackage(scope = "full", {
   announceAfter = true
 } = {}) {
   const portable = await createAppPortablePackage(scope);
-  const text = serializePortablePackage(portable);
+  const text = await serializePortableSmart(portable);
   const filename = safePortableFilename({
     scope,
     createdAt: portable.createdAt
@@ -3155,7 +3223,7 @@ async function shareLibraryPackage() {
 
 async function downloadOrShareLibraryPayload(download = true) {
   const portable = await createAppPortablePackage("library");
-  const text = serializePortablePackage(portable);
+  const text = await serializePortableSmart(portable);
   const filename = safePortableFilename({
     scope: "library",
     createdAt: portable.createdAt
@@ -3176,7 +3244,12 @@ function openPortableImportPicker() {
 
     try {
       const text = await file.text();
-      const portable = parsePortablePackage(text);
+      const portable = await runBackgroundOrFallback(
+        "portability.parse",
+        { text },
+        () => parsePortablePackage(text),
+        { enabled: file.size >= 256 * 1024 }
+      );
       const summary = portablePackageSummary(portable);
       state.modal = {
         type: "portable-import",
@@ -3214,19 +3287,34 @@ async function applyPortableImport(config) {
       databaseVersion: DATABASE_VERSION
     });
     downloadTextFile(
-      serializePortablePackage(safety),
+      await serializePortableSmart(safety),
       "randomizer-pre-restore-"
         + new Date().toISOString().replace(/[:.]/g, "-")
         + ".json"
     );
   }
 
+  const localCount = Object.values(local)
+    .reduce(
+      (total, records) =>
+        total + (Array.isArray(records) ? records.length : 0),
+      0
+    );
   const result = mode === "replace"
     ? {
         stores: replaceStoresFromPackage(local, portable),
         totals: { added: 0, updated: 0, conflicts: 0 }
       }
-    : mergePortableStores(local, portable);
+    : await runBackgroundOrFallback(
+        "portability.merge",
+        { localStores: local, portable },
+        () => mergePortableStores(local, portable),
+        {
+          enabled:
+            localCount + portableRecordCount(portable) >= 1200,
+          timeoutMs: 45000
+        }
+      );
 
   const targetStores =
     portable.payload.scope === "library"
