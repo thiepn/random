@@ -14,6 +14,7 @@ for (const file of [
   "index.html",
   "manifest.webmanifest",
   "design-system.css",
+  "brand-icons.css",
   "sw.js",
   "src/app.js",
   "src/security.js",
@@ -198,6 +199,7 @@ for (const requiredStep of [
   "Version baseline certification",
   "Visual redesign contract certification",
   "Design System V2 certification",
+  "Brand and iconography V3 certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
