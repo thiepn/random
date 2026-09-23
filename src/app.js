@@ -8046,41 +8046,119 @@ function currentTool() {
   return resolveTool(state.toolId);
 }
 
+function toolVisualFamily(tool) {
+  if (tool?.custom) {
+    const experience = customExperienceFromToolId(tool.id);
+    const layout = experience?.appearance?.layout || "auto";
+    if (layout === "wheel") return "wheel";
+    if (layout === "dice") return "dice";
+    if (layout === "card") return "cards";
+    if (layout === "list" || layout === "table") return "list";
+    if (layout === "number" || layout === "text") return "generator";
+    if (experience?.primitive === "deck") return "cards";
+    if (["dice", "faces"].includes(experience?.primitive)) return "dice";
+    if (["pick", "sample", "shuffle"].includes(experience?.primitive)) {
+      return "list";
+    }
+    return "generator";
+  }
+
+  if (tool.id === "coin") return "coin";
+  if (tool.id === "dice") return "dice";
+  if (tool.id === "wheel") return "wheel";
+  if (tool.id === "cards") return "cards";
+  if (tool.id === "color") return "color";
+  if (["picker", "sampler", "shuffle"].includes(tool.id)) return "list";
+  if (["teams", "groups", "pairs", "assignment"].includes(tool.id)) {
+    return "people";
+  }
+  if (["elimination", "ladder", "tournament"].includes(tool.id)) {
+    return "competition";
+  }
+  if (tool.id === "secret-santa") return "private";
+  return "generator";
+}
+
+function toolFamilyLabel(family) {
+  return ({
+    coin: "Tactile classic",
+    dice: "Dice engine",
+    wheel: "Weighted spinner",
+    cards: "Deck",
+    color: "Color generator",
+    list: "List randomizer",
+    people: "People randomizer",
+    competition: "Game draw",
+    private: "Private assignment",
+    generator: "Generator"
+  })[family] || "Randomizer";
+}
+
 function renderTool() {
   const tool = currentTool();
   const toolState = ensureToolState(tool.id);
-  const content = node("main", { class: "content" });
+  const family = toolVisualFamily(tool);
+  const content = node("main", { class: "content tool-view-v2" });
   const favorite = state.favorites.includes(tool.id);
 
   const head = node("div", {
     class: "tool-head accent-" + tool.accent
   }, [
-    iconButton("Back", iconNode("back"), closeTool),
-    visualToolIcon(tool, "tool-symbol"),
-    node("h1", { text: tool.name }),
-    iconButton(
-      favorite ? "Remove favorite" : "Add favorite",
-      iconNode(favorite ? "star-filled" : "star"),
-      () => toggleFavorite(tool.id),
-      favorite ? "favorite-star" : ""
-    ),
-    iconButton("Randomness settings", iconNode("settings"), () => {
-      if (state.computeBusy) {
-        announce("Finish the current randomization before changing settings.");
-        return;
-      }
-      state.modal = "settings";
-      render();
-    })
+    iconButton("Back", iconNode("back"), closeTool, "tool-back-button"),
+    node("div", { class: "tool-identity" }, [
+      node("div", { class: "tool-symbol-shell", "aria-hidden": "true" },
+        visualToolIcon(tool, "tool-symbol")
+      ),
+      node("div", { class: "tool-title-copy" }, [
+        node("span", {
+          class: "tool-family-label",
+          text: toolFamilyLabel(family)
+        }),
+        node("h1", { text: tool.name }),
+        node("p", { text: tool.blurb })
+      ])
+    ]),
+    node("div", { class: "tool-head-actions" }, [
+      iconButton(
+        favorite ? "Remove favorite" : "Add favorite",
+        iconNode(favorite ? "star-filled" : "star"),
+        () => toggleFavorite(tool.id),
+        favorite ? "favorite-star" : ""
+      ),
+      iconButton(
+        "Randomness settings",
+        iconNode("settings"),
+        openSettingsPanel
+      )
+    ])
   ]);
 
   const ruleStrip = renderRuleStrip(tool, toolState);
   const stage = buildStage(tool, toolState);
+  const actions = buildToolActionDock(tool, toolState);
   const controls = buildControls(tool, toolState);
 
+  const workspace = node("div", { class: "tool-workspace" }, [
+    node("div", { class: "tool-play-column" }, [
+      stage,
+      actions
+    ]),
+    controls
+  ]);
+
   content.append(node("section", {
-    class: "tool-screen accent-" + tool.accent
-  }, [head, ruleStrip, stage, controls].filter(Boolean)));
+    class:
+      "tool-screen tool-screen-v2 tool-family-"
+      + family
+      + " tool-id-"
+      + tool.id
+      + " accent-"
+      + tool.accent,
+    dataset: {
+      tool: tool.id,
+      family
+    }
+  }, [head, ruleStrip, workspace].filter(Boolean)));
 
   return content;
 }
