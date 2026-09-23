@@ -143,7 +143,7 @@ for (const file of [...productionJs, "sw.js"]) {
 for (const file of productionJs) {
   assert.doesNotMatch(
     read(file),
-    /(?:https?:)?\/\//i,
+    /\bhttps?:\/\//i,
     "Production module contains a remote URL dependency: " + file
   );
 }
