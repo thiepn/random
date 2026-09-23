@@ -186,6 +186,7 @@ import {
   formatNumber,
   formatBytes,
   effectiveContrastMode,
+  effectiveTheme,
   focusableSelector,
   nextFocusIndex
 } from "./accessibility-i18n.js";
@@ -485,19 +486,45 @@ function systemPrefersMoreContrast() {
   );
 }
 
+function systemPrefersDarkTheme() {
+  return Boolean(
+    window.matchMedia
+    && window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
 function applyAccessibilityPreferences() {
   if (!state.settings) return;
   state.settings = normalizeAccessibilitySettings(state.settings);
   const locale = currentRegionalLocale();
   const accessibility = state.settings.accessibility;
   const rootElement = document.documentElement;
+  const theme = effectiveTheme(
+    accessibility.theme,
+    systemPrefersDarkTheme()
+  );
 
   rootElement.dataset.locale = locale;
+  rootElement.dataset.theme = theme;
+  rootElement.dataset.accent = accessibility.accent;
   rootElement.dataset.contrast = effectiveContrastMode(
     accessibility.contrast,
     systemPrefersMoreContrast()
   );
   rootElement.dataset.controlSize = accessibility.controlSize;
+  rootElement.dataset.motion =
+    prefersReducedMotionNow() ? "reduced" : "full";
+  rootElement.style.colorScheme = theme;
+
+  const themeColor = document.querySelector(
+    'meta[name="theme-color"]'
+  );
+  if (themeColor) {
+    themeColor.setAttribute(
+      "content",
+      theme === "light" ? "#f6f7fb" : "#0a0c18"
+    );
+  }
 }
 
 function prefersReducedMotionNow() {
@@ -10983,6 +11010,7 @@ async function updatePresentationSetting(key, value) {
   state.settings.sound = state.settings.presentation.sound;
   state.settings.motion = state.settings.presentation.motion;
   await saveSettings(state.settings);
+  if (key === "motion") applyAccessibilityPreferences();
 }
 
 function presentationModeControl() {
@@ -14256,14 +14284,77 @@ function renderModal(previousFocusIdentity = null) {
     modal.append(
       node("h3", {
         class: "settings-section-title",
-        text: "Accessibility & region"
+        text: "Appearance, accessibility & region"
       }),
       node("p", {
         class: "settings-section-copy",
         text:
-          "Regional format changes dates and numbers without changing the app language. Contrast and control size are local display preferences."
+          "Theme, accent, contrast and control size are local display preferences. Regional format changes dates and numbers without changing the app language."
       })
     );
+
+    const themeModes = node("div", {
+      class: "segmented settings-theme-modes",
+      "aria-label": "Color theme"
+    }, [
+      ["system", "System"],
+      ["light", "Light"],
+      ["dark", "Dark"]
+    ].map(([value, label]) =>
+      node("button", {
+        class:
+          state.settings.accessibility.theme === value
+            ? "active"
+            : "",
+        type: "button",
+        onClick: async () => {
+          await updateAccessibilitySetting("theme", value);
+          render();
+        }
+      }, label)
+    ));
+
+    const accentPicker = node("div", {
+      class: "settings-accent-picker",
+      role: "group",
+      "aria-label": "Accent color"
+    }, [
+      ["violet", "Violet"],
+      ["cyan", "Cyan"],
+      ["blue", "Blue"],
+      ["pink", "Pink"],
+      ["red", "Red"],
+      ["gold", "Gold"],
+      ["green", "Green"],
+      ["orange", "Orange"]
+    ].map(([value, label]) =>
+      node("button", {
+        class:
+          "settings-accent-choice accent-choice-"
+          + value
+          + (
+            state.settings.accessibility.accent === value
+              ? " active"
+              : ""
+          ),
+        type: "button",
+        "aria-pressed":
+          state.settings.accessibility.accent === value
+            ? "true"
+            : "false",
+        title: label + " accent",
+        onClick: async () => {
+          await updateAccessibilitySetting("accent", value);
+          render();
+        }
+      }, [
+        node("span", {
+          class: "settings-accent-swatch",
+          "aria-hidden": "true"
+        }),
+        node("span", { text: label })
+      ])
+    ));
 
     const regionalFormat = node("select", {
       class: "field",
@@ -14314,13 +14405,17 @@ function renderModal(previousFocusIdentity = null) {
       render();
     });
 
-    modal.append(node("div", {
-      class: "settings-accessibility-grid"
-    }, [
-      regionalFormat,
-      contrast,
-      controlSize
-    ]));
+    modal.append(
+      themeModes,
+      accentPicker,
+      node("div", {
+        class: "settings-accessibility-grid"
+      }, [
+        regionalFormat,
+        contrast,
+        controlSize
+      ])
+    );
 
     modal.append(
       node("h3", {
@@ -14842,6 +14937,38 @@ if (contrastMediaQuery) {
     contrastMediaQuery.addEventListener("change", syncSystemContrast);
   } else if (typeof contrastMediaQuery.addListener === "function") {
     contrastMediaQuery.addListener(syncSystemContrast);
+  }
+}
+
+const themeMediaQuery =
+  window.matchMedia?.("(prefers-color-scheme: dark)") || null;
+if (themeMediaQuery) {
+  const syncSystemTheme = () => {
+    if (state.settings?.accessibility?.theme === "system") {
+      applyAccessibilityPreferences();
+    }
+  };
+  if (typeof themeMediaQuery.addEventListener === "function") {
+    themeMediaQuery.addEventListener("change", syncSystemTheme);
+  } else if (typeof themeMediaQuery.addListener === "function") {
+    themeMediaQuery.addListener(syncSystemTheme);
+  }
+}
+
+const motionMediaQuery =
+  window.matchMedia?.("(prefers-reduced-motion: reduce)") || null;
+if (motionMediaQuery) {
+  const syncSystemMotion = () => {
+    const motion =
+      state.settings?.presentation?.motion
+      || state.settings?.motion
+      || "system";
+    if (motion === "system") applyAccessibilityPreferences();
+  };
+  if (typeof motionMediaQuery.addEventListener === "function") {
+    motionMediaQuery.addEventListener("change", syncSystemMotion);
+  } else if (typeof motionMediaQuery.addListener === "function") {
+    motionMediaQuery.addListener(syncSystemMotion);
   }
 }
 
