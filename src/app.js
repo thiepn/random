@@ -7841,7 +7841,7 @@ function renderWorkflowRunner() {
     });
 
     content.append(node("section", {
-      class: "controls workflow-input-gate"
+      class: "controls workbench-panel workflow-input-gate"
     }, [
       node("div", {}, [
         node("strong", {
@@ -7860,7 +7860,7 @@ function renderWorkflowRunner() {
     ]));
   } else if (session.status === "active" && current) {
     content.append(node("section", {
-      class: "workflow-current-node workflow-node-" + current.type
+      class: "workflow-current-node workbench-panel workflow-node-" + current.type
     }, [
       workflowNodeIcon(current.type, "workflow-node-glyph"),
       node("div", {}, [
@@ -7892,7 +7892,7 @@ function renderWorkflowRunner() {
     ]));
   } else if (session.status === "paused") {
     content.append(node("section", {
-      class: "workflow-current-node"
+      class: "workflow-current-node workbench-panel"
     }, [
       node("div", {}, [
         node("small", { text: "Paused" }),
@@ -7930,7 +7930,7 @@ function renderWorkflowRunner() {
     ]));
   }
 
-  const path = node("section", { class: "workflow-run-path" }, [
+  const path = node("section", { class: "workflow-run-path workbench-panel" }, [
     node("div", { class: "workflow-graph-head" }, [
       node("div", {}, [
         node("strong", { text: "Execution path" }),
