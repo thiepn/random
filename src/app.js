@@ -6300,8 +6300,7 @@ function renderPools() {
       class: "workbench-table-head pool-table-head",
       "aria-hidden": "true"
     }, [
-      node("span", { text: "Pool" }),
-      node("span", { text: "Structure" }),
+      node("span", { text: "Pool / structure" }),
       node("span", { text: "Actions" })
     ])
   ]);
