@@ -178,6 +178,7 @@ import {
   normalizeAccessibilitySettings,
   resolveRegionalLocale,
   formatDateTime,
+  formatNumber,
   formatBytes,
   effectiveContrastMode,
   focusableSelector,
@@ -412,6 +413,31 @@ function localizedBytes(value) {
   return formatBytes(
     value,
     currentRegionalLocale()
+  );
+}
+
+
+function localizedNumber(value, options = {}) {
+  return formatNumber(
+    value,
+    currentRegionalLocale(),
+    options
+  );
+}
+
+function localizedNumberResultValues(result) {
+  if (!Array.isArray(result?.values)) return [];
+  const decimal = result.mode === "decimal";
+  return result.values.map((value) =>
+    localizedNumber(value, decimal
+      ? {
+          minimumFractionDigits: result.precision,
+          maximumFractionDigits: result.precision
+        }
+      : {
+          maximumFractionDigits: 0
+        }
+    )
   );
 }
 
@@ -8469,22 +8495,23 @@ function buildStage(tool, ts) {
       );
     }
   } else if (tool.id === "number") {
-    if (result?.displayValues?.length > 1) {
+    const localizedValues = localizedNumberResultValues(result);
+    if (localizedValues.length > 1) {
       wrap.append(
         node("div", { class: "stage-label", text: "Random numbers" }),
         node("div", {
           class: "stage-result",
-          text: result.count + " VALUES",
+          text: localizedNumber(result.count) + " VALUES",
           style: { fontSize: "clamp(36px,9vw,58px)" }
         }),
-        resultList(result.displayValues)
+        resultList(localizedValues)
       );
     } else {
       wrap.append(
         node("div", { class: "stage-label", text: "Random number" }),
         node("div", {
           class: "stage-result",
-          text: result?.displayValues?.[0] || "GENERATE"
+          text: localizedValues[0] || "GENERATE"
         }),
         node("div", {
           class: "stage-sub",
