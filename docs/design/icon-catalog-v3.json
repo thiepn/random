@@ -73,5 +73,12 @@
     "star-filled",
     "template",
     "lock"
+  ],
+  "status": [
+    "check",
+    "pause",
+    "warning",
+    "info",
+    "offline"
   ]
 }
