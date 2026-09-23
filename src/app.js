@@ -5206,6 +5206,12 @@ function primaryNavigation() {
     ["pools", "pools", "Pools"],
     ["history", "history", "History"]
   ];
+  const activeView = ({
+    tool: "play",
+    "template-session": "play",
+    creations: "arcade",
+    builder: "arcade"
+  })[state.view] || state.view;
 
   const brand = node("button", {
     class: "app-nav-brand",
@@ -5227,10 +5233,10 @@ function primaryNavigation() {
   const navItems = node("div", {
     class: "app-nav-items"
   }, items.map(([id, iconId, label]) => node("button", {
-    class: "nav-button " + (state.view === id ? "active" : ""),
+    class: "nav-button " + (activeView === id ? "active" : ""),
     type: "button",
     title: label,
-    "aria-current": state.view === id ? "page" : null,
+    "aria-current": activeView === id ? "page" : null,
     onClick: () => setView(id)
   }, [
     iconNode(iconId, { className: "nav-icon" }),
