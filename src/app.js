@@ -2997,9 +2997,8 @@ function presetCard(preset) {
         preset.favorite
           ? node("span", {
               class: "saved-favorite-badge",
-              text: "★",
               "aria-hidden": "true"
-            })
+            }, iconNode("star-filled"))
           : null
       ]),
       node("span", {
@@ -3872,9 +3871,8 @@ function customCreationCard(experience) {
         experience.favorite
           ? node("span", {
               class: "saved-favorite-badge",
-              text: "★",
               "aria-hidden": "true"
-            })
+            }, iconNode("star-filled"))
           : null
       ]),
       node("span", {
@@ -5998,13 +5996,14 @@ function workflowNodeLabel(workflow, nodeId) {
   return workflow.nodes.find((node) => node.id === nodeId)?.name || "Unknown node";
 }
 
-function workflowNodeGlyph(type) {
-  return {
-    input: "IN",
-    tool: "✦",
-    branch: "◇",
-    output: "OUT"
-  }[type] || "•";
+function workflowNodeIcon(type, className = "") {
+  const iconId = {
+    input: "input",
+    tool: "brand",
+    branch: "branch",
+    output: "output"
+  }[type] || "brand";
+  return iconNode(iconId, { className });
 }
 
 function workflowStatusText(status) {
@@ -6195,10 +6194,7 @@ function workflowNodeEditorCard(editor, nodeDef, index) {
   });
 
   card.append(node("div", { class: "workflow-node-head" }, [
-    node("span", {
-      class: "workflow-node-glyph",
-      text: workflowNodeGlyph(nodeDef.type)
-    }),
+    workflowNodeIcon(nodeDef.type, "workflow-node-glyph"),
     node("div", { class: "workflow-node-heading" }, [
       node("small", {
         text:
@@ -7089,10 +7085,7 @@ function renderWorkflowRunner() {
     content.append(node("section", {
       class: "workflow-current-node workflow-node-" + current.type
     }, [
-      node("span", {
-        class: "workflow-node-glyph",
-        text: workflowNodeGlyph(current.type)
-      }),
+      workflowNodeIcon(current.type, "workflow-node-glyph"),
       node("div", {}, [
         node("small", { text: "Current node · " + current.type }),
         node("strong", { text: current.name }),
@@ -7181,10 +7174,10 @@ function renderWorkflowRunner() {
             class: "workflow-path-index",
             text: String(index + 1)
           }),
-          node("span", {
-            class: "workflow-node-glyph small",
-            text: workflowNodeGlyph(entry.nodeType)
-          }),
+          workflowNodeIcon(
+            entry.nodeType,
+            "workflow-node-glyph small"
+          ),
           node("div", {}, [
             node("strong", { text: entry.nodeName }),
             node("span", {
@@ -7252,10 +7245,7 @@ function workflowCard(workflow) {
     class: "workflow-card" + (validation.valid ? "" : " is-invalid")
   }, [
     node("div", { class: "workflow-card-head" }, [
-      node("span", {
-        class: "workflow-card-icon",
-        text: "◆"
-      }),
+      iconNode("studio", { className: "workflow-card-icon" }),
       node("div", {}, [
         node("strong", { text: workflow.name }),
         node("span", {
@@ -9614,7 +9604,7 @@ function fairnessPanel(tool, ts) {
       render();
     }
   }, [
-    node("span", { class: "fairness-icon", text: "◎", "aria-hidden": "true" }),
+    iconNode("chance", { className: "fairness-icon" }),
     node("span", { class: "fairness-toggle-copy" }, [
       node("strong", { text: "Fairness" }),
       node("small", { text: modeTitle })
@@ -12770,11 +12760,7 @@ function renderUseResultModal(modal, config) {
           }
         }
       }, [
-        node("span", {
-          class: "tool-icon",
-          text: tool.icon,
-          "aria-hidden": "true"
-        }),
+        visualToolIcon(tool, "tool-icon"),
         node("strong", { text: tool.name }),
         node("small", { text: tool.blurb })
       ])
@@ -13018,10 +13004,15 @@ function renderRunDetailModal(modal, config) {
 
   modal.append(
     node("div", { class: "run-detail-title" }, [
-      node("span", {
-        class: "history-icon",
-        text: run.icon || "✦"
-      }),
+      node("span", { class: "history-icon" },
+        visualToolIcon(
+          resolveTool(run.toolId) || {
+            id: run.toolId,
+            icon: run.icon || "✦"
+          },
+          "run-detail-tool-icon"
+        )
+      ),
       node("div", {}, [
         node("h2", { text: run.toolName || run.toolId }),
         node("span", {
@@ -13740,11 +13731,7 @@ function renderModal(previousFocusIdentity = null) {
           openTool(id);
         }
       }, [
-        node("span", {
-          class: "tool-icon",
-          text: tool.icon,
-          "aria-hidden": "true"
-        }),
+        visualToolIcon(tool, "tool-icon"),
         node("strong", { text: tool.name }),
         node("small", { text: tool.blurb })
       ]);
