@@ -5111,42 +5111,6 @@ function renderPools() {
   }
 
   content.append(list);
-
-  if (
-    groupWindow.hasMore
-    || state.historyPaging.runsHasMore
-    || state.historyPaging.historyHasMore
-  ) {
-    content.append(node("div", {
-      class: "history-load-more"
-    }, [
-      node("span", {
-        text:
-          groupWindow.shown
-          + " of "
-          + groups.length
-          + " loaded groups shown"
-      }),
-      node("button", {
-        class: "secondary",
-        type: "button",
-        disabled: state.historyPaging.loading ? "disabled" : null,
-        onClick: () => {
-          if (groupWindow.hasMore) {
-            state.historyRenderLimit = groupWindow.nextLimit;
-            render();
-          } else {
-            loadOlderHistory();
-          }
-        }
-      }, state.historyPaging.loading
-        ? "Loading…"
-        : groupWindow.hasMore
-          ? "Show more"
-          : "Load older History")
-    ]));
-  }
-
   return content;
 }
 function historyGroupPinKey(group) {
@@ -5430,6 +5394,42 @@ function renderHistory() {
   }
 
   content.append(list);
+
+  if (
+    groupWindow.hasMore
+    || state.historyPaging.runsHasMore
+    || state.historyPaging.historyHasMore
+  ) {
+    content.append(node("div", {
+      class: "history-load-more"
+    }, [
+      node("span", {
+        text:
+          groupWindow.shown
+          + " of "
+          + groups.length
+          + " loaded groups shown"
+      }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        disabled: state.historyPaging.loading ? "disabled" : null,
+        onClick: () => {
+          if (groupWindow.hasMore) {
+            state.historyRenderLimit = groupWindow.nextLimit;
+            render();
+          } else {
+            loadOlderHistory();
+          }
+        }
+      }, state.historyPaging.loading
+        ? "Loading…"
+        : groupWindow.hasMore
+          ? "Show more"
+          : "Load older History")
+    ]));
+  }
+
   return content;
 }
 function workflowPresetChoices() {
