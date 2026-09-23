@@ -174,6 +174,17 @@ import {
   computeWorkerSupported,
   runComputeTask
 } from "./worker-client.js";
+import {
+  REGIONAL_FORMATS,
+  normalizeAccessibilitySettings,
+  resolveRegionalLocale,
+  languageFromLocale,
+  formatDateTime,
+  formatBytes,
+  effectiveContrastMode,
+  focusableSelector,
+  nextFocusIndex
+} from "./accessibility-i18n.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -325,6 +336,8 @@ let partyCountdownTimer = null;
 let hostUnlockTimer = null;
 let wakeLockSentinel = null;
 let audienceChannel = null;
+let modalReturnFocus = null;
+let modalFocusSignature = null;
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
