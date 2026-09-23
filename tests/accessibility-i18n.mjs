@@ -7,6 +7,7 @@ import {
   formatNumber,
   formatBytes,
   effectiveContrastMode,
+  effectiveTheme,
   nextFocusIndex
 } from "../src/accessibility-i18n.js";
 
@@ -15,12 +16,16 @@ import {
     accessibility: {
       regionalFormat: "de-DE",
       contrast: "more",
-      controlSize: "large"
+      controlSize: "large",
+      theme: "dark",
+      accent: "green"
     }
   });
   assert.equal(normalized.accessibility.regionalFormat, "de-DE");
   assert.equal(normalized.accessibility.contrast, "more");
   assert.equal(normalized.accessibility.controlSize, "large");
+  assert.equal(normalized.accessibility.theme, "dark");
+  assert.equal(normalized.accessibility.accent, "green");
 }
 
 {
@@ -28,13 +33,17 @@ import {
     accessibility: {
       regionalFormat: "invalid",
       contrast: "invalid",
-      controlSize: "invalid"
+      controlSize: "invalid",
+      theme: "invalid",
+      accent: "invalid"
     }
   });
   assert.deepEqual(normalized.accessibility, {
     regionalFormat: "auto",
     contrast: "system",
-    controlSize: "standard"
+    controlSize: "standard",
+    theme: "system",
+    accent: "violet"
   });
 }
 
@@ -74,6 +83,10 @@ assert.ok(formatBytes(1536, "en-US").includes("KB"));
 
 assert.equal(effectiveContrastMode("system", true), "more");
 assert.equal(effectiveContrastMode("standard", true), "standard");
+assert.equal(effectiveTheme("system", true), "dark");
+assert.equal(effectiveTheme("system", false), "light");
+assert.equal(effectiveTheme("light", true), "light");
+assert.equal(effectiveTheme("dark", false), "dark");
 
 assert.equal(
   nextFocusIndex({
