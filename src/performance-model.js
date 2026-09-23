@@ -1,6 +1,8 @@
 export const HISTORY_PAGE_SIZE = 240;
 export const HISTORY_RENDER_CHUNK = 100;
 export const POOL_RENDER_CHUNK = 160;
+export const RESULT_RENDER_LIMIT = 240;
+export const FAIRNESS_RENDER_LIMIT = 240;
 export const LARGE_LIST_THRESHOLD = 600;
 export const LARGE_CONSTRAINT_THRESHOLD = 24;
 export const WORKER_TIMEOUT_MS = 30000;
