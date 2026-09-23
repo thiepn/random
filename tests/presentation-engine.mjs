@@ -97,6 +97,7 @@ import {
     capabilities: { reducedMotion: false }
   });
   assert.equal(reduced.kind, "fade");
+  assert.equal(reduced.sourceKind, "teams");
   assert.equal(reduced.duration, 180);
   assert.equal(reduced.particles, 0);
   assert.equal(reduced.anticipationMs, 0);
