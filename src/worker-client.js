@@ -110,11 +110,12 @@ export function runComputeTask(
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id);
-      destroyWorker();
-      reject(new ComputeWorkerError(
+      const timeoutError = new ComputeWorkerError(
         "Background computation exceeded its time limit.",
         { code: "COMPUTE_WORKER_TIMEOUT" }
-      ));
+      );
+      destroyWorker(timeoutError);
+      reject(timeoutError);
     }, Math.max(1000, Number(timeoutMs) || WORKER_TIMEOUT_MS));
 
     pending.set(id, {
