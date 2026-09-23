@@ -175,10 +175,8 @@ import {
   runComputeTask
 } from "./worker-client.js";
 import {
-  REGIONAL_FORMATS,
   normalizeAccessibilitySettings,
   resolveRegionalLocale,
-  languageFromLocale,
   formatDateTime,
   formatBytes,
   effectiveContrastMode,
@@ -431,7 +429,6 @@ function applyAccessibilityPreferences() {
   const accessibility = state.settings.accessibility;
   const rootElement = document.documentElement;
 
-  rootElement.lang = languageFromLocale(locale);
   rootElement.dataset.locale = locale;
   rootElement.dataset.contrast = effectiveContrastMode(
     accessibility.contrast,
@@ -6050,15 +6047,31 @@ function workflowNodeEditorCard(editor, nodeDef, index) {
   const draft = editor.draft;
   const selected = editor.selectedNodeId === nodeDef.id;
   const incoming = draft.edges.filter((edge) => edge.to === nodeDef.id).length;
+  const selectNode = () => {
+    if (editor.selectedNodeId !== nodeDef.id) {
+      editor.selectedNodeId = nodeDef.id;
+      render();
+    }
+  };
+
   const card = node("article", {
     class:
       "workflow-node-card workflow-node-" + nodeDef.type
       + (selected ? " is-selected" : "")
       + (draft.startNodeId === nodeDef.id ? " is-start" : ""),
-    onClick: () => {
-      if (editor.selectedNodeId !== nodeDef.id) {
-        editor.selectedNodeId = nodeDef.id;
-        render();
+    role: "group",
+    tabindex: "0",
+    "aria-label":
+      nodeDef.name
+      + " · "
+      + nodeDef.type
+      + (selected ? " · selected" : ""),
+    onClick: selectNode,
+    onKeydown: (event) => {
+      if (event.target !== event.currentTarget) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectNode();
       }
     }
   });
