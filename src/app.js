@@ -185,11 +185,14 @@ import {
   formatDateTime,
   formatNumber,
   formatBytes,
-  effectiveContrastMode,
-  effectiveTheme,
   focusableSelector,
   nextFocusIndex
 } from "./accessibility-i18n.js";
+import {
+  applyVisualPreferences,
+  createThemeAccentControls,
+  bindVisualPreferenceMedia
+} from "./visual-preferences.js";
 import {
   assertJsonImportFile,
   isPartyStateRequest,
@@ -479,52 +482,12 @@ function localizedNumberResultValues(result) {
   );
 }
 
-function systemPrefersMoreContrast() {
-  return Boolean(
-    window.matchMedia
-    && window.matchMedia("(prefers-contrast: more)").matches
-  );
-}
-
-function systemPrefersDarkTheme() {
-  return Boolean(
-    window.matchMedia
-    && window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
-}
-
 function applyAccessibilityPreferences() {
   if (!state.settings) return;
-  state.settings = normalizeAccessibilitySettings(state.settings);
-  const locale = currentRegionalLocale();
-  const accessibility = state.settings.accessibility;
-  const rootElement = document.documentElement;
-  const theme = effectiveTheme(
-    accessibility.theme,
-    systemPrefersDarkTheme()
-  );
-
-  rootElement.dataset.locale = locale;
-  rootElement.dataset.theme = theme;
-  rootElement.dataset.accent = accessibility.accent;
-  rootElement.dataset.contrast = effectiveContrastMode(
-    accessibility.contrast,
-    systemPrefersMoreContrast()
-  );
-  rootElement.dataset.controlSize = accessibility.controlSize;
-  rootElement.dataset.motion =
-    prefersReducedMotionNow() ? "reduced" : "full";
-  rootElement.style.colorScheme = theme;
-
-  const themeColor = document.querySelector(
-    'meta[name="theme-color"]'
-  );
-  if (themeColor) {
-    themeColor.setAttribute(
-      "content",
-      theme === "light" ? "#f6f7fb" : "#0a0c18"
-    );
-  }
+  state.settings = applyVisualPreferences(state.settings, {
+    locale: currentRegionalLocale(),
+    reducedMotion: prefersReducedMotionNow()
+  });
 }
 
 function prefersReducedMotionNow() {
@@ -14293,68 +14256,15 @@ function renderModal(previousFocusIdentity = null) {
       })
     );
 
-    const themeModes = node("div", {
-      class: "segmented settings-theme-modes",
-      "aria-label": "Color theme"
-    }, [
-      ["system", "System"],
-      ["light", "Light"],
-      ["dark", "Dark"]
-    ].map(([value, label]) =>
-      node("button", {
-        class:
-          state.settings.accessibility.theme === value
-            ? "active"
-            : "",
-        type: "button",
-        onClick: async () => {
-          await updateAccessibilitySetting("theme", value);
+    const [themeModes, accentPicker] =
+      createThemeAccentControls({
+        node,
+        settings: state.settings,
+        onChange: async (key, value) => {
+          await updateAccessibilitySetting(key, value);
           render();
         }
-      }, label)
-    ));
-
-    const accentPicker = node("div", {
-      class: "settings-accent-picker",
-      role: "group",
-      "aria-label": "Accent color"
-    }, [
-      ["violet", "Violet"],
-      ["cyan", "Cyan"],
-      ["blue", "Blue"],
-      ["pink", "Pink"],
-      ["red", "Red"],
-      ["gold", "Gold"],
-      ["green", "Green"],
-      ["orange", "Orange"]
-    ].map(([value, label]) =>
-      node("button", {
-        class:
-          "settings-accent-choice accent-choice-"
-          + value
-          + (
-            state.settings.accessibility.accent === value
-              ? " active"
-              : ""
-          ),
-        type: "button",
-        "aria-pressed":
-          state.settings.accessibility.accent === value
-            ? "true"
-            : "false",
-        title: label + " accent",
-        onClick: async () => {
-          await updateAccessibilitySetting("accent", value);
-          render();
-        }
-      }, [
-        node("span", {
-          class: "settings-accent-swatch",
-          "aria-hidden": "true"
-        }),
-        node("span", { text: label })
-      ])
-    ));
+      });
 
     const regionalFormat = node("select", {
       class: "field",
@@ -14923,54 +14833,10 @@ window.addEventListener("offline", () => {
   if (state.modal === "settings") render();
 });
 
-const contrastMediaQuery =
-  window.matchMedia?.("(prefers-contrast: more)") || null;
-if (contrastMediaQuery) {
-  const syncSystemContrast = () => {
-    if (
-      state.settings?.accessibility?.contrast === "system"
-    ) {
-      applyAccessibilityPreferences();
-    }
-  };
-  if (typeof contrastMediaQuery.addEventListener === "function") {
-    contrastMediaQuery.addEventListener("change", syncSystemContrast);
-  } else if (typeof contrastMediaQuery.addListener === "function") {
-    contrastMediaQuery.addListener(syncSystemContrast);
-  }
-}
-
-const themeMediaQuery =
-  window.matchMedia?.("(prefers-color-scheme: dark)") || null;
-if (themeMediaQuery) {
-  const syncSystemTheme = () => {
-    if (state.settings?.accessibility?.theme === "system") {
-      applyAccessibilityPreferences();
-    }
-  };
-  if (typeof themeMediaQuery.addEventListener === "function") {
-    themeMediaQuery.addEventListener("change", syncSystemTheme);
-  } else if (typeof themeMediaQuery.addListener === "function") {
-    themeMediaQuery.addListener(syncSystemTheme);
-  }
-}
-
-const motionMediaQuery =
-  window.matchMedia?.("(prefers-reduced-motion: reduce)") || null;
-if (motionMediaQuery) {
-  const syncSystemMotion = () => {
-    const motion =
-      state.settings?.presentation?.motion
-      || state.settings?.motion
-      || "system";
-    if (motion === "system") applyAccessibilityPreferences();
-  };
-  if (typeof motionMediaQuery.addEventListener === "function") {
-    motionMediaQuery.addEventListener("change", syncSystemMotion);
-  } else if (typeof motionMediaQuery.addListener === "function") {
-    motionMediaQuery.addListener(syncSystemMotion);
-  }
-}
+bindVisualPreferenceMedia({
+  getSettings: () => state.settings,
+  onPreferenceChange: applyAccessibilityPreferences
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
