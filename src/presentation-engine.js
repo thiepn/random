@@ -256,6 +256,7 @@ export function presentationPlan({
     effects,
     reducedMotion,
     duration,
+    sourceKind: profile.kind,
     kind,
     cue,
     haptic: cue,
