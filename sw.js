@@ -1,4 +1,4 @@
-const CACHE = "randomizer-shell-v21";
+const CACHE = "randomizer-shell-v22";
 const SHELL = [
   "./",
   "./index.html",
@@ -40,20 +40,57 @@ const SHELL = [
   "./src/performance-model.js",
   "./src/worker-client.js",
   "./src/accessibility-i18n.js",
+  "./src/security.js",
   "./src/compute-tasks.js",
   "./src/compute-worker.js",
   "./src/storage.js",
   "./src/registry.js"
 ];
 
+const SCOPE_URL = new URL(self.registration.scope);
+const INDEX_URL = new URL("./index.html", self.registration.scope).href;
+const SHELL_URLS = new Set(
+  SHELL.map((path) => new URL(path, self.registration.scope).href)
+);
+
+function isScopedSameOriginUrl(value) {
+  try {
+    const url = new URL(value);
+    return (
+      url.origin === SCOPE_URL.origin
+      && url.pathname.startsWith(SCOPE_URL.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function trustedMessageSource(source) {
+  return Boolean(
+    source
+    && typeof source.url === "string"
+    && isScopedSameOriginUrl(source.url)
+  );
+}
+
 self.addEventListener("message", (event) => {
-  if (event.data?.type === "SKIP_WAITING") {
+  const data = event.data;
+  if (
+    trustedMessageSource(event.source)
+    && data
+    && typeof data === "object"
+    && !Array.isArray(data)
+    && Object.keys(data).length === 1
+    && data.type === "SKIP_WAITING"
+  ) {
     self.skipWaiting();
   }
 });
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(SHELL))
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -71,40 +108,22 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const requestUrl = new URL(event.request.url);
+  if (!isScopedSameOriginUrl(requestUrl.href)) return;
+
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            caches.open(CACHE).then((cache) =>
-              cache.put("./index.html", response.clone())
-            );
-          }
-          return response;
-        })
-        .catch(() => caches.match("./index.html"))
+        .catch(() => caches.match(INDEX_URL))
     );
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((response) => {
-          if (
-            response
-            && response.status === 200
-            && response.type !== "opaque"
-          ) {
-            caches.open(CACHE).then((cache) =>
-              cache.put(event.request, response.clone())
-            );
-          }
-          return response;
-        })
-        .catch(() => cached);
+  if (!SHELL_URLS.has(requestUrl.href)) return;
 
-      return cached || network;
-    })
+  event.respondWith(
+    caches.match(event.request).then((cached) =>
+      cached || fetch(event.request)
+    )
   );
 });
