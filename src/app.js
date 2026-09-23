@@ -8046,41 +8046,134 @@ function currentTool() {
   return resolveTool(state.toolId);
 }
 
+const BUILTIN_TOOL_VISUAL_FAMILY = Object.freeze({
+  coin: "coin",
+  dice: "dice",
+  wheel: "wheel",
+  picker: "list",
+  number: "generator",
+  shuffle: "list",
+  teams: "people",
+  pairs: "people",
+  cards: "cards",
+  chance: "generator",
+  lottery: "generator",
+  color: "color",
+  date: "generator",
+  direction: "generator",
+  letter: "generator",
+  sampler: "list",
+  groups: "people",
+  assignment: "people",
+  elimination: "competition",
+  ladder: "competition",
+  "secret-santa": "private",
+  tournament: "competition",
+  time: "generator",
+  coordinate: "generator",
+  rps: "generator"
+});
+
+function toolVisualFamily(tool) {
+  if (tool?.custom) {
+    const experience = customExperienceFromToolId(tool.id);
+    const layout = experience?.appearance?.layout || "auto";
+    if (layout === "wheel") return "wheel";
+    if (layout === "dice") return "dice";
+    if (layout === "card") return "cards";
+    if (layout === "list" || layout === "table") return "list";
+    if (layout === "number" || layout === "text") return "generator";
+    if (experience?.primitive === "deck") return "cards";
+    if (["dice", "faces"].includes(experience?.primitive)) return "dice";
+    if (["pick", "sample", "shuffle"].includes(experience?.primitive)) {
+      return "list";
+    }
+    return "generator";
+  }
+
+  return BUILTIN_TOOL_VISUAL_FAMILY[tool?.id] || "generator";
+}
+
+function toolFamilyLabel(family) {
+  return ({
+    coin: "Tactile classic",
+    dice: "Dice engine",
+    wheel: "Weighted spinner",
+    cards: "Deck",
+    color: "Color generator",
+    list: "List randomizer",
+    people: "People randomizer",
+    competition: "Game draw",
+    private: "Private assignment",
+    generator: "Generator"
+  })[family] || "Randomizer";
+}
+
 function renderTool() {
   const tool = currentTool();
   const toolState = ensureToolState(tool.id);
-  const content = node("main", { class: "content" });
+  const family = toolVisualFamily(tool);
+  const content = node("main", { class: "content tool-view-v2" });
   const favorite = state.favorites.includes(tool.id);
 
   const head = node("div", {
     class: "tool-head accent-" + tool.accent
   }, [
-    iconButton("Back", iconNode("back"), closeTool),
-    visualToolIcon(tool, "tool-symbol"),
-    node("h1", { text: tool.name }),
-    iconButton(
-      favorite ? "Remove favorite" : "Add favorite",
-      iconNode(favorite ? "star-filled" : "star"),
-      () => toggleFavorite(tool.id),
-      favorite ? "favorite-star" : ""
-    ),
-    iconButton("Randomness settings", iconNode("settings"), () => {
-      if (state.computeBusy) {
-        announce("Finish the current randomization before changing settings.");
-        return;
-      }
-      state.modal = "settings";
-      render();
-    })
+    iconButton("Back", iconNode("back"), closeTool, "tool-back-button"),
+    node("div", { class: "tool-identity" }, [
+      node("div", { class: "tool-symbol-shell", "aria-hidden": "true" },
+        visualToolIcon(tool, "tool-symbol")
+      ),
+      node("div", { class: "tool-title-copy" }, [
+        node("span", {
+          class: "tool-family-label",
+          text: toolFamilyLabel(family)
+        }),
+        node("h1", { text: tool.name }),
+        node("p", { text: tool.blurb })
+      ])
+    ]),
+    node("div", { class: "tool-head-actions" }, [
+      iconButton(
+        favorite ? "Remove favorite" : "Add favorite",
+        iconNode(favorite ? "star-filled" : "star"),
+        () => toggleFavorite(tool.id),
+        favorite ? "favorite-star" : ""
+      ),
+      iconButton(
+        "Randomness settings",
+        iconNode("settings"),
+        openSettingsPanel
+      )
+    ])
   ]);
 
   const ruleStrip = renderRuleStrip(tool, toolState);
   const stage = buildStage(tool, toolState);
+  const actions = buildToolActionDock(tool, toolState);
   const controls = buildControls(tool, toolState);
 
+  const workspace = node("div", { class: "tool-workspace" }, [
+    node("div", { class: "tool-play-column" }, [
+      stage,
+      actions
+    ]),
+    controls
+  ]);
+
   content.append(node("section", {
-    class: "tool-screen accent-" + tool.accent
-  }, [head, ruleStrip, stage, controls].filter(Boolean)));
+    class:
+      "tool-screen tool-screen-v2 tool-family-"
+      + family
+      + " tool-id-"
+      + tool.id
+      + " accent-"
+      + tool.accent,
+    dataset: {
+      tool: tool.id,
+      family
+    }
+  }, [head, ruleStrip, workspace].filter(Boolean)));
 
   return content;
 }
@@ -9086,12 +9179,72 @@ function buildCustomStage(tool, ts, wrap) {
   );
 }
 
+function diceFaceNode(value, sides) {
+  const numeric = Number(value);
+  const isPipFace =
+    Number(sides) === 6
+    && Number.isInteger(numeric)
+    && numeric >= 1
+    && numeric <= 6;
+
+  if (!isPipFace) {
+    return node("div", {
+      class: "die die-number",
+      text: String(value)
+    });
+  }
+
+  const patterns = {
+    1: [5],
+    2: [1, 9],
+    3: [1, 5, 9],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 3, 4, 6, 7, 9]
+  };
+
+  return node("div", {
+    class: "die die-pips",
+    "aria-label": String(numeric)
+  }, patterns[numeric].map((position) =>
+    node("span", {
+      class: "die-pip pip-" + position,
+      "aria-hidden": "true"
+    })
+  ));
+}
+
+function playingCardVisual(card) {
+  const text = String(card || "");
+  const suit = text.slice(-1);
+  const rank = text.slice(0, -1) || "?";
+  const red = /[♥♦]/.test(suit);
+
+  return node("div", {
+    class: "play-card playing-card " + (red ? "red-card" : "black-card"),
+    "aria-label": text || "No card drawn"
+  }, [
+    node("span", { class: "card-corner top", text: rank + suit }),
+    node("span", { class: "card-suit", text: suit || "?" }),
+    node("span", { class: "card-corner bottom", text: rank + suit })
+  ]);
+}
+
 function buildStage(tool, ts) {
+  const family = toolVisualFamily(tool);
   const stage = node("div", {
     class:
-      "tool-stage accent-"
+      "tool-stage tool-stage-v2 stage-family-"
+      + family
+      + " stage-tool-"
+      + tool.id
+      + " accent-"
       + tool.accent
       + presentationStageClasses(tool, ts),
+    dataset: {
+      tool: tool.id,
+      family
+    },
     style: presentationStageStyle(ts)
   });
   const wrap = node("div", { class: "stage-content" });
@@ -9134,7 +9287,7 @@ function buildStage(tool, ts) {
         node("div", {
           class: "dice-row " + (ts.animating ? "rolling" : "")
         }, values.map((value) =>
-          node("div", { class: "die", text: String(value) })
+          diceFaceNode(value, result?.sides || ts.diceSides)
         )),
         node("div", {
           class: "stage-label",
@@ -9220,21 +9373,37 @@ function buildStage(tool, ts) {
       }));
     }
   } else if (tool.id === "cards") {
-    const red = result?.card && /[♥♦]/.test(result.card);
     wrap.append(
       node("div", {
-        class: "card-deck",
-        text: "✦",
-        "aria-hidden": "true"
-      }),
+        class: "card-stage-visual",
+        "aria-hidden": result ? "true" : null
+      }, [
+        node("div", { class: "card-deck" }, [
+          node("span", { class: "card-deck-mark" },
+            iconNode("brand")
+          )
+        ]),
+        result
+          ? playingCardVisual(result.card)
+          : node("div", {
+              class: "play-card playing-card card-placeholder"
+            }, [
+              node("span", { class: "card-suit", text: "?" })
+            ])
+      ]),
       node("div", {
         class: "stage-label",
         text: result ? "Drawn card" : "52-card deck"
       }),
-      node("div", {
-        class: "stage-result play-card " + (red ? "red-card" : ""),
-        text: result?.card || "DRAW"
-      }),
+      result
+        ? node("div", {
+            class: "stage-result card-result-label",
+            text: result.card
+          })
+        : node("div", {
+            class: "stage-result card-result-label",
+            text: "DRAW"
+          }),
       node("div", {
         class: "stage-sub",
         text: result
@@ -10831,8 +11000,28 @@ function customControls(tool, ts) {
 }
 
 function buildControls(tool, ts) {
-  const controls = node("div", { class: "controls" });
+  const family = toolVisualFamily(tool);
+  const controls = node("div", {
+    class:
+      "controls tool-controls tool-controls-"
+      + family
+  });
   const grid = node("div", { class: "control-grid" });
+
+  controls.append(node("div", { class: "tool-controls-head" }, [
+    node("div", {}, [
+      node("span", { text: "Setup" }),
+      node("strong", { text: "Tune this randomizer" })
+    ]),
+    node("small", {
+      text:
+        family === "people" || family === "competition"
+          ? "Inputs, rules & fairness"
+          : family === "private"
+            ? "Private setup & reveal"
+            : "Inputs & options"
+    })
+  ]));
 
   const templateBar = templateContextBar(tool, ts);
   if (templateBar) controls.append(templateBar);
@@ -11103,9 +11292,31 @@ function buildControls(tool, ts) {
     })()
   ]));
 
-  const actions = node("div", { class: "button-row" });
+
+  const mode = state.settings.randomness.mode === "seeded"
+    ? "Seeded sequence · " + state.settings.randomness.seed
+    : "Secure Web Crypto randomness";
+
+  controls.append(node("div", {
+    class: "notice",
+    style: { marginTop: "12px" },
+    text: mode + ". The result is committed before its reveal animation."
+  }));
+
+  controls.append(fairnessPanel(tool, ts));
+
+  return controls;
+}
+
+function buildToolActionDock(tool, ts) {
+  const dock = node("div", {
+    class:
+      "tool-action-dock tool-action-"
+      + toolVisualFamily(tool)
+  });
+
   const primary = node("button", {
-    class: "primary action-button",
+    class: "primary action-button tool-primary-action",
     type: "button",
     onClick: () => runTool(tool.id)
   }, ts.computing ? "WORKING…" : actionLabel(tool.id, ts));
@@ -11118,10 +11329,14 @@ function buildControls(tool, ts) {
     primary.disabled = true;
   }
 
-  actions.append(primary);
+  dock.append(primary);
+
+  const secondary = node("div", {
+    class: "tool-action-secondary"
+  });
 
   if (tool.id === "cards" && ts.deck && !ts.replayRunId) {
-    actions.append(node("button", {
+    secondary.append(node("button", {
       class: "secondary",
       type: "button",
       onClick: () => {
@@ -11145,7 +11360,7 @@ function buildControls(tool, ts) {
     && ts.eliminationRemaining
     && !ts.replayRunId
   ) {
-    actions.append(node("button", {
+    secondary.append(node("button", {
       class: "secondary",
       type: "button",
       onClick: () => {
@@ -11165,45 +11380,34 @@ function buildControls(tool, ts) {
   }
 
   if (ts.result) {
-    actions.append(
-      node("button", {
+    secondary.append(node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: shareCurrentResult
+    }, "Share"));
+
+    if (tool.id !== "secret-santa") {
+      secondary.append(node("button", {
         class: "secondary",
         type: "button",
-        onClick: shareCurrentResult
-      }, "Share"),
-      tool.id !== "secret-santa"
-        ? node("button", {
-            class: "secondary",
-            type: "button",
-            onClick: () => {
-              state.modal = {
-                type: "use-result",
-                sourceToolId: tool.id,
-                result: cloneData(ts.result),
-                error: null
-              };
-              render();
-            }
-          }, "Use Result In…")
-        : null
-    );
+        onClick: () => {
+          state.modal = {
+            type: "use-result",
+            sourceToolId: tool.id,
+            result: cloneData(ts.result),
+            error: null
+          };
+          render();
+        }
+      }, "Use Result In…"));
+    }
   }
 
-  controls.append(actions);
+  if (secondary.childElementCount) {
+    dock.append(secondary);
+  }
 
-  const mode = state.settings.randomness.mode === "seeded"
-    ? "Seeded sequence · " + state.settings.randomness.seed
-    : "Secure Web Crypto randomness";
-
-  controls.append(node("div", {
-    class: "notice",
-    style: { marginTop: "12px" },
-    text: mode + ". The result is committed before its reveal animation."
-  }));
-
-  controls.append(fairnessPanel(tool, ts));
-
-  return controls;
+  return dock;
 }
 
 function actionLabel(id, ts) {
