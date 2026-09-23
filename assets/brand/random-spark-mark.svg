@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="accent" x1="42" y1="38" x2="214" y2="222" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8f83ff"/>
+      <stop offset="1" stop-color="#5ed8e8"/>
+    </linearGradient>
+  </defs>
+  <path d="M128 42c8 43 33 68 76 76-43 8-68 33-76 76-8-43-33-68-76-76 43-8 68-33 76-76Z" fill="url(#accent)"/>
+  <circle cx="202" cy="48" r="16" fill="#f2c35b"/>
+  <circle cx="50" cy="208" r="12" fill="#5ed8e8"/>
+</svg>
