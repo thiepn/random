@@ -1,499 +1,95 @@
-.presentation-mode-row{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin:12px 0
-}
-.presentation-mode-label{
-  flex:0 0 auto;
-  color:var(--muted);
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:.09em;
-  text-transform:uppercase
-}
-.presentation-mode-segment{
-  flex:1
-}
-.settings-section-title{
-  margin:22px 0 4px;
-  font-size:14px
-}
-.settings-section-copy{
-  margin:0 0 10px!important;
-  font-size:11px;
-  line-height:1.5
-}
-.settings-presentation-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;
-  margin-top:10px
-}
-.settings-sound-toggle{
-  display:flex;
-  align-items:center;
-  gap:9px;
-  min-height:46px;
-  padding:0 12px;
-  border:1px solid var(--border);
-  border-radius:14px;
-  background:#0d1020;
-  color:var(--text);
-  font-size:12px;
-  cursor:pointer
-}
-.settings-sound-toggle input{
-  width:18px;
-  height:18px;
-  accent-color:var(--purple)
-}
-.settings-performance-note{
-  margin-top:10px
-}
+.presentation-mode-row{display:flex;align-items:center;gap:10px;margin:12px 0}
+.presentation-mode-label{flex:0 0 auto;color:var(--color-text-tertiary);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.presentation-mode-segment{flex:1}.settings-section-title{margin:22px 0 4px;font-size:14px}.settings-section-copy{margin:0 0 10px!important;font-size:11px;line-height:1.5}
+.settings-presentation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.settings-sound-toggle{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 12px;border:1px solid var(--color-stroke-default);border-radius:var(--radius-control);background:var(--color-canvas-raised);color:var(--color-text-primary);font-size:12px;cursor:pointer}
+.settings-sound-toggle input{width:18px;height:18px;accent-color:var(--color-accent-primary)}.settings-performance-note{margin-top:10px}
 
-/* Shared presentation surface */
-.tool-stage.is-presenting{
-  isolation:isolate
-}
-.tool-stage.is-presenting .stage-content{
-  z-index:2
-}
-.tool-stage.presentation-showtime.effects-high{
-  box-shadow:
-    var(--shadow),
-    0 0 70px color-mix(in srgb,var(--accent,var(--cyan)) 14%,transparent)
-}
-.tool-stage.presentation-showtime::after{
-  content:"";
-  position:absolute;
-  inset:-20%;
-  z-index:0;
-  pointer-events:none;
-  background:
-    radial-gradient(circle at 50% 45%,
-      color-mix(in srgb,var(--accent,var(--cyan)) 14%,transparent),
-      transparent 52%);
-  animation:showtimePulse var(--present-duration) ease-out both
-}
-@keyframes showtimePulse{
-  0%{opacity:0;transform:scale(.72)}
-  35%{opacity:1}
-  100%{opacity:0;transform:scale(1.08)}
-}
+.tool-stage.motion-v2.is-presenting{isolation:isolate}
+.tool-stage.motion-v2.is-presenting .stage-content{z-index:2;animation:stageEnvelope var(--present-duration) var(--ease-emphasized) both}
+@keyframes stageEnvelope{0%{transform:scale(1);filter:brightness(1)}18%{transform:scale(.987);filter:brightness(.92)}62%{transform:scale(1.006);filter:brightness(1.05)}100%{transform:none;filter:none}}
+.tool-stage.motion-v2.is-presenting::after{content:"";position:absolute;inset:-18%;z-index:0;pointer-events:none;background:radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 16%,transparent),transparent 52%);animation:stageImpactHalo var(--present-duration) ease-out both}
+@keyframes stageImpactHalo{0%,52%{opacity:0;transform:scale(.74)}72%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(1.1)}}
+.tool-stage.presentation-showtime.effects-high{box-shadow:var(--shadow-level-3),0 0 58px color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 12%,transparent)}
+.tool-stage.effects-low::after{display:none}
 
-/* deterministic particles */
-.fx-particles{
-  position:absolute;
-  inset:0;
-  z-index:4;
-  overflow:hidden;
-  pointer-events:none
-}
-.fx-particle{
-  position:absolute;
-  left:50%;
-  top:48%;
-  width:7px;
-  height:7px;
-  margin:-3px;
-  border-radius:2px;
-  background:var(--accent,var(--cyan));
-  box-shadow:0 0 12px color-mix(in srgb,var(--accent,var(--cyan)) 60%,transparent);
-  opacity:0;
-  transform:
-    rotate(var(--particle-angle))
-    translateX(0)
-    rotate(var(--particle-angle-neg));
-  animation:particleBurst
-    700ms
-    cubic-bezier(.1,.7,.25,1)
-    var(--particle-delay)
-    both
-}
-.fx-particle:nth-child(3n+2){
-  width:5px;
-  height:10px;
-  border-radius:999px;
-  background:var(--gold)
-}
-.fx-particle:nth-child(3n){
-  background:var(--pink)
-}
-@keyframes particleBurst{
-  0%{
-    opacity:0;
-    transform:
-      rotate(var(--particle-angle))
-      translateX(0)
-      rotate(var(--particle-angle-neg))
-      scale(.4)
-  }
-  18%{opacity:1}
-  100%{
-    opacity:0;
-    transform:
-      rotate(var(--particle-angle))
-      translateX(var(--particle-distance))
-      rotate(var(--particle-angle-neg))
-      scale(1)
-  }
-}
+.fx-particles{position:absolute;inset:0;z-index:4;overflow:hidden;pointer-events:none}
+.fx-particle{position:absolute;left:50%;top:48%;width:6px;height:6px;margin:-3px;border-radius:2px;background:var(--accent,var(--color-accent-secondary));box-shadow:0 0 10px color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 55%,transparent);opacity:0;transform:rotate(var(--particle-angle)) translateX(0) rotate(var(--particle-angle-neg));animation:particleBurst 300ms var(--ease-decelerate) calc(var(--impact-delay) - 100ms + var(--particle-delay)) both}
+.fx-particle:nth-child(3n+2){width:4px;height:9px;border-radius:999px;background:var(--color-warning)}.fx-particle:nth-child(3n){background:var(--accent-pink)}
+@keyframes particleBurst{0%{opacity:0;transform:rotate(var(--particle-angle)) translateX(0) rotate(var(--particle-angle-neg)) scale(.45)}22%{opacity:1}100%{opacity:0;transform:rotate(var(--particle-angle)) translateX(var(--particle-distance)) rotate(var(--particle-angle-neg)) scale(.9)}}
 
-/* Result timing */
-.tool-stage.is-presenting .stage-result{
-  animation:resultImpact var(--present-duration) var(--ease) both
-}
-@keyframes resultImpact{
-  0%,48%{opacity:0;transform:scale(.88);filter:blur(9px)}
-  64%{opacity:1;transform:scale(1.06);filter:blur(0)}
-  82%{transform:scale(.985)}
-  100%{opacity:1;transform:scale(1);filter:blur(0)}
-}
-.tool-stage.presentation-showtime .stage-result{
-  animation-name:showtimeResult
-}
-@keyframes showtimeResult{
-  0%,58%{opacity:0;transform:scale(.7);filter:blur(12px)}
-  72%{opacity:1;transform:scale(1.12);filter:blur(0)}
-  84%{transform:scale(.97)}
-  92%{transform:scale(1.035)}
-  100%{opacity:1;transform:scale(1)}
-}
+.tool-stage.motion-v2.is-presenting .stage-result{animation:resultReveal calc(var(--reveal-duration) + var(--settle-duration)) var(--ease-emphasized) var(--anticipation-duration) both}
+@keyframes resultReveal{0%,18%{opacity:0;transform:translateY(7px) scale(.9);filter:blur(7px)}54%{opacity:1;transform:translateY(-2px) scale(1.055);filter:blur(0)}75%{transform:scale(.985)}100%{opacity:1;transform:none;filter:none}}
+.tool-stage.presentation-showtime .stage-result{animation-name:resultShowtime}
+@keyframes resultShowtime{0%,20%{opacity:0;transform:translateY(12px) scale(.8);filter:blur(10px)}56%{opacity:1;transform:translateY(-4px) scale(1.11);filter:blur(0)}72%{transform:scale(.97)}88%{transform:scale(1.025)}100%{opacity:1;transform:none}}
+.tool-stage.motion-v2.is-presenting .stage-label,.tool-stage.motion-v2.is-presenting .stage-sub{animation:contextSettle var(--settle-duration) ease-out var(--impact-delay) both}
+@keyframes contextSettle{from{opacity:.45}to{opacity:1}}
 
-/* Coin */
-.tool-stage.is-presenting.reveal-coin .stage-orb.flipping{
-  animation-duration:var(--present-duration)
-}
-.tool-stage.presentation-showtime.reveal-coin .stage-orb{
-  filter:drop-shadow(0 24px 30px rgba(255,202,58,.2))
-}
+.tool-stage.reveal-coin.is-presenting .stage-orb{position:relative;color:#2a2009}
+.tool-stage.reveal-coin.is-presenting .stage-orb.flipping{animation:coinFlip var(--active-duration) var(--ease-emphasized) both,coinFaceInk var(--present-duration) linear both}
+.tool-stage.reveal-coin.is-presenting .stage-orb::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;color:#2a2009;font-size:58px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
+@keyframes coinFaceInk{0%,67%{color:transparent}68%,100%{color:#2a2009}}@keyframes placeholderFade{0%,64%{opacity:1}70%,100%{opacity:0}}
+.tool-stage.presentation-showtime.reveal-coin .stage-orb{filter:drop-shadow(0 24px 28px rgba(242,195,91,.2))}
 
-/* Dice */
-.tool-stage.is-presenting.reveal-dice .dice-row.rolling .die{
-  animation-duration:var(--present-duration)
-}
-.tool-stage.reveal-dice.is-presenting .die:nth-child(2n){
-  animation-delay:35ms
-}
-.tool-stage.reveal-dice.is-presenting .die:nth-child(3n){
-  animation-delay:65ms
-}
-.tool-stage.reveal-dice.is-presenting .dice-group-card{
-  animation:stageRise calc(var(--present-duration) * .7) var(--ease) both;
-  animation-delay:calc(var(--present-duration) * .3)
-}
+.tool-stage.reveal-dice.is-presenting .die{position:relative;animation:diceRoll var(--active-duration) var(--ease-emphasized) both,diceFaceInk var(--present-duration) linear both}
+.tool-stage.reveal-dice.is-presenting .die::after{content:"•";position:absolute;inset:0;display:grid;place-items:center;color:#161923;font-size:30px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
+.tool-stage.reveal-dice.is-presenting .die:nth-child(2n){animation-delay:35ms,0ms}.tool-stage.reveal-dice.is-presenting .die:nth-child(3n){animation-delay:65ms,0ms}
+@keyframes diceFaceInk{0%,64%{color:transparent}67%,100%{color:#161923}}
+.tool-stage.reveal-dice.is-presenting .dice-group-card{animation:stagePop 400ms var(--ease-emphasized) var(--impact-delay) both}
 
-/* Wheel */
-.tool-stage.reveal-wheel.is-presenting .wheel{
-  will-change:transform
-}
-.tool-stage.reveal-wheel.is-presenting .wheel-pointer{
-  animation:pointerPulse 130ms ease-in-out infinite alternate
-}
-@keyframes pointerPulse{
-  from{transform:translateX(-50%) translateY(0)}
-  to{transform:translateX(-50%) translateY(3px)}
-}
-.tool-stage.reveal-wheel.presentation-showtime .wheel{
-  box-shadow:
-    0 28px 80px rgba(0,0,0,.4),
-    0 0 42px color-mix(in srgb,var(--accent,var(--cyan)) 22%,transparent),
-    inset 0 0 40px rgba(0,0,0,.2)
-}
+.tool-stage.reveal-wheel.is-presenting .wheel{will-change:transform}
+.tool-stage.reveal-wheel.is-presenting .wheel-pointer{animation:wheelPointerFeel var(--active-duration) linear both}
+@keyframes wheelPointerFeel{0%,8%,17%,27%,38%,50%,63%,77%,89%,100%{transform:translateX(-50%) translateY(0)}4%,12%,22%,32%,44%,56%,70%,83%,95%{transform:translateX(-50%) translateY(3px)}}
+.tool-stage.reveal-wheel.presentation-showtime .wheel{box-shadow:0 28px 72px rgba(0,0,0,.4),0 0 38px color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 18%,transparent),inset 0 0 40px rgba(0,0,0,.2)}
 
-/* Pickers and generic generators */
-.tool-stage.reveal-pick.is-presenting .result-row,
-.tool-stage.reveal-generator.is-presenting .result-row{
-  opacity:0;
-  animation:stagePop 420ms var(--ease) both;
-  animation-delay:
-    calc(var(--present-duration) * .38 + var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes stagePop{
-  0%{opacity:0;transform:translateY(14px) scale(.95);filter:blur(5px)}
-  70%{opacity:1;transform:translateY(-2px) scale(1.02);filter:blur(0)}
-  100%{opacity:1;transform:none}
-}
+.tool-stage.reveal-pick.is-presenting .result-row,.tool-stage.reveal-generator.is-presenting .result-row{opacity:0;animation:stagePop 380ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + 90ms + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes stagePop{0%{opacity:0;transform:translateY(12px) scale(.96);filter:blur(4px)}72%{opacity:1;transform:translateY(-2px) scale(1.015);filter:blur(0)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-shuffle.is-presenting .result-row{opacity:0;animation:shuffleDeal 400ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes shuffleDeal{0%{opacity:0;transform:translateX(var(--shuffle-x,-14px)) rotate(-1.5deg)}72%{opacity:1;transform:translateX(2px) rotate(.3deg)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-teams.is-presenting .team-card{opacity:0;animation:teamReveal 440ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + 70ms + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes teamReveal{0%{opacity:0;transform:translateY(22px) scale(.94)}72%{opacity:1;transform:translateY(-3px) scale(1.018)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-pairs.is-presenting .result-row{opacity:0;animation:pairConnect 420ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + 80ms + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes pairConnect{0%{opacity:0;transform:scaleX(.72);filter:blur(3px)}72%{opacity:1;transform:scaleX(1.025);filter:blur(0)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-assignment.is-presenting .result-row{opacity:0;animation:assignmentLink 400ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + 70ms + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes assignmentLink{0%{opacity:0;transform:translateX(-20px)}70%{opacity:1;transform:translateX(3px)}100%{opacity:1;transform:none}}
 
-/* Shuffle */
-.tool-stage.reveal-shuffle.is-presenting .result-row{
-  opacity:0;
-  animation:shuffleDeal 440ms var(--ease) both;
-  animation-delay:
-    calc(var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes shuffleDeal{
-  0%{opacity:0;transform:translateX(var(--shuffle-x,-14px)) rotate(-2deg)}
-  70%{opacity:1;transform:translateX(2px) rotate(.4deg)}
-  100%{opacity:1;transform:none}
-}
+.tool-stage.reveal-card.is-presenting .card-deck{animation:deckKick var(--active-duration) var(--ease-emphasized) both}
+.tool-stage.reveal-card.is-presenting .playing-card{animation:physicalCardDraw var(--reveal-duration) var(--ease-emphasized) var(--anticipation-duration) both}
+.tool-stage.reveal-card.is-presenting .custom-play-card{animation:cardDraw var(--reveal-duration) var(--ease-emphasized) var(--anticipation-duration) both}
+@keyframes deckKick{0%{transform:translateX(0) rotate(-7deg)}28%{transform:translateX(-9px) rotate(-11deg)}100%{transform:translateX(0) rotate(-7deg)}}
+@keyframes physicalCardDraw{0%,18%{opacity:0;transform:translateY(34px) rotateY(82deg) rotate(5deg) scale(.92)}72%{opacity:1;transform:translateY(-4px) rotateY(-4deg) rotate(5deg) scale(1.035)}100%{opacity:1;transform:rotate(5deg)}}
+@keyframes cardDraw{0%,18%{opacity:0;transform:translateY(34px) rotateY(82deg) scale(.92)}72%{opacity:1;transform:translateY(-4px) rotateY(-4deg) scale(1.035)}100%{opacity:1;transform:none}}
 
-/* Teams / Groups */
-.tool-stage.reveal-teams.is-presenting .team-card{
-  opacity:0;
-  animation:teamArenaReveal 520ms var(--ease) both;
-  animation-delay:
-    calc(var(--present-duration) * .16 + var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes teamArenaReveal{
-  0%{opacity:0;transform:translateY(28px) scale(.92)}
-  72%{opacity:1;transform:translateY(-4px) scale(1.025)}
-  100%{opacity:1;transform:none}
-}
-.tool-stage.reveal-teams.presentation-showtime .team-card{
-  box-shadow:0 10px 30px color-mix(in srgb,var(--accent,var(--cyan)) 10%,transparent)
-}
+.tool-stage.reveal-ladder.is-presenting .ladder-rung{transform-origin:left center;transform:scaleX(0);animation:ladderDraw 190ms ease-out both;animation-delay:calc(var(--anticipation-duration) + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes ladderDraw{to{transform:scaleX(1)}}.tool-stage.reveal-ladder.is-presenting .result-row{opacity:0;animation:stagePop 380ms var(--ease-emphasized) both;animation-delay:calc(var(--impact-delay) + var(--reveal-index,0) * 32ms)}
+.tool-stage.reveal-elimination.is-presenting .stage-result{animation-name:eliminationImpact}
+@keyframes eliminationImpact{0%,25%{opacity:0;transform:scale(1.26);filter:blur(9px)}55%{opacity:1;transform:scale(.94);filter:blur(0)}73%{transform:scale(1.055)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-elimination.is-celebration .stage-result{animation-name:winnerImpact}
+@keyframes winnerImpact{0%,28%{opacity:0;transform:scale(.62);letter-spacing:.09em}60%{opacity:1;transform:scale(1.14);letter-spacing:-.035em}80%{transform:scale(.98)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-tournament.is-presenting .match-card{opacity:0;animation:bracketDeal 420ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + 60ms + var(--reveal-index,0) * var(--reveal-stagger))}
+@keyframes bracketDeal{0%{opacity:0;transform:translateY(15px) scale(.95)}72%{opacity:1;transform:translateY(-2px) scale(1.012)}100%{opacity:1;transform:none}}
+.tool-stage.reveal-private.is-presenting .stage-result{animation:privateFade calc(var(--reveal-duration) + var(--settle-duration)) ease-out var(--anticipation-duration) both}
+@keyframes privateFade{0%,25%{opacity:0}100%{opacity:1}}
 
-/* Pairs */
-.tool-stage.reveal-pairs.is-presenting .result-row{
-  opacity:0;
-  animation:pairConnect 480ms var(--ease) both;
-  animation-delay:
-    calc(var(--present-duration) * .2 + var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes pairConnect{
-  0%{opacity:0;transform:scaleX(.6);filter:blur(4px)}
-  70%{opacity:1;transform:scaleX(1.035);filter:blur(0)}
-  100%{opacity:1;transform:none}
-}
+.ladder-path-layer{position:absolute;inset:0;z-index:3;pointer-events:none}.ladder-path-segment{position:absolute;display:block;border-radius:999px;background:var(--path-color,var(--color-accent-secondary));box-shadow:0 0 8px color-mix(in srgb,var(--path-color,var(--color-accent-secondary)) 50%,transparent);opacity:.32}
+.ladder-path-segment.is-vertical{width:3px;transform:translateX(-1.5px)}.ladder-path-segment.is-horizontal{height:3px;transform:translateY(-1.5px)}
+.tool-stage.reveal-ladder.is-presenting .ladder-path-segment.is-vertical{transform-origin:center top;transform:translateX(-1.5px) scaleY(0);animation:pathDrawVertical 155ms ease-out both;animation-delay:calc(var(--anticipation-duration) + var(--path-step,0) * 24ms)}
+.tool-stage.reveal-ladder.is-presenting .ladder-path-segment.is-horizontal{transform-origin:left center;transform:translateY(-1.5px) scaleX(0);animation:pathDrawHorizontal 155ms ease-out both;animation-delay:calc(var(--anticipation-duration) + var(--path-step,0) * 24ms)}
+@keyframes pathDrawVertical{to{opacity:.72;transform:translateX(-1.5px) scaleY(1)}}@keyframes pathDrawHorizontal{to{opacity:.72;transform:translateY(-1.5px) scaleX(1)}}
 
-/* Assignment */
-.tool-stage.reveal-assignment.is-presenting .result-row{
-  opacity:0;
-  animation:assignmentLink 470ms var(--ease) both;
-  animation-delay:
-    calc(var(--present-duration) * .16 + var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes assignmentLink{
-  0%{opacity:0;transform:translateX(-24px)}
-  65%{opacity:1;transform:translateX(4px)}
-  100%{opacity:1;transform:none}
-}
+.tool-action-dock.is-presenting .tool-primary-action{animation:actionRevealState var(--present-duration) linear both}
+@keyframes actionRevealState{0%,58%{box-shadow:var(--shadow-level-1)}72%{box-shadow:0 0 0 1px color-mix(in srgb,var(--color-accent-secondary) 25%,transparent),0 12px 34px color-mix(in srgb,var(--color-accent-primary) 14%,transparent)}100%{box-shadow:var(--shadow-level-1)}}
+.result-commit-chip{display:flex;align-items:center;justify-content:center;gap:var(--space-3);min-height:30px;color:var(--color-text-tertiary);font-size:.66rem;font-weight:650}
+.result-commit-icon{width:14px;height:14px;color:var(--color-success)}
+.tool-action-dock.is-presenting .result-commit-chip{animation:commitImpact var(--settle-duration) ease-out var(--impact-delay) both}
+@keyframes commitImpact{from{opacity:.35;transform:translateY(3px)}to{opacity:1;transform:none}}
 
-/* Cards */
-.tool-stage.reveal-card.is-presenting .card-deck{
-  animation:deckKick var(--present-duration) var(--ease) both
-}
-.tool-stage.reveal-card.is-presenting .play-card{
-  animation:cardDraw var(--present-duration) var(--ease) both
-}
-@keyframes deckKick{
-  0%{transform:translateX(0) rotate(0)}
-  28%{transform:translateX(-8px) rotate(-4deg)}
-  100%{transform:translateX(0) rotate(0)}
-}
-@keyframes cardDraw{
-  0%,34%{opacity:0;transform:translateY(38px) rotateY(90deg) scale(.9)}
-  72%{opacity:1;transform:translateY(-4px) rotateY(-5deg) scale(1.05)}
-  100%{opacity:1;transform:none}
-}
+.tool-stage.is-reduced-reveal *{animation:none!important;transition:none!important;transform:none!important;filter:none!important}
+.tool-stage.is-reduced-reveal .stage-result,.tool-stage.is-reduced-reveal .stage-label,.tool-stage.is-reduced-reveal .stage-sub,.tool-stage.is-reduced-reveal .result-row,.tool-stage.is-reduced-reveal .team-card,.tool-stage.is-reduced-reveal .match-card,.tool-stage.is-reduced-reveal .playing-card,.tool-stage.is-reduced-reveal .card-deck,.tool-stage.is-reduced-reveal .ladder-rung,.tool-stage.is-reduced-reveal .ladder-path-segment{animation:reducedReveal var(--present-duration) linear both!important;opacity:1!important}
+@keyframes reducedReveal{from{opacity:.35}to{opacity:1}}
+.tool-stage.is-reduced-reveal::after,.tool-stage.is-reduced-reveal .fx-particles{display:none!important}
+.tool-stage.is-reduced-reveal .wheel{transition-duration:var(--present-duration)!important}.tool-stage.is-reduced-reveal .wheel-pointer{animation:none!important}
 
-/* Ladder */
-.tool-stage.reveal-ladder.is-presenting .ladder-rung{
-  transform-origin:left center;
-  transform:scaleX(0);
-  animation:ladderDraw 220ms ease-out both;
-  animation-delay:
-    calc(var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes ladderDraw{
-  to{transform:scaleX(1)}
-}
-.tool-stage.reveal-ladder.is-presenting .result-row{
-  opacity:0;
-  animation:stagePop 420ms var(--ease) both;
-  animation-delay:
-    calc(var(--present-duration) * .58 + var(--reveal-index,0) * 35ms)
-}
-
-/* Elimination */
-.tool-stage.reveal-elimination.is-presenting .stage-result{
-  animation-name:eliminationImpact
-}
-@keyframes eliminationImpact{
-  0%,35%{opacity:0;transform:scale(1.35);filter:blur(10px)}
-  56%{opacity:1;transform:scale(.92);filter:blur(0)}
-  72%{transform:scale(1.07)}
-  100%{opacity:1;transform:scale(1)}
-}
-.tool-stage.reveal-elimination.is-celebration .stage-result{
-  animation-name:winnerImpact
-}
-@keyframes winnerImpact{
-  0%,52%{opacity:0;transform:scale(.55);letter-spacing:.12em}
-  72%{opacity:1;transform:scale(1.18);letter-spacing:-.04em}
-  86%{transform:scale(.97)}
-  100%{opacity:1;transform:scale(1)}
-}
-
-/* Tournament */
-.tool-stage.reveal-tournament.is-presenting .match-card{
-  opacity:0;
-  animation:bracketDeal 480ms var(--ease) both;
-  animation-delay:
-    calc(var(--present-duration) * .12 + var(--reveal-index,0) * var(--reveal-stagger))
-}
-@keyframes bracketDeal{
-  0%{opacity:0;transform:translateY(18px) scale(.94)}
-  72%{opacity:1;transform:translateY(-2px) scale(1.015)}
-  100%{opacity:1;transform:none}
-}
-
-/* Secret/private reveal remains quiet */
-.tool-stage.reveal-private.is-presenting .stage-result{
-  animation:privateFade var(--present-duration) ease-out both
-}
-@keyframes privateFade{
-  0%,35%{opacity:0}
-  100%{opacity:1}
-}
-
-/* Reduced-motion alternative: opacity only */
-.tool-stage.is-reduced-reveal *,
-.tool-stage.is-reduced-reveal .stage-result,
-.tool-stage.is-reduced-reveal .result-row,
-.tool-stage.is-reduced-reveal .team-card,
-.tool-stage.is-reduced-reveal .match-card,
-.tool-stage.is-reduced-reveal .ladder-rung,
-.tool-stage.is-reduced-reveal .play-card,
-.tool-stage.is-reduced-reveal .card-deck{
-  animation-name:reducedReveal!important;
-  animation-duration:var(--present-duration)!important;
-  animation-delay:0!important;
-  transform:none!important;
-  filter:none!important
-}
-@keyframes reducedReveal{
-  from{opacity:.35}
-  to{opacity:1}
-}
-.tool-stage.is-reduced-reveal .wheel{
-  transition-duration:var(--present-duration)!important
-}
-.tool-stage.is-reduced-reveal .wheel-pointer{
-  animation:none!important
-}
-
-/* Low effects keeps primary choreography but drops secondary spectacle */
-.tool-stage.effects-low.presentation-showtime{
-  box-shadow:var(--shadow)
-}
-.tool-stage.effects-low.presentation-showtime::after{
-  display:none
-}
-
-@keyframes stageRise{
-  0%{opacity:0;transform:translateY(16px)}
-  100%{opacity:1;transform:none}
-}
-
-@media (max-width:560px){
-  .settings-presentation-grid{
-    grid-template-columns:1fr
-  }
-  .presentation-mode-row{
-    align-items:stretch;
-    flex-direction:column;
-    gap:6px
-  }
-  .presentation-mode-segment{
-    width:100%
-  }
-}
-
-@media (prefers-reduced-motion:reduce){
-  .fx-particles{display:none!important}
-}
-
-@media (forced-colors:active){
-  .settings-sound-toggle{
-    background:Canvas;
-    border-color:CanvasText;
-    color:CanvasText
-  }
-  .tool-stage.presentation-showtime{
-    box-shadow:none
-  }
-  .fx-particles{display:none}
-}
-
-.ladder-path-layer{
-  position:absolute;
-  inset:0;
-  z-index:3;
-  pointer-events:none
-}
-.ladder-path-segment{
-  position:absolute;
-  display:block;
-  border-radius:999px;
-  background:var(--path-color,var(--cyan));
-  box-shadow:0 0 8px color-mix(in srgb,var(--path-color,var(--cyan)) 55%,transparent);
-  opacity:.32
-}
-.ladder-path-segment.is-vertical{
-  width:3px;
-  transform:translateX(-1.5px)
-}
-.ladder-path-segment.is-horizontal{
-  height:3px;
-  transform:translateY(-1.5px)
-}
-.tool-stage.reveal-ladder.is-presenting .ladder-path-segment.is-vertical{
-  transform-origin:center top;
-  transform:translateX(-1.5px) scaleY(0);
-  animation:pathDrawVertical 170ms ease-out both;
-  animation-delay:
-    calc(var(--present-duration) * .12 + var(--path-step,0) * 28ms)
-}
-.tool-stage.reveal-ladder.is-presenting .ladder-path-segment.is-horizontal{
-  transform-origin:left center;
-  transform:translateY(-1.5px) scaleX(0);
-  animation:pathDrawHorizontal 170ms ease-out both;
-  animation-delay:
-    calc(var(--present-duration) * .12 + var(--path-step,0) * 28ms)
-}
-@keyframes pathDrawVertical{
-  0%{opacity:0;transform:translateX(-1.5px) scaleY(0)}
-  100%{opacity:.72;transform:translateX(-1.5px) scaleY(1)}
-}
-@keyframes pathDrawHorizontal{
-  0%{opacity:0;transform:translateY(-1.5px) scaleX(0)}
-  100%{opacity:.72;transform:translateY(-1.5px) scaleX(1)}
-}
-.tool-stage.is-reduced-reveal .ladder-path-segment{
-  animation-name:reducedReveal!important;
-  transform:none!important
-}
-
-.tool-stage.reveal-coin.is-presenting .stage-orb{
-  color:transparent
-}
-.tool-stage.reveal-coin.is-presenting .stage-orb::after{
-  content:"?";
-  color:#28200b;
-  font-size:58px;
-  font-weight:900
-}
-.tool-stage.reveal-dice.is-presenting .die{
-  color:transparent
-}
-.tool-stage.reveal-dice.is-presenting .die::after{
-  content:"•";
-  color:#11152a;
-  font-size:30px;
-  font-weight:950
-}
-.tool-stage.is-reduced-reveal.reveal-coin .stage-orb{
-  color:#28200b
-}
-.tool-stage.is-reduced-reveal.reveal-coin .stage-orb::after{
-  display:none
-}
-.tool-stage.is-reduced-reveal.reveal-dice .die{
-  color:#11152a
-}
-.tool-stage.is-reduced-reveal.reveal-dice .die::after{
-  display:none
-}
+@media (max-width:560px){.settings-presentation-grid{grid-template-columns:1fr}.presentation-mode-row{align-items:stretch;flex-direction:column;gap:6px}.presentation-mode-segment{width:100%}}
+@media (prefers-reduced-motion:reduce){.fx-particles{display:none!important}}
+@media (forced-colors:active){.settings-sound-toggle{background:Canvas;border-color:CanvasText;color:CanvasText}.tool-stage.presentation-showtime{box-shadow:none}.fx-particles{display:none}.result-commit-icon{color:Highlight}}
