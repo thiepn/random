@@ -4193,22 +4193,40 @@ function renderCreations() {
     class: "content workbench-view creations-view"
   }, [
     node("div", { class: "workbench-header creation-page-head" }, [
-      node("div", {}, [
-        node("div", {
-          class: "kicker",
+      node("div", { class: "workbench-header-copy" }, [
+        node("span", {
+          class: "workbench-eyebrow",
           text: "Safe declarative builder"
         }),
-        node("h1", {
-          class: "view-title",
-          text: "My Creations"
-        }),
+        node("h1", { text: "My Creations" }),
         node("p", {
-          class: "view-subtitle",
           text:
             "Build randomizers from approved primitives. No custom JavaScript, HTML, or CSS."
-        })
+        }),
+        node("div", { class: "workbench-stats" }, [
+          node("span", {}, [
+            node("strong", { text: String(state.customExperiences.length) }),
+            node("small", { text: "total" })
+          ]),
+          node("span", {}, [
+            node("strong", {
+              text: String(state.customExperiences.filter(
+                (item) => item.status === "published"
+              ).length)
+            }),
+            node("small", { text: "published" })
+          ]),
+          node("span", {}, [
+            node("strong", {
+              text: String(state.customExperiences.filter(
+                (item) => item.status === "draft"
+              ).length)
+            }),
+            node("small", { text: "drafts" })
+          ])
+        ])
       ]),
-      node("div", { class: "button-row" }, [
+      node("div", { class: "workbench-header-actions" }, [
         node("button", {
           class: "primary",
           type: "button",
@@ -4252,22 +4270,26 @@ function renderCreations() {
   )));
 
   content.append(node("div", {
-    class: "segmented creation-filter"
+    class: "workbench-commandbar creation-commandbar"
   }, [
-    ["all", "All"],
-    ["published", "Published"],
-    ["drafts", "Drafts"],
-    ["favorites", "Favorites"]
-  ].map(([value, label]) =>
-    node("button", {
-      class: state.creationFilter === value ? "active" : "",
-      type: "button",
-      onClick: () => {
-        state.creationFilter = value;
-        render();
-      }
-    }, label)
-  )));
+    node("div", {
+      class: "segmented creation-filter"
+    }, [
+      ["all", "All"],
+      ["published", "Published"],
+      ["drafts", "Drafts"],
+      ["favorites", "Favorites"]
+    ].map(([value, label]) =>
+      node("button", {
+        class: state.creationFilter === value ? "active" : "",
+        type: "button",
+        onClick: () => {
+          state.creationFilter = value;
+          render();
+        }
+      }, label)
+    ))
+  ]));
 
   if (!filtered.length) {
     content.append(emptyState(
