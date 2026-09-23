@@ -54,7 +54,7 @@
 .saved-setup-icon .ra-icon,
 .session-template-icon .ra-icon,
 .history-icon .ra-icon,
-.party-tool-icon .ra-icon{
+.party-tool-icon.ra-icon{
   width:24px;
   height:24px
 }
