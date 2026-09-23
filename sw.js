@@ -2,6 +2,7 @@ const CACHE = "randomizer-shell-v1.0.0";
 const SHELL = [
   "./",
   "./index.html",
+  "./design-system.css",
   "./styles.css",
   "./phase1.css",
   "./phase2.css",
