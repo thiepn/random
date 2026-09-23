@@ -24,6 +24,8 @@ import {
   getStorageStatus,
   getDeviceIdentity,
   renameDevice,
+  getRecentPage,
+  deleteMatching,
   DATABASE_VERSION,
   PORTABLE_STORAGE_STORES
 } from "./storage.js";
@@ -153,6 +155,19 @@ import {
   LIBRARY_STORES,
   PORTABLE_STORES
 } from "./data-portability.js";
+import {
+  HISTORY_PAGE_SIZE,
+  HISTORY_RENDER_CHUNK,
+  POOL_RENDER_CHUNK,
+  shouldOffloadTool,
+  progressiveSlice,
+  mergeRecentRecords,
+  nextProgressiveLimit
+} from "./performance-model.js";
+import {
+  computeWorkerSupported,
+  runComputeTask
+} from "./worker-client.js";
 
 const root = document.getElementById("app");
 const announcer = document.getElementById("announcer");
@@ -188,6 +203,14 @@ const state = {
   sessions: [],
   historyPins: new Set(),
   historyFilter: "all",
+  historyRenderLimit: HISTORY_RENDER_CHUNK,
+  historyPaging: {
+    runsBefore: null,
+    historyBefore: null,
+    runsHasMore: false,
+    historyHasMore: false,
+    loading: false
+  },
   favorites: [],
   settings: null,
   device: null,
@@ -198,6 +221,12 @@ const state = {
   swRegistration: null,
   updateAvailable: false,
   reloadingForUpdate: false,
+  performance: {
+    workerTasks: 0,
+    mainThreadTasks: 0,
+    lastComputeMs: null,
+    lastComputeMode: null
+  },
   search: "",
   modal: null,
   tool: {},
