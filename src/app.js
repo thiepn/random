@@ -7236,25 +7236,28 @@ function renderWorkflowEditor() {
   const validation = workflowValidation(draft, true);
   const strict = workflowValidation(draft);
 
-  const content = node("main", { class: "content workbench-view workflow-editor-view" }, [
-    node("div", { class: "workbench-header workflow-page-head" }, [
-      node("div", {}, [
-        node("div", { class: "kicker", text: "Decision Studio · Graph editor" }),
-        node("h1", { class: "view-title", text: "Build a workflow" }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            "Connect runtime input, saved Presets, conditional branches, and terminal outcomes. "
-            + "Automation is bounded and cycles are rejected."
-        })
-      ]),
+  const content = node("main", {
+    class: "content workbench-view workflow-editor-view"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Decision Studio · Graph editor",
+    title: draft.name || "Build a workflow",
+    copy:
+      "Connect runtime input, saved Presets, conditional branches, and terminal outcomes. "
+      + "Automation is bounded and cycles are rejected.",
+    stats: [
+      [draft.nodes.length, "nodes"],
+      [draft.edges.length, "connections"],
+      [strict.valid ? "Ready" : strict.errors.length, strict.valid ? "status" : "issues"]
+    ],
+    actions: [
       node("button", {
         class: "secondary",
         type: "button",
         onClick: closeWorkflowEditor
       }, "Close")
-    ])
-  ]);
+    ]
+  }));
 
   const identity = node("section", { class: "controls workflow-editor-identity" });
   const name = node("input", {
@@ -7784,30 +7787,33 @@ function renderWorkflowRunner() {
     (nodeDef) => nodeDef.id === session.currentNodeId
   ) || null;
 
-  const content = node("main", { class: "content workbench-view workflow-runner-view" }, [
-    node("div", { class: "workbench-header workflow-page-head" }, [
-      node("div", {}, [
-        node("div", { class: "kicker", text: "Decision Studio · Workflow run" }),
-        node("h1", { class: "view-title", text: workflow.name }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            workflowStatusText(session.status)
-            + " · "
-            + session.stepCount
-            + " executed node"
-            + (session.stepCount === 1 ? "" : "s")
-            + " · "
-            + (workflow.automation.mode === "auto" ? "Auto" : "Step")
-        })
-      ]),
+  const content = node("main", {
+    class: "content workbench-view workflow-runner-view"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Decision Studio · Workflow run",
+    title: workflow.name,
+    copy:
+      workflowStatusText(session.status)
+      + " · "
+      + session.stepCount
+      + " executed node"
+      + (session.stepCount === 1 ? "" : "s")
+      + " · "
+      + (workflow.automation.mode === "auto" ? "Auto" : "Step"),
+    stats: [
+      [session.stepCount, "committed"],
+      [workflow.automation.mode === "auto" ? "Auto" : "Step", "mode"],
+      [session.path.length, "path entries"]
+    ],
+    actions: [
       node("button", {
         class: "secondary",
         type: "button",
         onClick: closeWorkflowRunner
       }, "Studio")
-    ])
-  ]);
+    ]
+  }));
 
   if (session.error) {
     content.append(toolError(session.error));
