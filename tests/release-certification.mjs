@@ -18,6 +18,7 @@ for (const file of [
   "app-shell.css",
   "home-arcade.css",
   "tool-experience.css",
+  "visual-resilience.css",
   "sw.js",
   "src/app.js",
   "src/security.js",
@@ -29,6 +30,7 @@ for (const file of [
   "tests/adversarial-fuzz.mjs",
   "tests/release-certification.mjs",
   "tests/version-baseline.mjs",
+  "tests/themes-resilience-v9.mjs",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -208,6 +210,7 @@ for (const requiredStep of [
   "Tool Experience V6 certification",
   "Results and Motion V7 certification",
   "Professional Surfaces V8 certification",
+  "Themes & Visual Resilience V9 certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
