@@ -64,6 +64,7 @@ Then open `http://localhost:8080`.
 - `src/compute-tasks.js` — deterministic pure task dispatcher shared by worker execution and CI equivalence tests
 - `src/worker-client.js` / `src/compute-worker.js` — lazy module-worker lifecycle, bounded task timeouts, error propagation, and background execution
 - `src/accessibility-i18n.js` — normalized accessibility preferences, regional locale resolution, locale-aware date/number/byte formatting, contrast resolution, and focus-navigation primitives
+- `src/security.js` — trust-boundary validation for imported/persisted data, route tokens, audience/worker protocols, download names, and adversarial size/depth/key limits
 - `src/storage.js` — IndexedDB persistence, v11 recent/status/tool/group indexes, cursor pagination, bounded Session hydration, targeted batch reads, atomic restore, storage durability/usage status, and local device identity
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
@@ -117,6 +118,16 @@ Phase 14 adds a stable accessibility contract without changing randomization sem
 Decision Studio graph cards are now keyboard-selectable with Enter/Space instead of relying on pointer clicks. Coarse-pointer environments enforce minimum touch targets, an optional **Large controls** preference increases interactive sizes further, and a **Higher contrast** preference strengthens borders/muted text while respecting live `prefers-contrast` changes. Existing Reduced Motion behavior remains authoritative for animations and now also controls programmatic navigation scrolling.
 
 The current product language remains English; Phase 14 does not falsely mark English interface text as translated. Instead, Settings exposes a **Regional format** preference—System, `en-US`, `de-DE`, `fr-FR`, or `ko-KR`—which consistently controls displayed dates, numbers, and storage sizes through the shared internationalization model. The manifest/document continue declaring English/LTR until full message translation is implemented.
+
+## Security, privacy, integrity, and adversarial hardening
+
+Phase 15 treats every external or cross-context boundary as untrusted even though the app remains local-first. Portable JSON is size-checked **before** the browser reads it into memory, then passes strict envelope/store validation, unsafe-key/depth/node limits, canonical store requirements, checksum verification, and a second storage-record preflight before an atomic restore starts. URL route identifiers are bounded to the app's identifier alphabet, and generated download filenames are normalized so user-created names cannot inject path/control characters.
+
+Module-worker messages now use an allowlisted protocol with bounded structured-data validation on both request and response paths. Party `BroadcastChannel` requests are schema-checked, audience updates are reduced to a strict receive-side schema, and Secret Santa is forced private again on the receiving side even if another same-origin tab attempts to forge an audience payload. Invalid worker protocol messages fail closed instead of being silently retried.
+
+The document ships a restrictive meta Content Security Policy because GitHub Pages does not provide repository-controlled response headers: scripts, workers, connections, manifests, and assets are limited to the app origin, `eval` remains forbidden by CI, and referrers are disabled. Inline style permission is retained because the existing UI uses safe CSSOM style assignments. The service worker now caches only the explicit same-origin application shell and will not turn arbitrary GET requests into an unbounded runtime cache.
+
+Randomizer Arcade does not add telemetry, advertising, remote accounts, or analytics in this phase. User data remains in browser storage unless the user explicitly exports or shares it. Portable-file `fnv1a32` is a deterministic **corruption/tamper-detection checksum, not an authenticity signature**: anyone who can edit a file can also recompute it, so imported files should still be treated as untrusted data. CI now certifies the trust-boundary validators, CSP presence, privacy invariants, worker protocol, and cache isolation.
 
 ## Party mode and audience privacy
 
