@@ -4347,6 +4347,7 @@ function renderCompoundStep(builder, step, index) {
       ? node("button", {
           class: "small-action",
           type: "button",
+          "aria-label": "Remove compound step " + (index + 1),
           onClick: () => {
             const removedId = step.id;
             draft.config.steps.splice(index, 1);
@@ -12822,6 +12823,7 @@ function renderNewSessionTemplateModal(modal, config) {
           ? node("button", {
               class: "small-action",
               type: "button",
+              "aria-label": "Remove template step " + (index + 1),
               onClick: () => {
                 config.steps.splice(index, 1);
                 render();
