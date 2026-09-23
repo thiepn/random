@@ -530,15 +530,21 @@ function matchingFocusable(container, identity) {
   }) || null;
 }
 
+function applySegmentedSemantics(container) {
+  container.querySelectorAll(".segmented").forEach((group) => {
+    if (!group.hasAttribute("role")) group.setAttribute("role", "group");
+    group.querySelectorAll("button").forEach((button) => {
+      button.setAttribute(
+        "aria-pressed",
+        button.classList.contains("active") ? "true" : "false"
+      );
+    });
+  });
+}
+
 function finalizeModalAccessibility(modal, previousFocusIdentity = null) {
   modal.tabIndex = -1;
-
-  modal.querySelectorAll(".segmented button").forEach((button) => {
-    button.setAttribute(
-      "aria-pressed",
-      button.classList.contains("active") ? "true" : "false"
-    );
-  });
+  applySegmentedSemantics(modal);
 
   const heading = modal.querySelector("h1,h2,h3");
   if (heading) {
@@ -13707,6 +13713,10 @@ function render() {
 
   applyAccessibilityPreferences();
   root.setAttribute("aria-busy", state.computeBusy ? "true" : "false");
+  if (!state.modal) {
+    root.removeAttribute("inert");
+    root.removeAttribute("aria-hidden");
+  }
 
   const existingBackdrop = document.querySelector(".modal-backdrop");
   const existingModal = existingBackdrop?.querySelector(".modal") || null;
@@ -13737,6 +13747,7 @@ function render() {
     const main = renderAudience();
     main.id = "main-content";
     main.tabIndex = -1;
+    applySegmentedSemantics(main);
     root.replaceChildren(main);
     return;
   }
@@ -13745,6 +13756,7 @@ function render() {
     const main = renderParty();
     main.id = "main-content";
     main.tabIndex = -1;
+    applySegmentedSemantics(main);
     root.replaceChildren(main);
     return;
   }
@@ -13770,12 +13782,7 @@ function render() {
     main.tabIndex = -1;
   }
 
-  layout.querySelectorAll(".segmented button").forEach((button) => {
-    button.setAttribute(
-      "aria-pressed",
-      button.classList.contains("active") ? "true" : "false"
-    );
-  });
+  applySegmentedSemantics(layout);
 
   root.replaceChildren(layout);
 
