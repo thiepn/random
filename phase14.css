@@ -47,9 +47,15 @@
 }
 
 html[data-contrast="more"]{
-  --border:rgba(255,255,255,.24);
-  --border-strong:rgba(255,255,255,.42);
-  --muted:#c5cbe0
+  --color-stroke-subtle:rgba(255,255,255,.20);
+  --color-stroke-default:rgba(255,255,255,.28);
+  --color-stroke-strong:rgba(255,255,255,.45);
+  --color-stroke-emphasis:rgba(255,255,255,.58);
+  --color-text-secondary:#d6dbea;
+  --color-text-tertiary:#c5cbe0;
+  --border:var(--color-stroke-default);
+  --border-strong:var(--color-stroke-strong);
+  --muted:var(--color-text-tertiary)
 }
 html[data-contrast="more"] .secondary,
 html[data-contrast="more"] .small-action,
