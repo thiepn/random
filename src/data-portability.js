@@ -170,12 +170,7 @@ export function createPortablePackage({
   }
 
   const data = sanitizedStores(stores, scope);
-  const payload = {
-    scope,
-    stores: data
-  };
-
-  return {
+  const body = {
     format: PORTABILITY_FORMAT,
     schemaVersion: PORTABILITY_SCHEMA_VERSION,
     createdAt: String(createdAt),
@@ -185,8 +180,22 @@ export function createPortablePackage({
         ? Number(databaseVersion)
         : null,
     device: normalizeDevice(device),
-    payload,
-    checksum: portableChecksum(payload)
+    payload: {
+      scope,
+      stores: data
+    }
+  };
+
+  if (!Number.isFinite(Date.parse(body.createdAt))) {
+    throw new PortabilityError(
+      "Portable package creation time is invalid.",
+      "PORTABLE_DATE_INVALID"
+    );
+  }
+
+  return {
+    ...body,
+    checksum: portableChecksum(body)
   };
 }
 
@@ -258,8 +267,27 @@ export function validatePortablePackage(value) {
   }
 
   const stores = sanitizedStores(value.payload?.stores || {}, scope);
-  const payload = { scope, stores };
-  const checksum = portableChecksum(payload);
+  const createdAt = String(value.createdAt || "");
+  if (!Number.isFinite(Date.parse(createdAt))) {
+    throw new PortabilityError(
+      "Portable package creation time is invalid.",
+      "PORTABLE_DATE_INVALID"
+    );
+  }
+
+  const body = {
+    format: PORTABILITY_FORMAT,
+    schemaVersion: PORTABILITY_SCHEMA_VERSION,
+    createdAt,
+    appVersion: String(value.appVersion || "unknown"),
+    databaseVersion:
+      Number.isSafeInteger(Number(value.databaseVersion))
+        ? Number(value.databaseVersion)
+        : null,
+    device: normalizeDevice(value.device),
+    payload: { scope, stores }
+  };
+  const checksum = portableChecksum(body);
 
   if (value.checksum !== checksum) {
     throw new PortabilityError(
@@ -269,16 +297,7 @@ export function validatePortablePackage(value) {
   }
 
   return {
-    format: PORTABILITY_FORMAT,
-    schemaVersion: PORTABILITY_SCHEMA_VERSION,
-    createdAt: String(value.createdAt || ""),
-    appVersion: String(value.appVersion || "unknown"),
-    databaseVersion:
-      Number.isSafeInteger(Number(value.databaseVersion))
-        ? Number(value.databaseVersion)
-        : null,
-    device: normalizeDevice(value.device),
-    payload,
+    ...body,
     checksum
   };
 }
