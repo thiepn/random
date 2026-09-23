@@ -5744,11 +5744,8 @@ function renderPlay() {
                 })
               ]),
               node("div", { class: "saved-setup-grid home-saved-grid" }, [
-                ...favoritePresets.slice(0, 2).map(presetCard),
-                ...regularPresets.slice(
-                  0,
-                  Math.max(0, 3 - favoritePresets.slice(0, 2).length)
-                ).map(presetCard)
+                ...favoritePresets.map(presetCard),
+                ...regularPresets.map(presetCard)
               ])
             ])
           : null,
@@ -5786,7 +5783,7 @@ function renderPlay() {
             }, "+ New")
           ]),
           node("div", { class: "session-template-grid home-template-grid" },
-            templates.slice(0, 3).map(templateCard)
+            templates.map(templateCard)
           )
         ])
       ].filter(Boolean))
