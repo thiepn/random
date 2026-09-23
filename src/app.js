@@ -160,6 +160,8 @@ import {
   HISTORY_PAGE_SIZE,
   HISTORY_RENDER_CHUNK,
   POOL_RENDER_CHUNK,
+  RESULT_RENDER_LIMIT,
+  FAIRNESS_RENDER_LIMIT,
   shouldOffloadTool,
   progressiveSlice,
   mergeRecentRecords,
@@ -7074,7 +7076,9 @@ function renderTool() {
 }
 
 function resultList(items) {
-  return node("div", { class: "result-list" }, items.map((item, index) =>
+  const values = Array.isArray(items) ? items : [];
+  const preview = values.slice(0, RESULT_RENDER_LIMIT);
+  const rows = preview.map((item, index) =>
     node("div", {
       class: "result-row",
       style: {
@@ -7085,25 +7089,59 @@ function resultList(items) {
       node("span", { class: "rank", text: String(index + 1) }),
       node("strong", { text: String(item) })
     ])
-  ));
+  );
+
+  if (values.length > preview.length) {
+    rows.push(node("div", {
+      class: "result-render-cap",
+      text:
+        "+ "
+        + (values.length - preview.length)
+        + " more stored results not rendered"
+    }));
+  }
+
+  return node("div", { class: "result-list" }, rows);
 }
 
 function teamsResult(groups, prefix = "Team") {
-  return node("div", { class: "teams-grid" }, groups.map((group, index) =>
-    node("div", {
+  const values = Array.isArray(groups) ? groups : [];
+  const perGroupLimit = Math.max(
+    12,
+    Math.floor(RESULT_RENDER_LIMIT / Math.max(1, values.length))
+  );
+
+  return node("div", { class: "teams-grid" }, values.map((group, index) => {
+    const visible = group.slice(0, perGroupLimit);
+    return node("div", {
       class: "team-card",
       style: { "--accent": palette[index % palette.length] }
     }, [
       node("strong", { text: prefix + " " + (index + 1) }),
-      ...group.map((person) =>
+      ...visible.map((person) =>
         node("div", { class: "team-member", text: person })
-      )
-    ])
-  ));
+      ),
+      group.length > visible.length
+        ? node("div", {
+            class: "result-render-cap",
+            text:
+              "+ "
+              + (group.length - visible.length)
+              + " more"
+          })
+        : null
+    ]);
+  }));
 }
 
 function tournamentResult(matches) {
-  return node("div", { class: "bracket-list" }, matches.map((match, index) =>
+  const values = Array.isArray(matches) ? matches : [];
+  const matchLimit = Math.max(
+    1,
+    Math.floor(RESULT_RENDER_LIMIT / 2)
+  );
+  const preview = values.slice(0, matchLimit);
+  const rows = preview.map((match, index) =>
     node("div", {
       class: "match-card",
       style: { "--reveal-index": String(index) }
@@ -7116,7 +7154,19 @@ function tournamentResult(matches) {
       }),
       match.b ? node("strong", { text: match.b }) : null
     ])
-  ));
+  );
+
+  if (values.length > preview.length) {
+    rows.push(node("div", {
+      class: "result-render-cap",
+      text:
+        "+ "
+        + (values.length - preview.length)
+        + " more stored matches not rendered"
+    }));
+  }
+
+  return node("div", { class: "bracket-list" }, rows);
 }
 
 function ladderBoard(items, outcomes, ladder) {
@@ -9186,18 +9236,34 @@ function fairnessPanel(tool, ts) {
           node("strong", { text: selectionTitle }),
           node("p", { text: selectionCopy })
         ]),
-        node("div", { class: "fairness-probabilities" },
-          model.entries.map((entry) =>
-            node("div", {
-              class: "fairness-probability-row" + (!entry.eligible ? " is-ineligible" : "")
-            }, [
-              node("span", { text: entry.label }),
-              node("strong", {
-                text: entry.excluded ? "Excluded" : percentage(entry.probability)
-              })
-            ])
-          )
-        )
+        node("div", { class: "fairness-probabilities" }, [
+          ...model.entries
+            .slice(0, FAIRNESS_RENDER_LIMIT)
+            .map((entry) =>
+              node("div", {
+                class: "fairness-probability-row" + (!entry.eligible ? " is-ineligible" : "")
+              }, [
+                node("span", { text: entry.label }),
+                node("strong", {
+                  text: entry.excluded ? "Excluded" : percentage(entry.probability)
+                })
+              ])
+            ),
+          model.entries.length > FAIRNESS_RENDER_LIMIT
+            ? node("div", {
+                class: "fairness-probability-row fairness-render-cap"
+              }, [
+                node("span", {
+                  text:
+                    (model.entries.length - FAIRNESS_RENDER_LIMIT)
+                    + " additional entries"
+                }),
+                node("strong", {
+                  text: "Stored, not rendered"
+                })
+              ])
+            : null
+        ])
       );
     }
   } else {
