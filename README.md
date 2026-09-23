@@ -13,8 +13,12 @@ A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not cha
 - [V1 Visual Audit](./docs/design/V1-VISUAL-AUDIT.md)
 - [Visual Redesign Contract](./docs/design/REDESIGN-CONTRACT.md)
 - [Machine-readable Visual Baseline](./docs/design/visual-baseline.json)
+- [V2 Design System](./docs/design/V2-DESIGN-SYSTEM.md)
+- [V2 Token Inventory](./docs/design/design-tokens-v2.json)
 
 Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
+
+**V2 foundation:** semantic typography, color, spacing, shape, elevation, and motion roles now live in `design-system.css`. Legacy phase styles consume compatibility aliases while later redesign phases progressively replace them.
 
 ## Current foundation
 

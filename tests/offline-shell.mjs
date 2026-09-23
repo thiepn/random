@@ -34,6 +34,7 @@ for (const entry of entries) {
 }
 
 for (const required of [
+  "./design-system.css",
   "./phase13.css",
   "./phase14.css",
   "./src/performance-model.js",
@@ -46,6 +47,14 @@ for (const required of [
   assert.ok(entries.includes(required), required + " must be precached.");
 }
 
+assert.ok(
+  index.includes('./design-system.css'),
+  "index.html must load Design System V2."
+);
+assert.ok(
+  index.indexOf('./design-system.css') < index.indexOf('./styles.css'),
+  "Design System V2 must load before legacy component styles."
+);
 assert.ok(
   index.includes('./phase13.css'),
   "index.html must load Phase 13 styles."

@@ -11,7 +11,7 @@ import {
 
 const appBytes = fs.statSync("src/app.js").size;
 const cssFiles = fs.readdirSync(".")
-  .filter((name) => /^phase\d+\.css$/.test(name) || name === "styles.css");
+  .filter((name) => name.endsWith(".css"));
 const cssBytes = cssFiles.reduce(
   (sum, file) => sum + fs.statSync(file).size,
   0

@@ -1,14 +1,14 @@
 .skip-link{
   position:fixed;
-  z-index:1000;
-  top:8px;
-  left:8px;
-  padding:10px 14px;
-  border:2px solid var(--cyan);
-  border-radius:12px;
-  background:var(--surface);
-  color:var(--text);
-  font-weight:850;
+  z-index:var(--z-skip);
+  top:var(--space-4);
+  left:var(--space-4);
+  padding:var(--space-5) var(--space-6);
+  border:2px solid var(--focus-ring);
+  border-radius:var(--radius-control);
+  background:var(--color-surface-1);
+  color:var(--color-text-primary);
+  font-weight:760;
   transform:translateY(-160%);
   transition:transform .12s ease
 }
@@ -27,7 +27,7 @@
   overscroll-behavior:contain
 }
 .modal:focus-visible{
-  outline:3px solid var(--cyan);
+  outline:var(--focus-ring-width) solid var(--focus-ring);
   outline-offset:-6px
 }
 
@@ -35,8 +35,8 @@
   cursor:pointer
 }
 .workflow-node-card[tabindex="0"]:focus-visible{
-  outline:3px solid var(--cyan);
-  outline-offset:3px
+  outline:var(--focus-ring-width) solid var(--focus-ring);
+  outline-offset:var(--focus-ring-offset)
 }
 
 .settings-accessibility-grid{
@@ -47,9 +47,15 @@
 }
 
 html[data-contrast="more"]{
-  --border:rgba(255,255,255,.24);
-  --border-strong:rgba(255,255,255,.42);
-  --muted:#c5cbe0
+  --color-stroke-subtle:rgba(255,255,255,.20);
+  --color-stroke-default:rgba(255,255,255,.28);
+  --color-stroke-strong:rgba(255,255,255,.45);
+  --color-stroke-emphasis:rgba(255,255,255,.58);
+  --color-text-secondary:#d6dbea;
+  --color-text-tertiary:#c5cbe0;
+  --border:var(--color-stroke-default);
+  --border-strong:var(--color-stroke-strong);
+  --muted:var(--color-text-tertiary)
 }
 html[data-contrast="more"] .secondary,
 html[data-contrast="more"] .small-action,
@@ -61,7 +67,7 @@ html[data-contrast="more"] select.field{
   border-width:2px
 }
 html[data-contrast="more"] .nav-button:not(.active){
-  color:#b9c1d7
+  color:var(--color-text-secondary)
 }
 html[data-contrast="more"] .notice{
   border-color:currentColor
