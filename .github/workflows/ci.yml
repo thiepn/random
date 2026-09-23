@@ -196,6 +196,9 @@ jobs:
       - name: Professional Surfaces V8 certification
         run: node tests/professional-surfaces-v8.mjs
 
+      - name: Themes & Visual Resilience V9 certification
+        run: node tests/themes-resilience-v9.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
