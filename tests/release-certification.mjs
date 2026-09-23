@@ -7,6 +7,10 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const exists = (file) => fs.existsSync(path.join(root, file));
 
 for (const file of [
+  "VERSION",
+  "CHANGELOG.md",
+  "MAINTENANCE.md",
+  "RELEASE-NOTES-v1.0.0.md",
   "index.html",
   "manifest.webmanifest",
   "sw.js",
@@ -19,6 +23,7 @@ for (const file of [
   "tests/cross-feature-regression.mjs",
   "tests/adversarial-fuzz.mjs",
   "tests/release-certification.mjs",
+  "tests/version-baseline.mjs",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -29,11 +34,26 @@ const sw = read("sw.js");
 const app = read("src/app.js");
 const ci = read(".github/workflows/ci.yml");
 const manifest = JSON.parse(read("manifest.webmanifest"));
+const version = read("VERSION").trim();
 
-assert.match(
-  app,
-  /PORTABILITY_APP_VERSION\s*=\s*"implementation-16"/,
-  "Portable metadata must identify Implementation Phase 16"
+assert.equal(version, "1.0.0");
+assert.ok(
+  app.includes(
+    'const PORTABILITY_APP_VERSION = "' + version + '";'
+  ),
+  "Portable metadata must match VERSION"
+);
+assert.ok(
+  index.includes(
+    '<meta name="application-version" content="' + version + '">'
+  ),
+  "Document version metadata must match VERSION"
+);
+assert.ok(
+  sw.includes(
+    'const CACHE = "randomizer-shell-v' + version + '";'
+  ),
+  "Service-worker cache generation must match VERSION"
 );
 
 assert.match(index, /Content-Security-Policy/);
@@ -176,7 +196,9 @@ for (const requiredStep of [
   "Security, privacy and integrity certification",
   "Cross-feature release regression certification",
   "Adversarial fuzz certification",
-  "Production release certification"
+  "Version baseline certification",
+  "Production release certification",
+  "Versioned GitHub release"
 ]) {
   assert.ok(
     ci.includes(requiredStep),
