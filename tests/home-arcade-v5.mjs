@@ -58,8 +58,13 @@ assert.equal(
   false,
   "Legacy equal-weight Home ending should be removed."
 );
+const arcadeStart = app.indexOf("function renderArcade() {");
+const arcadeEnd = app.indexOf("\nfunction poolById(", arcadeStart);
+assert.ok(arcadeStart >= 0 && arcadeEnd > arcadeStart);
+const arcadeSource = app.slice(arcadeStart, arcadeEnd);
+
 assert.equal(
-  app.includes('class: "creation-page-head"'),
+  arcadeSource.includes('class: "creation-page-head"'),
   false,
   "Arcade must not use the old generic creation-page header."
 );
