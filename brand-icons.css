@@ -125,17 +125,17 @@
 
 
 .workflow-node-glyph{
-  width:22px;
-  height:22px;
+  width:32px;
+  height:32px;
   color:var(--color-accent-primary)
 }
 .workflow-node-glyph.small{
-  width:18px;
-  height:18px
+  width:26px;
+  height:26px
 }
 .workflow-card-icon{
-  width:24px;
-  height:24px;
+  width:34px;
+  height:34px;
   color:var(--color-accent-primary)
 }
 .fairness-icon{
