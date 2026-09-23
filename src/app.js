@@ -2934,7 +2934,8 @@ function presetCard(preset) {
         preset.favorite
           ? node("span", {
               class: "saved-favorite-badge",
-              text: "★"
+              text: "★",
+              "aria-hidden": "true"
             })
           : null
       ]),
@@ -3807,7 +3808,8 @@ function customCreationCard(experience) {
         experience.favorite
           ? node("span", {
               class: "saved-favorite-badge",
-              text: "★"
+              text: "★",
+              "aria-hidden": "true"
             })
           : null
       ]),
@@ -3839,6 +3841,9 @@ function customCreationCard(experience) {
       node("button", {
         class: "small-action",
         type: "button",
+        "aria-label": experience.favorite
+          ? "Remove creation favorite"
+          : "Favorite creation",
         onClick: () => toggleCustomFavorite(experience)
       }, experience.favorite ? "★" : "☆"),
       node("button", {
@@ -5036,6 +5041,7 @@ function topBar() {
       node("button", {
         class: "pill-button",
         type: "button",
+        "aria-label": "Open settings",
         onClick: () => {
           if (state.computeBusy) {
             announce("Finish the current randomization before changing settings.");
@@ -5769,6 +5775,7 @@ function renderHistory() {
       node("button", {
         class: "small-action" + (pinned ? " is-pinned" : ""),
         type: "button",
+        "aria-label": pinned ? "Unpin History group" : "Pin History group",
         onClick: () => toggleHistoryPin(pinKey)
       }, pinned ? "★" : "☆")
     ]);
