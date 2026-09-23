@@ -11380,28 +11380,27 @@ function buildToolActionDock(tool, ts) {
   }
 
   if (ts.result) {
-    secondary.append(
-      node("button", {
+    secondary.append(node("button", {
+      class: "secondary",
+      type: "button",
+      onClick: shareCurrentResult
+    }, "Share"));
+
+    if (tool.id !== "secret-santa") {
+      secondary.append(node("button", {
         class: "secondary",
         type: "button",
-        onClick: shareCurrentResult
-      }, "Share"),
-      tool.id !== "secret-santa"
-        ? node("button", {
-            class: "secondary",
-            type: "button",
-            onClick: () => {
-              state.modal = {
-                type: "use-result",
-                sourceToolId: tool.id,
-                result: cloneData(ts.result),
-                error: null
-              };
-              render();
-            }
-          }, "Use Result In…")
-        : null
-    );
+        onClick: () => {
+          state.modal = {
+            type: "use-result",
+            sourceToolId: tool.id,
+            result: cloneData(ts.result),
+            error: null
+          };
+          render();
+        }
+      }, "Use Result In…"));
+    }
   }
 
   if (secondary.childElementCount) {
