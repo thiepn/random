@@ -13512,6 +13512,28 @@ async function init() {
   const requestedView = params.get("view");
 
   if (
+    requestedTemplateSession
+    && !templateSessionById(requestedTemplateSession)
+  ) {
+    const [stored] = await getMany(
+      "templateSessions",
+      [requestedTemplateSession]
+    );
+    if (stored) replaceTemplateSession(stored);
+  }
+
+  if (
+    requestedWorkflowSession
+    && !workflowSessionById(requestedWorkflowSession)
+  ) {
+    const [stored] = await getMany(
+      "workflowSessions",
+      [requestedWorkflowSession]
+    );
+    if (stored) replaceWorkflowSession(stored);
+  }
+
+  if (
     requestedParty
     && partySessionById(requestedParty)?.status === "active"
   ) {
