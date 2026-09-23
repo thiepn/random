@@ -33,6 +33,7 @@ const reduced=presentationPlan({
   capabilities:{reducedMotion:false}
 });
 assert.equal(reduced.duration,180);
+assert.equal(reduced.sourceKind,"dice");
 assert.equal(reduced.anticipationMs,0);
 assert.equal(reduced.revealMs,120);
 assert.equal(reduced.settleMs,60);
