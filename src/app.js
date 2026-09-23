@@ -1,5 +1,10 @@
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
+import {
+  iconNode,
+  toolIconId,
+  categoryIconId
+} from "./icon-system.js";
 import { executeTool } from "./tool-engine.js";
 import { describeDiceExpression } from "./dice-engine.js";
 import {
@@ -388,6 +393,30 @@ function iconButton(label, glyph, handler, extraClass = "") {
     title: label,
     onClick: handler
   }, glyph);
+}
+
+function visualToolIcon(tool, className = "") {
+  const iconId = toolIconId(tool);
+  if (iconId) {
+    return iconNode(iconId, { className });
+  }
+  return node("span", {
+    class: (className + " visual-icon-fallback").trim(),
+    text: tool?.icon || "✦",
+    "aria-hidden": "true"
+  });
+}
+
+function visualCategoryIcon(category, className = "") {
+  const iconId = categoryIconId(category);
+  if (iconId) {
+    return iconNode(iconId, { className });
+  }
+  return node("span", {
+    class: (className + " visual-icon-fallback").trim(),
+    text: category?.icon || "✦",
+    "aria-hidden": "true"
+  });
 }
 
 function announce(message) {
@@ -2216,11 +2245,7 @@ function renderParty() {
 
   const top = node("header", { class: "party-host-bar" }, [
     node("div", { class: "party-host-title" }, [
-      node("span", {
-        class: "party-tool-icon",
-        text: tool.icon,
-        "aria-hidden": "true"
-      }),
+      visualToolIcon(tool, "party-tool-icon"),
       node("div", {}, [
         node("strong", { text: tool.name }),
         node("span", {
@@ -2458,7 +2483,9 @@ function renderAudience() {
 
   if (!data) {
     return node("main", { class: "audience-shell waiting" }, [
-      node("div", { class: "audience-waiting-mark", text: "✦" }),
+      node("div", { class: "audience-waiting-mark" },
+        iconNode("brand")
+      ),
       node("strong", { text: "Waiting for host" }),
       node("span", {
         text: "This window only receives sanitized Party presentation data."
@@ -2472,10 +2499,7 @@ function renderAudience() {
 
   shell.append(node("header", { class: "audience-header" }, [
     node("div", {}, [
-      node("span", {
-        class: "party-tool-icon",
-        text: data.tool?.icon || "✦"
-      }),
+      visualToolIcon(data.tool, "party-tool-icon"),
       node("strong", {
         text: data.tool?.name || "Randomizer Arcade"
       })
@@ -2512,7 +2536,9 @@ function renderAudience() {
     shell.append(node("section", {
       class: "audience-private"
     }, [
-      node("div", { text: "◈" }),
+      node("div", { class: "audience-private-mark" },
+        iconNode("lock")
+      ),
       node("strong", { text: "Private reveal" }),
       node("span", {
         text: "The assignment stays on the host device."
@@ -2912,7 +2938,7 @@ function toolCard(tool) {
     type: "button",
     onClick: () => openTool(tool.id)
   }, [
-    node("span", { class: "tool-icon", text: tool.icon, "aria-hidden": "true" }),
+    visualToolIcon(tool, "tool-icon"),
     node("strong", { text: tool.name }),
     node("small", { text: tool.blurb })
   ]);
@@ -2963,9 +2989,8 @@ function presetCard(preset) {
     class: "saved-setup-card accent-" + (tool?.accent || "cyan")
   }, [
     node("div", {
-      class: "saved-setup-icon",
-      text: tool?.icon || "✦"
-    }),
+      class: "saved-setup-icon"
+    }, visualToolIcon(tool, "saved-setup-tool-icon")),
     node("div", { class: "saved-setup-copy" }, [
       node("div", { class: "saved-setup-title-row" }, [
         node("strong", { text: preset.name }),
@@ -3023,10 +3048,8 @@ function templateCard(template) {
     class: "session-template-card"
   }, [
     node("div", {
-      class: "session-template-icon",
-      text: "◆",
-      "aria-hidden": "true"
-    }),
+      class: "session-template-icon"
+    }, iconNode("template")),
     node("div", { class: "session-template-copy" }, [
       node("strong", { text: template.name }),
       node("span", {
@@ -5071,9 +5094,8 @@ function topBar() {
     node("div", { class: "brand" }, [
       node("div", {
         class: "brand-icon",
-        text: "✦",
         "aria-hidden": "true"
-      }),
+      }, iconNode("brand", { className: "brand-mark-svg" })),
       node("div", { class: "brand-copy" }, [
         node("strong", { text: "Randomizer" }),
         node("span", { text: "Arcade" })
@@ -5102,30 +5124,34 @@ function topBar() {
         node("span", { class: "rng-dot", "aria-hidden": "true" }),
         node("span", { text: seeded ? "Seeded" : "Secure" })
       ]),
-      iconButton("Open Arcade", "◫", () => setView("arcade"))
+      iconButton(
+        "Open Arcade",
+        iconNode("arcade"),
+        () => setView("arcade")
+      )
     ])
   ]);
 }
 
 function bottomNav() {
   const items = [
-    ["play", "▶", "Play"],
-    ["arcade", "◫", "Arcade"],
-    ["studio", "◆", "Studio"],
-    ["pools", "◎", "Pools"],
-    ["history", "↶", "History"]
+    ["play", "play", "Play"],
+    ["arcade", "arcade", "Arcade"],
+    ["studio", "studio", "Studio"],
+    ["pools", "pools", "Pools"],
+    ["history", "history", "History"]
   ];
 
   return node("nav", {
     class: "bottom-nav",
     "aria-label": "Primary navigation"
-  }, items.map(([id, glyph, label]) => node("button", {
+  }, items.map(([id, iconId, label]) => node("button", {
     class: "nav-button " + (state.view === id ? "active" : ""),
     type: "button",
     "aria-current": state.view === id ? "page" : null,
     onClick: () => setView(id)
   }, [
-    node("span", { text: glyph, "aria-hidden": "true" }),
+    iconNode(iconId, { className: "nav-icon" }),
     label
   ])));
 }
@@ -5156,13 +5182,14 @@ function emptyState(title, copy, actionLabel, action) {
   return box;
 }
 
-function quickButton(glyph, label, id) {
+function quickButton(label, id) {
+  const tool = resolveTool(id);
   return node("button", {
-    class: "quick-button",
+    class: "quick-button accent-" + (tool?.accent || "cyan"),
     type: "button",
     onClick: () => openTool(id)
   }, [
-    node("span", { text: glyph, "aria-hidden": "true" }),
+    visualToolIcon(tool, "quick-tool-icon"),
     label
   ]);
 }
@@ -5179,7 +5206,7 @@ function renderPlay() {
   ]);
 
   const searchWrap = node("label", { class: "search-box" }, [
-    node("span", { text: "⌕", "aria-hidden": "true" }),
+    iconNode("search", { className: "search-icon" }),
     node("span", { class: "sr-only", text: "Search randomizers" })
   ]);
 
@@ -5203,10 +5230,10 @@ function renderPlay() {
 
   if (!state.search.trim()) {
     hero.append(node("div", { class: "quick-grid" }, [
-      quickButton("◐", "Coin", "coin"),
-      quickButton("⬡", "Dice", "dice"),
-      quickButton("◉", "Wheel", "wheel"),
-      quickButton("#", "Number", "number")
+      quickButton("Coin", "coin"),
+      quickButton("Dice", "dice"),
+      quickButton("Wheel", "wheel"),
+      quickButton("Number", "number")
     ]));
   }
 
@@ -5351,7 +5378,15 @@ function renderArcade() {
   for (const category of CATEGORIES) {
     const tools = TOOLS.filter((tool) => tool.category === category.id);
     if (!tools.length) continue;
-    content.append(sectionHeader(category.icon + "  " + category.name, tools.length + " tools"));
+    content.append(node("div", {
+      class: "section-head section"
+    }, [
+      node("h2", { class: "category-title" }, [
+        visualCategoryIcon(category, "category-icon"),
+        node("span", { text: category.name })
+      ]),
+      node("p", { text: tools.length + " tools" })
+    ]));
     content.append(node("div", { class: "tool-grid" }, tools.map(toolCard)));
   }
 
@@ -5868,7 +5903,15 @@ function renderHistory() {
         + (pinned ? " is-pinned" : "")
         + (group.kind === "session" ? " is-session" : "")
     }, [
-      node("div", { class: "history-icon", text: group.icon || "✦" }),
+      node("div", { class: "history-icon" },
+        visualToolIcon(
+          resolveTool(group.toolId) || {
+            id: group.toolId,
+            icon: group.icon || "✦"
+          },
+          "history-tool-icon"
+        )
+      ),
       node("div", { class: "history-group-copy" }, [
         node("div", { class: "history-group-title-row" }, [
           node("strong", {
@@ -7408,20 +7451,16 @@ function renderTool() {
   const head = node("div", {
     class: "tool-head accent-" + tool.accent
   }, [
-    iconButton("Back", "←", closeTool),
-    node("span", {
-      class: "tool-symbol",
-      text: tool.icon,
-      "aria-hidden": "true"
-    }),
+    iconButton("Back", iconNode("back"), closeTool),
+    visualToolIcon(tool, "tool-symbol"),
     node("h1", { text: tool.name }),
     iconButton(
       favorite ? "Remove favorite" : "Add favorite",
-      favorite ? "★" : "☆",
+      iconNode(favorite ? "star-filled" : "star"),
       () => toggleFavorite(tool.id),
       favorite ? "favorite-star" : ""
     ),
-    iconButton("Randomness settings", "⚙", () => {
+    iconButton("Randomness settings", iconNode("settings"), () => {
       if (state.computeBusy) {
         announce("Finish the current randomization before changing settings.");
         return;
