@@ -106,6 +106,9 @@ jobs:
       - name: Performance policy certification
         run: node tests/performance-model.mjs
 
+      - name: Large-scale storage regression certification
+        run: node tests/storage-scale.mjs
+
       - name: Background compute equivalence certification
         run: node tests/compute-tasks.mjs
 
