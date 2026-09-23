@@ -390,6 +390,186 @@ function announce(message) {
   }, 20);
 }
 
+
+function currentRegionalLocale() {
+  const normalized = normalizeAccessibilitySettings(
+    state.settings || {}
+  );
+  return resolveRegionalLocale(
+    normalized.accessibility.regionalFormat,
+    navigator.languages || [navigator.language]
+  );
+}
+
+function localizedDateTime(value, options = {}) {
+  return formatDateTime(
+    value,
+    currentRegionalLocale(),
+    options
+  );
+}
+
+function localizedBytes(value) {
+  return formatBytes(
+    value,
+    currentRegionalLocale()
+  );
+}
+
+function systemPrefersMoreContrast() {
+  return Boolean(
+    window.matchMedia
+    && window.matchMedia("(prefers-contrast: more)").matches
+  );
+}
+
+function applyAccessibilityPreferences() {
+  if (!state.settings) return;
+  state.settings = normalizeAccessibilitySettings(state.settings);
+  const locale = currentRegionalLocale();
+  const accessibility = state.settings.accessibility;
+  const rootElement = document.documentElement;
+
+  rootElement.lang = languageFromLocale(locale);
+  rootElement.dataset.locale = locale;
+  rootElement.dataset.contrast = effectiveContrastMode(
+    accessibility.contrast,
+    systemPrefersMoreContrast()
+  );
+  rootElement.dataset.controlSize = accessibility.controlSize;
+}
+
+function prefersReducedMotionNow() {
+  const motion =
+    state.settings?.presentation?.motion
+    || state.settings?.motion
+    || "system";
+  if (motion === "reduced") return true;
+  if (motion === "full") return false;
+  return Boolean(
+    window.matchMedia
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+function scrollToTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: prefersReducedMotionNow() ? "auto" : "smooth"
+  });
+}
+
+function modalSignature() {
+  if (!state.modal) return null;
+  if (typeof state.modal === "string") return state.modal;
+  return state.modal.type || "modal";
+}
+
+function focusIdentity(element) {
+  if (!(element instanceof HTMLElement)) return null;
+  return {
+    id: element.id || null,
+    name: element.getAttribute("name"),
+    ariaLabel: element.getAttribute("aria-label"),
+    tagName: element.tagName
+  };
+}
+
+function matchingFocusable(container, identity) {
+  if (!identity) return null;
+  const candidates = [
+    ...container.querySelectorAll(focusableSelector())
+  ];
+  return candidates.find((candidate) => {
+    if (!(candidate instanceof HTMLElement)) return false;
+    if (identity.id && candidate.id === identity.id) return true;
+    if (
+      identity.name
+      && candidate.getAttribute("name") === identity.name
+      && candidate.tagName === identity.tagName
+    ) return true;
+    if (
+      identity.ariaLabel
+      && candidate.getAttribute("aria-label") === identity.ariaLabel
+      && candidate.tagName === identity.tagName
+    ) return true;
+    return false;
+  }) || null;
+}
+
+function finalizeModalAccessibility(modal, previousFocusIdentity = null) {
+  modal.tabIndex = -1;
+
+  const heading = modal.querySelector("h1,h2,h3");
+  if (heading) {
+    if (!heading.id) {
+      heading.id = "modal-title-" + Math.random().toString(36).slice(2, 9);
+    }
+    modal.setAttribute("aria-labelledby", heading.id);
+  } else {
+    modal.setAttribute("aria-label", "Dialog");
+  }
+
+  const description = modal.querySelector("p");
+  if (description) {
+    if (!description.id) {
+      description.id = "modal-description-" + Math.random().toString(36).slice(2, 9);
+    }
+    modal.setAttribute("aria-describedby", description.id);
+  }
+
+  modal.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const focusable = [
+      ...modal.querySelectorAll(focusableSelector())
+    ].filter((element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      return element.offsetParent !== null || element === document.activeElement;
+    });
+
+    if (!focusable.length) {
+      event.preventDefault();
+      modal.focus();
+      return;
+    }
+
+    const currentIndex = focusable.indexOf(document.activeElement);
+    const nextIndex = nextFocusIndex({
+      currentIndex,
+      count: focusable.length,
+      shiftKey: event.shiftKey
+    });
+    event.preventDefault();
+    focusable[nextIndex]?.focus();
+  });
+
+  window.requestAnimationFrame(() => {
+    const restored = matchingFocusable(
+      modal,
+      previousFocusIdentity
+    );
+    if (restored) {
+      restored.focus({ preventScroll: true });
+      return;
+    }
+
+    const first = modal.querySelector(focusableSelector());
+    if (first instanceof HTMLElement) {
+      first.focus({ preventScroll: true });
+    } else {
+      modal.focus({ preventScroll: true });
+    }
+  });
+}
+
+async function updateAccessibilitySetting(key, value) {
+  state.settings = normalizeAccessibilitySettings(state.settings);
+  state.settings.accessibility[key] = value;
+  await saveSettings(state.settings);
+  applyAccessibilityPreferences();
+}
+
+
 function parseList(text) {
   return String(text || "")
     .split(/\r?\n|;/)
