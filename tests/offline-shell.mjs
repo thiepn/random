@@ -37,6 +37,7 @@ for (const required of [
   "./design-system.css",
   "./brand-icons.css",
   "./app-shell.css",
+  "./home-arcade.css",
   "./assets/brand/random-spark-mark.svg",
   "./src/icon-system.js",
   "./phase13.css",
@@ -58,6 +59,14 @@ assert.ok(
 assert.ok(
   index.includes('./app-shell.css'),
   "index.html must load Adaptive Shell V4."
+);
+assert.ok(
+  index.includes('./home-arcade.css'),
+  "index.html must load Home / Arcade V5."
+);
+assert.ok(
+  index.indexOf('./home-arcade.css') > index.indexOf('./app-shell.css'),
+  "Home / Arcade V5 styles must load after V4 shell styles."
 );
 assert.ok(
   index.indexOf('./app-shell.css') > index.indexOf('./brand-icons.css'),
