@@ -39,6 +39,7 @@ jobs:
           node --check src/custom-experience-model.js
           node --check src/custom-engine.js
           node --check src/workflow-model.js
+          node --check src/data-portability.js
           node --check src/storage.js
           node --check src/registry.js
           node --check src/app.js
@@ -94,6 +95,9 @@ jobs:
 
       - name: Decision Studio workflow certification
         run: node tests/workflow-model.mjs
+
+      - name: Persistence and portability certification
+        run: node tests/data-portability.mjs
 
       - name: Guard decision randomness and unsafe execution
         run: |
