@@ -859,6 +859,7 @@ function finishPresentation(toolId, token = null, shouldRender = true) {
 
   const wasWheelReveal =
     toolId === "wheel"
+    || ts.presentation?.sourceKind === "wheel"
     || ts.presentation?.kind === "wheel";
 
   clearPresentationTimers(toolId);
