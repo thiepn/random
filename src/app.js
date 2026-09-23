@@ -1109,7 +1109,9 @@ async function loadData() {
   state.sessions = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
   state.historyPins = new Set(pins.map((entry) => entry.id));
   state.favorites = favorites.map((entry) => entry.id);
-  state.settings = normalizeExperienceSettings(settings);
+  state.settings = normalizeAccessibilitySettings(
+    normalizeExperienceSettings(settings)
+  );
 }
 
 function cloneData(value) {
@@ -13086,7 +13088,9 @@ function renderModal() {
   ) {
     renderRunDetailModal(modal, state.modal);
   } else if (state.modal === "settings") {
-    state.settings = normalizeExperienceSettings(state.settings);
+    state.settings = normalizeAccessibilitySettings(
+      normalizeExperienceSettings(state.settings)
+    );
 
     modal.append(
       node("h2", { text: "Randomness" }),
