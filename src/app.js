@@ -25,6 +25,7 @@ import {
   getDeviceIdentity,
   renameDevice,
   getRecentPage,
+  getMany,
   deleteMatching,
   DATABASE_VERSION,
   PORTABLE_STORAGE_STORES
@@ -773,6 +774,42 @@ async function loadData() {
     getSettings()
   ]);
 
+  const loadedRunIds = new Set(
+    runPage.records.map((run) => String(run.id))
+  );
+  const criticalRunIds = new Set();
+
+  for (const session of sessions) {
+    if (session.status !== "active") continue;
+    for (const runId of session.runIds || []) {
+      criticalRunIds.add(String(runId));
+    }
+  }
+  for (const session of templateSessions) {
+    if (session.status !== "active") continue;
+    for (const step of session.steps || []) {
+      if (step.runId) criticalRunIds.add(String(step.runId));
+    }
+  }
+  for (const session of partySessions) {
+    if (session.status !== "active") continue;
+    for (const runId of session.runIds || []) {
+      criticalRunIds.add(String(runId));
+    }
+  }
+  for (const session of workflowSessions) {
+    if (session.status !== "active" && session.status !== "paused") continue;
+    for (const entry of session.path || []) {
+      if (entry.runId) criticalRunIds.add(String(entry.runId));
+    }
+  }
+
+  const missingCriticalRunIds = [...criticalRunIds]
+    .filter((id) => !loadedRunIds.has(id));
+  const criticalRuns = missingCriticalRunIds.length
+    ? await getMany("runs", missingCriticalRunIds)
+    : [];
+
   state.pools = pools
     .map(normalizePool)
     .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
@@ -799,8 +836,11 @@ async function loadData() {
   );
   state.history = historyPage.records
     .sort((a, b) => b.timestamp - a.timestamp);
-  state.runs = runPage.records
-    .sort((a, b) => b.timestamp - a.timestamp);
+  state.runs = mergeRecentRecords(
+    runPage.records,
+    criticalRuns,
+    { sortKey: "timestamp" }
+  );
   state.historyPaging = {
     runsBefore: runPage.nextCursor,
     historyBefore: historyPage.nextCursor,
