@@ -207,6 +207,7 @@ for (const requiredStep of [
   "Home and Arcade V5 certification",
   "Tool Experience V6 certification",
   "Results and Motion V7 certification",
+  "Professional Surfaces V8 certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {

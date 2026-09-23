@@ -21,6 +21,7 @@ A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not cha
 - [V5 Home / Arcade V2](./docs/design/V5-HOME-ARCADE.md)
 - [V6 Tool Experience V2](./docs/design/V6-TOOL-EXPERIENCE.md)
 - [V7 Results, Motion & Game Feel V2](./docs/design/V7-RESULTS-MOTION.md)
+- [V8 Professional Surfaces](./docs/design/V8-PROFESSIONAL-SURFACES.md)
 
 Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
 
@@ -35,6 +36,8 @@ Selected direction: **Expressive Utility Arcade** — tactile, precise, playful,
 **V6 tools:** Tool screens now prioritize result Stage → primary Action Dock → secondary Setup, with distinct Coin, Dice, Wheel, Cards, Color, list, people, competition, private and generator visual families. D6 uses real pips and Cards use a physical deck/card treatment while existing presentation choreography remains intact.
 
 **V7 motion:** presentation now follows one anticipation → action → reveal → settle timeline with impact-synchronized sound/haptics, decelerating Wheel ticks, restrained celebration, History handoff, and a true opacity-only reduced-motion path.
+
+**V8 workbench:** Pools, History, Presets/Templates, Builder and Decision Studio now use a dense professional surface language with command bars, rows, inspectors, graph canvas/node ports and activity timelines rather than repeated rounded cards.
 
 ## Current foundation
 
