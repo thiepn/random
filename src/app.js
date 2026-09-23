@@ -8040,34 +8040,44 @@ function workflowCard(workflow) {
 }
 
 function renderWorkflowLibrary() {
-  const content = node("main", { class: "content workbench-view workflow-library-view" }, [
-    node("div", { class: "workbench-header workflow-page-head" }, [
-      node("div", {}, [
-        node("div", { class: "kicker", text: "Decision Studio" }),
-        node("h1", { class: "view-title", text: "Branch decisions into workflows." }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            "Build reusable decision graphs from saved Presets, route results through conditions, "
-            + "and run the whole path automatically or one step at a time."
-        })
-      ]),
+  const activeSessions = state.workflowSessions
+    .filter((session) => ["active", "paused"].includes(session.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  const recent = state.workflowSessions
+    .filter((session) => !["active", "paused"].includes(session.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, 8);
+  const usablePresets = workflowPresetChoices();
+
+  const content = node("main", {
+    class: "content workbench-view workflow-library-view"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Decision Studio",
+    title: "Branch decisions into workflows.",
+    copy:
+      "Build reusable decision graphs from saved Presets, route results through conditions, "
+      + "and run the whole path automatically or one step at a time.",
+    stats: [
+      [state.workflows.length, "workflows"],
+      [activeSessions.length, "in progress"],
+      [usablePresets.length, "usable presets"]
+    ],
+    actions: [
       node("button", {
         class: "primary",
         type: "button",
         onClick: () => startWorkflowEditor()
       }, "+ New Workflow")
-    ])
-  ]);
-
-  const activeSessions = state.workflowSessions
-    .filter((session) => ["active", "paused"].includes(session.status))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+    ]
+  }));
 
   if (activeSessions.length) {
     content.append(sectionHeader(
       "In progress",
-      activeSessions.length + " workflow run" + (activeSessions.length === 1 ? "" : "s")
+      activeSessions.length
+        + " workflow run"
+        + (activeSessions.length === 1 ? "" : "s")
     ));
     content.append(node("div", {
       class: "workflow-active-grid"
@@ -8078,13 +8088,25 @@ function renderWorkflowLibrary() {
         type: "button",
         onClick: () => openWorkflowSession(session.id)
       }, [
-        node("strong", { text: workflow?.name || session.workflowName }),
         node("span", {
-          text:
-            workflowStatusText(session.status)
-            + " · "
-            + session.stepCount
-            + " nodes committed"
+          class: "workflow-active-icon",
+          "aria-hidden": "true"
+        }, iconNode(
+          session.status === "paused" ? "pause" : "studio"
+        )),
+        node("div", {}, [
+          node("strong", { text: workflow?.name || session.workflowName }),
+          node("span", {
+            text:
+              workflowStatusText(session.status)
+              + " · "
+              + session.stepCount
+              + " nodes committed"
+          })
+        ]),
+        node("span", {
+          class: "workflow-active-cta",
+          text: "Open"
         })
       ]);
     })));
@@ -8099,9 +8121,9 @@ function renderWorkflowLibrary() {
 
   content.append(
     state.workflows.length
-      ? node("div", { class: "workflow-card-grid" },
-          state.workflows.map(workflowCard)
-        )
+      ? node("div", {
+          class: "workflow-card-grid workbench-table"
+        }, state.workflows.map(workflowCard))
       : emptyState(
           "No workflows yet",
           "Start with Input → Outcome, then insert Randomizer and Branch nodes.",
@@ -8110,13 +8132,11 @@ function renderWorkflowLibrary() {
         )
   );
 
-  const recent = state.workflowSessions
-    .filter((session) => !["active", "paused"].includes(session.status))
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, 8);
-
   if (recent.length) {
-    content.append(sectionHeader("Recent workflow runs", "Completed and ended sessions"));
+    content.append(sectionHeader(
+      "Recent workflow runs",
+      "Completed and ended sessions"
+    ));
     content.append(node("div", { class: "workflow-recent-list" },
       recent.map((session) =>
         node("button", {
