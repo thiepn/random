@@ -3057,10 +3057,15 @@ function recentHomeTools(limit = 6) {
 function homeContinuations(limit = 4) {
   const items = [];
 
-  for (const session of state.sessions) {
+  const seenToolSessions = new Set();
+  for (const session of [...state.sessions].sort(
+    (a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
+  )) {
     if (session.status !== "active") continue;
+    if (seenToolSessions.has(session.toolId)) continue;
     const tool = resolveTool(session.toolId);
     if (!tool) continue;
+    seenToolSessions.add(session.toolId);
     items.push({
       id: "tool-session:" + session.id,
       kind: "Tool session",
