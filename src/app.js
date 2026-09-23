@@ -13221,6 +13221,75 @@ function renderModal(previousFocusIdentity = null) {
     modal.append(
       node("h3", {
         class: "settings-section-title",
+        text: "Accessibility & region"
+      }),
+      node("p", {
+        class: "settings-section-copy",
+        text:
+          "Regional format changes dates and numbers without changing the app language. Contrast and control size are local display preferences."
+      })
+    );
+
+    const regionalFormat = node("select", {
+      class: "field",
+      "aria-label": "Regional format"
+    }, [
+      node("option", { value: "auto", text: "Region · System default" }),
+      node("option", { value: "en-US", text: "Region · English (United States)" }),
+      node("option", { value: "de-DE", text: "Region · Deutsch (Deutschland)" }),
+      node("option", { value: "fr-FR", text: "Region · Français (France)" }),
+      node("option", { value: "ko-KR", text: "Region · 한국어 (대한민국)" })
+    ]);
+    regionalFormat.value = state.settings.accessibility.regionalFormat;
+    regionalFormat.addEventListener("change", async () => {
+      await updateAccessibilitySetting(
+        "regionalFormat",
+        regionalFormat.value
+      );
+      render();
+    });
+
+    const contrast = node("select", {
+      class: "field",
+      "aria-label": "Contrast preference"
+    }, [
+      node("option", { value: "system", text: "Contrast · System" }),
+      node("option", { value: "standard", text: "Contrast · Standard" }),
+      node("option", { value: "more", text: "Contrast · Higher" })
+    ]);
+    contrast.value = state.settings.accessibility.contrast;
+    contrast.addEventListener("change", async () => {
+      await updateAccessibilitySetting("contrast", contrast.value);
+      render();
+    });
+
+    const controlSize = node("select", {
+      class: "field",
+      "aria-label": "Control size"
+    }, [
+      node("option", { value: "standard", text: "Controls · Standard" }),
+      node("option", { value: "large", text: "Controls · Large" })
+    ]);
+    controlSize.value = state.settings.accessibility.controlSize;
+    controlSize.addEventListener("change", async () => {
+      await updateAccessibilitySetting(
+        "controlSize",
+        controlSize.value
+      );
+      render();
+    });
+
+    modal.append(node("div", {
+      class: "settings-accessibility-grid"
+    }, [
+      regionalFormat,
+      contrast,
+      controlSize
+    ]));
+
+    modal.append(
+      node("h3", {
+        class: "settings-section-title",
         text: "Data & devices"
       }),
       node("p", {
