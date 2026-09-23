@@ -1,12 +1,12 @@
 {
   "name": "Randomizer Arcade",
   "short_name": "Random",
-  "description": "A vibrant arcade of randomizers and decision tools.",
+  "description": "A polished local-first arcade for randomizers and decision tools.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#090b14",
-  "theme_color": "#0a0c18",
+  "background_color": "#090b12",
+  "theme_color": "#0c0f17",
   "orientation": "any",
   "icons": [
     {
