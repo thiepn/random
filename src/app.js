@@ -702,6 +702,7 @@ function prepareRandomSource() {
   if (state.settings.randomness.mode !== "seeded") {
     return {
       source: createRng({ mode: "secure" }),
+      workerRandomSpec: { mode: "secure" },
       context: { mode: "secure" },
       settingsRecord: null
     };
@@ -721,6 +722,10 @@ function prepareRandomSource() {
 
   return {
     source,
+    workerRandomSpec: {
+      mode: "seeded",
+      seed: seed + "::" + position
+    },
     context: { mode: "seeded", seed, position },
     settingsRecord: { id: "app", value: nextSettings },
     nextSettings
@@ -739,8 +744,8 @@ async function loadData() {
     customExperiences,
     workflows,
     workflowSessions,
-    historyEntries,
-    runs,
+    historyPage,
+    runPage,
     sessions,
     pins,
     favorites,
@@ -756,8 +761,12 @@ async function loadData() {
     getAll("customExperiences"),
     getAll("workflows"),
     getAll("workflowSessions"),
-    getAll("history"),
-    getAll("runs"),
+    getRecentPage("history", "recent", {
+      limit: HISTORY_PAGE_SIZE
+    }),
+    getRecentPage("runs", "recent", {
+      limit: HISTORY_PAGE_SIZE
+    }),
     getAll("sessions"),
     getAll("historyPins"),
     getAll("favorites"),
@@ -788,10 +797,18 @@ async function loadData() {
   state.workflowSessions = workflowSessions.sort(
     (a, b) => b.updatedAt - a.updatedAt
   );
-  state.history = historyEntries
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 500);
-  state.runs = runs.sort((a, b) => b.timestamp - a.timestamp);
+  state.history = historyPage.records
+    .sort((a, b) => b.timestamp - a.timestamp);
+  state.runs = runPage.records
+    .sort((a, b) => b.timestamp - a.timestamp);
+  state.historyPaging = {
+    runsBefore: runPage.nextCursor,
+    historyBefore: historyPage.nextCursor,
+    runsHasMore: runPage.hasMore,
+    historyHasMore: historyPage.hasMore,
+    loading: false
+  };
+  state.historyRenderLimit = HISTORY_RENDER_CHUNK;
   state.sessions = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
   state.historyPins = new Set(pins.map((entry) => entry.id));
   state.favorites = favorites.map((entry) => entry.id);
