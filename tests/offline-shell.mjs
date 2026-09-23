@@ -35,8 +35,10 @@ for (const entry of entries) {
 
 for (const required of [
   "./phase13.css",
+  "./phase14.css",
   "./src/performance-model.js",
   "./src/worker-client.js",
+  "./src/accessibility-i18n.js",
   "./src/compute-tasks.js",
   "./src/compute-worker.js"
 ]) {
@@ -46,6 +48,10 @@ for (const required of [
 assert.ok(
   index.includes('./phase13.css'),
   "index.html must load Phase 13 styles."
+);
+assert.ok(
+  index.includes('./phase14.css'),
+  "index.html must load Phase 14 styles."
 );
 assert.equal(
   index.includes("\\n"),
