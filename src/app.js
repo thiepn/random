@@ -5188,12 +5188,13 @@ function topBar() {
           text: seeded ? "Seeded" : "Secure"
         })
       ]),
-      iconButton(
-        "Open settings",
-        iconNode("settings"),
-        openSettingsPanel,
-        "topbar-settings"
-      )
+      node("button", {
+        class: "icon-button topbar-settings",
+        type: "button",
+        "aria-label": "Open settings",
+        title: "Open settings",
+        onClick: openSettingsPanel
+      }, iconNode("settings"))
     ])
   ]);
 }
