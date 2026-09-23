@@ -2513,7 +2513,9 @@ function renderAudience() {
     shell.append(node("section", {
       class: "audience-private audience-ended"
     }, [
-      node("div", { text: "✓" }),
+      node("div", { class: "audience-status-mark" },
+        iconNode("check")
+      ),
       node("strong", { text: "Party ended" }),
       node("span", { text: "Thanks for playing." })
     ]));
@@ -2521,7 +2523,9 @@ function renderAudience() {
     shell.append(node("section", {
       class: "audience-private audience-paused"
     }, [
-      node("div", { text: "Ⅱ" }),
+      node("div", { class: "audience-status-mark" },
+        iconNode("pause")
+      ),
       node("strong", { text: "Paused" }),
       node("span", { text: "Waiting for the host." })
     ]));
@@ -5163,6 +5167,9 @@ function sectionHeader(title, note = "") {
 
 function emptyState(title, copy, actionLabel, action) {
   const box = node("div", { class: "empty" }, [
+    node("div", { class: "empty-state-mark", "aria-hidden": "true" },
+      iconNode("brand")
+    ),
     node("strong", { text: title }),
     node("span", { text: copy })
   ]);
@@ -8792,8 +8799,13 @@ function toolError(message) {
     class: "tool-error",
     role: "alert"
   }, [
-    node("strong", { text: "Could not randomize" }),
-    node("span", { text: message })
+    node("div", { class: "tool-error-mark", "aria-hidden": "true" },
+      iconNode("warning")
+    ),
+    node("div", { class: "tool-error-copy" }, [
+      node("strong", { text: "Could not randomize" }),
+      node("span", { text: message })
+    ])
   ]);
 }
 
