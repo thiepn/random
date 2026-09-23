@@ -342,6 +342,7 @@ const constraintTools = new Set([
 ]);
 
 const presentationTimers = new Map();
+const presentationFeedbackTimers = new Map();
 const wheelTickTimers = new Map();
 let partyCountdownTimer = null;
 let hostUnlockTimer = null;
@@ -843,11 +844,13 @@ function clearPresentationTimers(toolId) {
     presentationTimers.delete(toolId);
   }
 
-  const tick = wheelTickTimers.get(toolId);
-  if (tick) {
-    clearInterval(tick);
-    wheelTickTimers.delete(toolId);
-  }
+  const feedback = presentationFeedbackTimers.get(toolId) || [];
+  feedback.forEach((timer) => clearTimeout(timer));
+  presentationFeedbackTimers.delete(toolId);
+
+  const ticks = wheelTickTimers.get(toolId) || [];
+  ticks.forEach((timer) => clearTimeout(timer));
+  wheelTickTimers.delete(toolId);
 }
 
 function finishPresentation(toolId, token = null, shouldRender = true) {
@@ -947,26 +950,46 @@ function beginPresentation(toolId, ts, result, { silent = false } = {}) {
 
   if (!silent) {
     primeAudio(settings.presentation.sound);
-    playPresentationCue(plan.cue, {
-      enabled: settings.presentation.sound,
-      mode: plan.mode
+    const feedbackTimers = [];
+
+    const scheduleFeedback = (delay, callback) => {
+      if (delay <= 0) {
+        callback();
+        return;
+      }
+      feedbackTimers.push(setTimeout(callback, delay));
+    };
+
+    scheduleFeedback(plan.cueAtMs, () => {
+      playPresentationCue(plan.cue, {
+        enabled: settings.presentation.sound,
+        mode: plan.mode
+      });
     });
-    playHaptic(plan.haptic, settings.presentation.haptics);
+    scheduleFeedback(plan.hapticAtMs, () => {
+      playHaptic(plan.haptic, settings.presentation.haptics);
+    });
+
+    if (feedbackTimers.length) {
+      presentationFeedbackTimers.set(toolId, feedbackTimers);
+    }
   }
 
   if (
     toolId === "wheel"
-    && plan.tickMs > 0
+    && plan.tickSchedule?.length
     && settings.presentation.sound
     && !silent
   ) {
-    const tick = setInterval(() => {
-      playWheelTick({
-        enabled: settings.presentation.sound,
-        mode: plan.mode
-      });
-    }, plan.tickMs);
-    wheelTickTimers.set(toolId, tick);
+    const tickTimers = plan.tickSchedule.map((delay) =>
+      setTimeout(() => {
+        playWheelTick({
+          enabled: settings.presentation.sound,
+          mode: plan.mode
+        });
+      }, delay)
+    );
+    wheelTickTimers.set(toolId, tickTimers);
   }
 
   if (plan.duration > 0) {
@@ -8902,6 +8925,7 @@ function presentationStageClasses(tool, ts) {
     " reveal-" + p.kind,
     " presentation-" + p.mode,
     " effects-" + p.effects,
+    " motion-v2",
     p.celebration ? " is-celebration" : "",
     p.reducedMotion ? " is-reduced-reveal" : ""
   ].join("");
@@ -8912,6 +8936,11 @@ function presentationStageStyle(ts) {
   if (!p) return {};
   return {
     "--present-duration": p.duration + "ms",
+    "--anticipation-duration": p.anticipationMs + "ms",
+    "--reveal-duration": p.revealMs + "ms",
+    "--settle-duration": p.settleMs + "ms",
+    "--active-duration": p.activeMs + "ms",
+    "--impact-delay": p.impactMs + "ms",
     "--reveal-stagger": p.staggerMs + "ms"
   };
 }
@@ -9030,7 +9059,7 @@ function buildCustomStage(tool, ts, wrap) {
         transform:
           "rotate(" + (ts.previousWheelRotation || 0) + "deg)",
         transitionDuration:
-          (ts.presentation?.duration || 0) + "ms"
+          (ts.presentation?.activeMs || ts.presentation?.duration || 0) + "ms"
       }
     });
     const labels = wheelLabels(model);
@@ -9340,7 +9369,7 @@ function buildStage(tool, ts) {
         background: makeWheelGradient(model),
         transform: "rotate(" + (ts.previousWheelRotation || 0) + "deg)",
         transitionDuration:
-          (ts.presentation?.duration || 0) + "ms"
+          (ts.presentation?.activeMs || ts.presentation?.duration || 0) + "ms"
       }
     });
     const labels = wheelLabels(model);
@@ -11313,6 +11342,8 @@ function buildToolActionDock(tool, ts) {
     class:
       "tool-action-dock tool-action-"
       + toolVisualFamily(tool)
+      + (ts.presentation ? " is-presenting" : ""),
+    style: presentationStageStyle(ts)
   });
 
   const primary = node("button", {
