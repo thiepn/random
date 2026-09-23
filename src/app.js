@@ -2936,16 +2936,217 @@ async function toggleFavorite(id) {
   render();
 }
 
-function toolCard(tool) {
+function toolCard(tool, {
+  variant = "standard",
+  eyebrow = "",
+  note = ""
+} = {}) {
+  const favorite = Boolean(
+    state.favorites.includes(tool.id)
+    || (
+      tool.custom
+      && customExperienceFromToolId(tool.id)?.favorite
+    )
+  );
+
   return node("button", {
-    class: "tool-card accent-" + tool.accent,
+    class:
+      "tool-card tool-card-v2 tool-card-"
+      + variant
+      + " accent-"
+      + tool.accent,
     type: "button",
     onClick: () => openTool(tool.id)
   }, [
-    visualToolIcon(tool, "tool-icon"),
-    node("strong", { text: tool.name }),
-    node("small", { text: tool.blurb })
+    node("div", {
+      class: "tool-card-visual",
+      "aria-hidden": "true"
+    }, [
+      node("span", { class: "tool-card-aura" }),
+      visualToolIcon(tool, "tool-icon")
+    ]),
+    node("div", { class: "tool-card-copy" }, [
+      eyebrow
+        ? node("span", { class: "tool-card-eyebrow", text: eyebrow })
+        : null,
+      node("strong", { text: tool.name }),
+      node("small", { text: tool.blurb }),
+      note
+        ? node("span", { class: "tool-card-note", text: note })
+        : null
+    ]),
+    favorite
+      ? node("span", {
+          class: "tool-card-favorite",
+          "aria-label": "Favorite"
+        }, iconNode("star-filled"))
+      : null
   ]);
+}
+
+function homeSectionHeader(
+  title,
+  note = "",
+  actionLabel = "",
+  action = null
+) {
+  return node("div", { class: "home-section-head" }, [
+    node("div", {}, [
+      node("h2", { text: title }),
+      note ? node("p", { text: note }) : null
+    ]),
+    actionLabel && action
+      ? node("button", {
+          class: "home-section-action",
+          type: "button",
+          onClick: action
+        }, actionLabel)
+      : null
+  ]);
+}
+
+function homeSearchBox({
+  className = "",
+  placeholder = "Search randomizers…"
+} = {}) {
+  const wrap = node("label", {
+    class: ("search-box home-search-box " + className).trim()
+  }, [
+    iconNode("search", { className: "search-icon" }),
+    node("span", { class: "sr-only", text: "Search randomizers" })
+  ]);
+
+  const search = node("input", {
+    type: "search",
+    value: state.search,
+    placeholder,
+    onInput: (event) => {
+      state.search = event.target.value;
+      render();
+      const next = document.querySelector(
+        "." + className.split(" ").filter(Boolean)[0] + " input"
+      ) || document.querySelector(".home-search-box input");
+      if (next) {
+        next.focus();
+        next.setSelectionRange(state.search.length, state.search.length);
+      }
+    }
+  });
+
+  wrap.append(search);
+  return wrap;
+}
+
+function recentHomeTools(limit = 6) {
+  const seen = new Set();
+  const recent = [];
+
+  for (const run of [...state.runs].sort(
+    (a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0)
+  )) {
+    const tool = resolveTool(run.toolId);
+    if (!tool || seen.has(tool.id)) continue;
+    seen.add(tool.id);
+    recent.push({ tool, run });
+    if (recent.length >= limit) break;
+  }
+
+  return recent;
+}
+
+function homeContinuations(limit = 4) {
+  const items = [];
+
+  const seenToolSessions = new Set();
+  for (const session of [...state.sessions].sort(
+    (a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0)
+  )) {
+    if (session.status !== "active") continue;
+    if (seenToolSessions.has(session.toolId)) continue;
+    const tool = resolveTool(session.toolId);
+    if (!tool) continue;
+    seenToolSessions.add(session.toolId);
+    items.push({
+      id: "tool-session:" + session.id,
+      kind: "Tool session",
+      title: tool.name,
+      detail: "Resume where you left off",
+      icon: visualToolIcon(tool, "continue-icon"),
+      updatedAt: session.updatedAt || session.createdAt || 0,
+      action: () => openTool(tool.id)
+    });
+  }
+
+  for (const session of state.templateSessions) {
+    if (session.status !== "active") continue;
+    const template = sessionTemplateById(session.templateId);
+    if (!template) continue;
+    items.push({
+      id: "template-session:" + session.id,
+      kind: "Guided session",
+      title: template.name,
+      detail:
+        (session.currentIndex != null
+          ? "Step " + (session.currentIndex + 1)
+          : "In progress"),
+      icon: iconNode("template", { className: "continue-icon" }),
+      updatedAt: session.updatedAt || session.createdAt || 0,
+      action: () => openTemplateSession(session.id)
+    });
+  }
+
+  for (const session of state.workflowSessions) {
+    if (!["active", "paused"].includes(session.status)) continue;
+    const workflow = workflowForSession(session);
+    if (!workflow) continue;
+    items.push({
+      id: "workflow-session:" + session.id,
+      kind: session.status === "paused" ? "Paused workflow" : "Workflow",
+      title: workflow.name,
+      detail:
+        session.stepCount
+        + (session.stepCount === 1 ? " committed step" : " committed steps"),
+      icon: iconNode("studio", { className: "continue-icon" }),
+      updatedAt: session.updatedAt || session.createdAt || 0,
+      action: () => openWorkflowSession(session.id)
+    });
+  }
+
+  return items
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt || 0).getTime()
+        - new Date(a.updatedAt || 0).getTime()
+    )
+    .slice(0, limit);
+}
+
+function continuationCard(item) {
+  return node("button", {
+    class: "continue-card",
+    type: "button",
+    onClick: item.action
+  }, [
+    node("div", { class: "continue-card-icon" }, item.icon),
+    node("div", { class: "continue-card-copy" }, [
+      node("span", { text: item.kind }),
+      node("strong", { text: item.title }),
+      node("small", { text: item.detail })
+    ]),
+    node("span", {
+      class: "continue-card-cta",
+      text: "Continue"
+    })
+  ]);
+}
+
+function arcadeCategoryCopy(categoryId) {
+  return ({
+    classics: "Fast decisions and the randomizers you reach for first.",
+    people: "Fairly split, pair, order, and assign people.",
+    generators: "Generate numbers, dates, colors, directions, and more.",
+    games: "Draws, brackets, elimination, cards, and playful chance."
+  })[categoryId] || "Explore randomizers.";
 }
 
 async function togglePresetFavorite(preset) {
@@ -5326,49 +5527,55 @@ function quickButton(label, id) {
 }
 
 function renderPlay() {
-  const content = node("main", { class: "content" });
+  const content = node("main", { class: "content home-v2" });
 
-  const hero = node("section", { class: "hero" }, [
-    node("div", { class: "kicker", text: "Arcade of randomness" }),
-    node("h1", { text: "Pick. Roll. Shuffle. Decide." }),
-    node("p", {
-      text: "One vibrant toolbox for quick chance, people, games, generators, and everyday decisions."
-    })
+  const featureTool = getTool("wheel");
+  const hero = node("section", {
+    class: "home-hero-v2 accent-rainbow"
+  }, [
+    node("div", { class: "home-hero-copy" }, [
+      node("div", { class: "kicker", text: "Randomizer Arcade" }),
+      node("h1", { text: "Make the choice. Keep the moment." }),
+      node("p", {
+        text:
+          "Fast randomizers for everyday decisions, games, groups, "
+          + "and anything that should be left to chance."
+      }),
+      homeSearchBox({
+        className: "home-primary-search",
+        placeholder: "Search tools, uses, or ideas…"
+      }),
+      node("div", { class: "home-hero-actions" }, [
+        node("button", {
+          class: "primary home-hero-primary",
+          type: "button",
+          onClick: () => openTool("picker")
+        }, "Pick something"),
+        node("button", {
+          class: "secondary",
+          type: "button",
+          onClick: () => setView("arcade")
+        }, "Browse all tools")
+      ])
+    ]),
+    node("button", {
+      class: "home-feature",
+      type: "button",
+      onClick: () => openTool(featureTool.id),
+      "aria-label": "Open Wheel"
+    }, [
+      node("div", { class: "home-feature-orbit", "aria-hidden": "true" }, [
+        node("span", { class: "home-feature-ring ring-one" }),
+        node("span", { class: "home-feature-ring ring-two" }),
+        visualToolIcon(featureTool, "home-feature-icon")
+      ]),
+      node("div", { class: "home-feature-copy" }, [
+        node("span", { text: "Featured randomizer" }),
+        node("strong", { text: featureTool.name }),
+        node("small", { text: "Spin any list into a decision." })
+      ])
+    ])
   ]);
-
-  const searchWrap = node("label", { class: "search-box" }, [
-    iconNode("search", { className: "search-icon" }),
-    node("span", { class: "sr-only", text: "Search randomizers" })
-  ]);
-
-  const search = node("input", {
-    type: "search",
-    value: state.search,
-    placeholder: "Try “teams”, “d20”, “dinner”, “lottery”…",
-    onInput: (event) => {
-      state.search = event.target.value;
-      render();
-      const next = document.querySelector(".search-box input");
-      if (next) {
-        next.focus();
-        next.setSelectionRange(state.search.length, state.search.length);
-      }
-    }
-  });
-
-  searchWrap.append(search);
-  hero.append(searchWrap);
-
-  if (!state.search.trim()) {
-    hero.append(node("div", { class: "quick-grid" }, [
-      quickButton("Coin", "coin"),
-      quickButton("Dice", "dice"),
-      quickButton("Wheel", "wheel"),
-      quickButton("Number", "number")
-    ]));
-  }
-
-  content.append(hero);
 
   if (state.search.trim()) {
     const q = state.search.trim().toLowerCase();
@@ -5387,13 +5594,94 @@ function renderPlay() {
       ...searchTools(state.search),
       ...customResults
     ];
-    content.append(sectionHeader("Search results", results.length + " found"));
-    content.append(
+
+    content.append(hero);
+    content.append(node("section", {
+      class: "home-section home-search-results"
+    }, [
+      homeSectionHeader(
+        "Search results",
+        results.length + (results.length === 1 ? " match" : " matches"),
+        "Clear",
+        () => {
+          state.search = "";
+          render();
+        }
+      ),
       results.length
-        ? node("div", { class: "tool-grid" }, results.map(toolCard))
-        : emptyState("No randomizer found", "Try a broader word or browse the Arcade.")
-    );
+        ? node("div", { class: "home-tool-grid search-tool-grid" },
+            results.map((tool, index) =>
+              toolCard(tool, {
+                variant: index < 2 ? "wide" : "standard"
+              })
+            )
+          )
+        : emptyState(
+            "No randomizer found",
+            "Try a broader word or browse the full Arcade.",
+            "Browse Arcade",
+            () => {
+              state.search = "";
+              setView("arcade");
+            }
+          )
+    ]));
     return content;
+  }
+
+  content.append(hero);
+
+  content.append(node("section", {
+    class: "home-quick-launch",
+    "aria-label": "Quick randomizers"
+  }, [
+    quickButton("Coin", "coin"),
+    quickButton("Dice", "dice"),
+    quickButton("Wheel", "wheel"),
+    quickButton("Number", "number")
+  ]));
+
+  const continuations = homeContinuations();
+  if (continuations.length) {
+    content.append(node("section", {
+      class: "home-section continue-section"
+    }, [
+      homeSectionHeader(
+        "Continue",
+        "Pick up an unfinished session."
+      ),
+      node("div", { class: "continue-grid" },
+        continuations.map(continuationCard)
+      )
+    ]));
+  }
+
+  const recent = recentHomeTools(6);
+  if (recent.length) {
+    content.append(node("section", {
+      class: "home-section recent-section"
+    }, [
+      homeSectionHeader(
+        "Jump back in",
+        "Your recently used randomizers.",
+        "History",
+        () => setView("history")
+      ),
+      node("div", { class: "home-tool-grid recent-tool-grid" },
+        recent.map(({ tool, run }, index) =>
+          toolCard(tool, {
+            variant: index === 0 ? "wide" : "compact",
+            eyebrow: index === 0 ? "Most recent" : "",
+            note: run.timestamp
+              ? localizedDateTime(run.timestamp, {
+                  month: "short",
+                  day: "numeric"
+                })
+              : ""
+          })
+        )
+      )
+    ]));
   }
 
   const favorites = [
@@ -5409,62 +5697,126 @@ function renderPlay() {
       )
       .map(experienceAsTool)
   ];
+
   if (favorites.length) {
-    content.append(sectionHeader("Favorites", "Your shortcuts"));
-    content.append(node("div", { class: "tool-grid" }, favorites.map(toolCard)));
-  }
-
-  const popular = [
-    "coin", "dice", "wheel", "picker",
-    "teams", "elimination", "cards", "tournament"
-  ].map(getTool).filter(Boolean);
-
-  const favoritePresets = state.presets.filter((preset) => preset.favorite);
-  const regularPresets = state.presets.filter((preset) => !preset.favorite);
-
-  if (state.presets.length) {
-    content.append(sectionHeader(
-      "Saved setups",
-      favoritePresets.length
-        ? favoritePresets.length + " favorite · " + state.presets.length + " total"
-        : state.presets.length + " Presets"
-    ));
-    content.append(node("div", { class: "saved-setup-grid" }, [
-      ...favoritePresets.map(presetCard),
-      ...regularPresets.map(presetCard)
+    content.append(node("section", {
+      class: "home-section favorites-section"
+    }, [
+      homeSectionHeader(
+        "Favorites",
+        "Your pinned shortcuts.",
+        "Arcade",
+        () => setView("arcade")
+      ),
+      node("div", { class: "favorite-strip" },
+        favorites.slice(0, 8).map((tool) =>
+          toolCard(tool, { variant: "compact" })
+        )
+      )
     ]));
   }
 
+  const favoritePresets = state.presets.filter((preset) => preset.favorite);
+  const regularPresets = state.presets.filter((preset) => !preset.favorite);
   const templates = allSessionTemplates();
-  content.append(node("div", { class: "section-head section template-section-head" }, [
-    node("div", {}, [
-      node("h2", { text: "Session Templates" }),
-      node("p", { text: "Linear reusable multi-step randomizer sessions." })
-    ]),
-    node("button", {
-      class: "small-action",
-      type: "button",
-      onClick: () => {
-        state.modal = {
-          type: "new-session-template",
-          name: "",
-          description: "",
-          steps: [
-            { presetId: state.presets[0]?.id || "", inputKind: "preset" },
-            { presetId: state.presets[1]?.id || state.presets[0]?.id || "", inputKind: "previous" }
-          ],
-          error: null
-        };
-        render();
-      }
-    }, "+ New Template")
-  ]));
-  content.append(node("div", { class: "session-template-grid" },
-    templates.map(templateCard)
-  ));
 
-  content.append(sectionHeader("Ready to play", "Fast, useful, no setup"));
-  content.append(node("div", { class: "tool-grid" }, popular.map(toolCard)));
+  if (state.presets.length || templates.length) {
+    content.append(node("section", {
+      class: "home-section home-library-section"
+    }, [
+      homeSectionHeader(
+        "Saved & guided",
+        "Reusable setups and multi-step sessions."
+      ),
+      node("div", { class: "home-library-layout" }, [
+        state.presets.length
+          ? node("div", { class: "home-library-panel" }, [
+              node("div", { class: "home-library-panel-head" }, [
+                node("div", {}, [
+                  node("span", { text: "Presets" }),
+                  node("strong", { text: "Saved setups" })
+                ]),
+                node("small", {
+                  text:
+                    favoritePresets.length
+                      ? favoritePresets.length + " favorite"
+                      : state.presets.length + " saved"
+                })
+              ]),
+              node("div", { class: "saved-setup-grid home-saved-grid" }, [
+                ...favoritePresets.map(presetCard),
+                ...regularPresets.map(presetCard)
+              ])
+            ])
+          : null,
+        node("div", { class: "home-library-panel template-home-panel" }, [
+          node("div", { class: "home-library-panel-head" }, [
+            node("div", {}, [
+              node("span", { text: "Sessions" }),
+              node("strong", { text: "Guided flows" })
+            ]),
+            node("button", {
+              class: "small-action",
+              type: "button",
+              onClick: () => {
+                state.modal = {
+                  type: "new-session-template",
+                  name: "",
+                  description: "",
+                  steps: [
+                    {
+                      presetId: state.presets[0]?.id || "",
+                      inputKind: "preset"
+                    },
+                    {
+                      presetId:
+                        state.presets[1]?.id
+                        || state.presets[0]?.id
+                        || "",
+                      inputKind: "previous"
+                    }
+                  ],
+                  error: null
+                };
+                render();
+              }
+            }, "+ New")
+          ]),
+          node("div", { class: "session-template-grid home-template-grid" },
+            templates.map(templateCard)
+          )
+        ])
+      ].filter(Boolean))
+    ]));
+  }
+
+  const explore = [
+    "picker",
+    "teams",
+    "dice",
+    "color",
+    "elimination",
+    "tournament"
+  ].map(getTool).filter(Boolean);
+
+  content.append(node("section", {
+    class: "home-section explore-section"
+  }, [
+    homeSectionHeader(
+      "Explore",
+      "Useful starting points across the Arcade.",
+      "All " + TOOLS.length + " tools",
+      () => setView("arcade")
+    ),
+    node("div", { class: "home-tool-grid explore-tool-grid" },
+      explore.map((tool, index) =>
+        toolCard(tool, {
+          variant: index < 2 ? "wide" : "standard"
+        })
+      )
+    )
+  ]));
+
   return content;
 }
 
@@ -5472,53 +5824,182 @@ function renderArcade() {
   const publishedCustom = state.customExperiences.filter(
     (experience) => experience.status === "published"
   );
-  const content = node("main", { class: "content" }, [
-    node("div", { class: "creation-page-head" }, [
-      node("div", {}, [
-        node("h1", { class: "view-title", text: "Arcade" }),
-        node("p", {
-          class: "view-subtitle",
-          text:
-            TOOLS.length
-            + " built-in randomizers"
-            + (publishedCustom.length
-              ? " · " + publishedCustom.length + " custom"
-              : "")
-        })
-      ]),
+  const totalTools = TOOLS.length + publishedCustom.length;
+  const content = node("main", {
+    class: "content arcade-v2"
+  });
+
+  content.append(node("section", { class: "arcade-hero-v2" }, [
+    node("div", { class: "arcade-hero-copy" }, [
+      node("span", { class: "kicker", text: "Complete library" }),
+      node("h1", { text: "The Arcade" }),
+      node("p", {
+        text:
+          "Every randomizer in one place—organized by what you "
+          + "want chance to do."
+      }),
+      node("div", { class: "arcade-stats" }, [
+        node("span", {}, [
+          node("strong", { text: String(totalTools) }),
+          " tools"
+        ]),
+        node("span", {}, [
+          node("strong", { text: String(CATEGORIES.length) }),
+          " categories"
+        ]),
+        publishedCustom.length
+          ? node("span", {}, [
+              node("strong", { text: String(publishedCustom.length) }),
+              " custom"
+            ])
+          : null
+      ].filter(Boolean))
+    ]),
+    node("div", { class: "arcade-hero-actions" }, [
       node("button", {
         class: "secondary",
         type: "button",
         onClick: () => setView("creations")
-      }, "My Creations")
-    ])
-  ]);
+      }, publishedCustom.length ? "My Creations" : "Create a tool")
+    ]),
+    homeSearchBox({
+      className: "arcade-primary-search",
+      placeholder: "Search all randomizers…"
+    })
+  ]));
+
+  if (state.search.trim()) {
+    const q = state.search.trim().toLowerCase();
+    const customResults = publishedCustom
+      .filter((experience) =>
+        [
+          experience.name,
+          experience.description,
+          experience.primitive,
+          ...(experience.tags || [])
+        ].join(" ").toLowerCase().includes(q)
+      )
+      .map(experienceAsTool);
+    const results = [
+      ...searchTools(state.search),
+      ...customResults
+    ];
+
+    content.append(node("section", {
+      class: "arcade-section arcade-search-section"
+    }, [
+      homeSectionHeader(
+        "Search results",
+        results.length + (results.length === 1 ? " match" : " matches"),
+        "Clear",
+        () => {
+          state.search = "";
+          render();
+        }
+      ),
+      results.length
+        ? node("div", { class: "arcade-tool-grid search-tool-grid" },
+            results.map((tool, index) =>
+              toolCard(tool, {
+                variant: index < 2 ? "wide" : "standard"
+              })
+            )
+          )
+        : emptyState(
+            "Nothing matched",
+            "Try another word or clear the search to browse by category."
+          )
+    ]));
+    return content;
+  }
+
+  content.append(node("nav", {
+    class: "arcade-category-jumps",
+    "aria-label": "Randomizer categories"
+  }, CATEGORIES.map((category) => {
+    const count = TOOLS.filter(
+      (tool) => tool.category === category.id
+    ).length;
+    return node("button", {
+      class: "category-jump category-" + category.id,
+      type: "button",
+      onClick: () => {
+        document.getElementById(
+          "arcade-category-" + category.id
+        )?.scrollIntoView({
+          behavior: prefersReducedMotionNow() ? "auto" : "smooth",
+          block: "start"
+        });
+      }
+    }, [
+      visualCategoryIcon(category, "category-jump-icon"),
+      node("span", {}, [
+        node("strong", { text: category.name }),
+        node("small", {
+          text: count + (count === 1 ? " tool" : " tools")
+        })
+      ])
+    ]);
+  })));
 
   if (publishedCustom.length) {
-    content.append(sectionHeader(
-      "✦  My Creations",
-      publishedCustom.length + " published"
-    ));
-    content.append(node("div", { class: "tool-grid" },
-      publishedCustom.map((experience) =>
-        toolCard(experienceAsTool(experience))
+    content.append(node("section", {
+      class: "arcade-section custom-arcade-section"
+    }, [
+      homeSectionHeader(
+        "My Creations",
+        publishedCustom.length + " published",
+        "Manage",
+        () => setView("creations")
+      ),
+      node("div", { class: "arcade-tool-grid custom-tool-grid" },
+        publishedCustom.map((experience, index) =>
+          toolCard(experienceAsTool(experience), {
+            variant: index === 0 ? "wide" : "standard",
+            eyebrow: index === 0 ? "Your collection" : ""
+          })
+        )
       )
-    ));
+    ]));
   }
 
   for (const category of CATEGORIES) {
-    const tools = TOOLS.filter((tool) => tool.category === category.id);
+    const tools = TOOLS.filter(
+      (tool) => tool.category === category.id
+    );
     if (!tools.length) continue;
-    content.append(node("div", {
-      class: "section-head section"
+
+    content.append(node("section", {
+      class:
+        "arcade-section arcade-category-section category-"
+        + category.id,
+      id: "arcade-category-" + category.id
     }, [
-      node("h2", { class: "category-title" }, [
-        visualCategoryIcon(category, "category-icon"),
-        node("span", { text: category.name })
+      node("div", { class: "arcade-category-head" }, [
+        node("div", { class: "arcade-category-mark" },
+          visualCategoryIcon(category, "category-icon")
+        ),
+        node("div", { class: "arcade-category-copy" }, [
+          node("div", {}, [
+            node("h2", { text: category.name }),
+            node("span", {
+              text:
+                tools.length
+                + (tools.length === 1 ? " tool" : " tools")
+            })
+          ]),
+          node("p", { text: arcadeCategoryCopy(category.id) })
+        ])
       ]),
-      node("p", { text: tools.length + " tools" })
+      node("div", { class: "arcade-tool-grid" },
+        tools.map((tool, index) =>
+          toolCard(tool, {
+            variant: index === 0 ? "feature" : "standard",
+            eyebrow: index === 0 ? "Category pick" : ""
+          })
+        )
+      )
     ]));
-    content.append(node("div", { class: "tool-grid" }, tools.map(toolCard)));
   }
 
   return content;

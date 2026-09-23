@@ -20,6 +20,7 @@ const SHELL = [
   "./phase14.css",
   "./brand-icons.css",
   "./app-shell.css",
+  "./home-arcade.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./assets/brand/random-spark-mark.svg",

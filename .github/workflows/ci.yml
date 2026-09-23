@@ -184,6 +184,9 @@ jobs:
       - name: Adaptive shell V4 certification
         run: node tests/adaptive-shell-v4.mjs
 
+      - name: Home and Arcade V5 certification
+        run: node tests/home-arcade-v5.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
