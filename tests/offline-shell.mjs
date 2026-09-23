@@ -38,6 +38,7 @@ for (const required of [
   "./brand-icons.css",
   "./app-shell.css",
   "./home-arcade.css",
+  "./tool-experience.css",
   "./assets/brand/random-spark-mark.svg",
   "./src/icon-system.js",
   "./phase13.css",
@@ -63,6 +64,14 @@ assert.ok(
 assert.ok(
   index.includes('./home-arcade.css'),
   "index.html must load Home / Arcade V5."
+);
+assert.ok(
+  index.includes('./tool-experience.css'),
+  "index.html must load Tool Experience V6."
+);
+assert.ok(
+  index.indexOf('./tool-experience.css') > index.indexOf('./home-arcade.css'),
+  "Tool Experience V6 must load after V5 discovery styles."
 );
 assert.ok(
   index.indexOf('./home-arcade.css') > index.indexOf('./app-shell.css'),
