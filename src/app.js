@@ -3429,7 +3429,7 @@ function downloadCustomExperience(experience) {
 }
 
 
-const PORTABILITY_APP_VERSION = "implementation-15";
+const PORTABILITY_APP_VERSION = "implementation-16";
 
 function downloadTextFile(text, filename, type = "application/json") {
   const blob = new Blob([text], { type });
