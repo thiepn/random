@@ -56,6 +56,25 @@ assert.ok(
   app.includes("state.favorites.includes(tool.id)"),
   "Favorites must keep using the existing favorites model."
 );
+assert.ok(
+  app.includes("...favoritePresets.map(presetCard)")
+    && app.includes("...regularPresets.map(presetCard)"),
+  "Home must keep every saved Preset accessible."
+);
+assert.ok(
+  app.includes("templates.map(templateCard)"),
+  "Home must keep every Session Template accessible."
+);
+assert.equal(
+  app.includes("favoritePresets.slice("),
+  false,
+  "V5 must not hide saved Presets behind a preview-only limit."
+);
+assert.equal(
+  app.includes("templates.slice("),
+  false,
+  "V5 must not hide Session Templates behind a preview-only limit."
+);
 
 assert.equal(
   app.includes('sectionHeader("Ready to play"'),
