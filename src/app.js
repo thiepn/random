@@ -1808,7 +1808,7 @@ async function applyPresetToTool(preset, {
       location.pathname + "?tool=" + encodeURIComponent(tool.id)
     );
     render();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    scrollToTop();
   }
 
   return next;
@@ -2522,7 +2522,7 @@ function openTemplateSession(sessionId) {
     location.pathname + "?templateSession=" + encodeURIComponent(session.id)
   );
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 async function openTemplateStep(session, stepIndex) {
@@ -2606,7 +2606,7 @@ async function openTemplateStep(session, stepIndex) {
     location.pathname + "?tool=" + encodeURIComponent(tool.id)
   );
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 async function toggleTemplateStepLock(session, stepIndex) {
@@ -2818,7 +2818,7 @@ function setView(view) {
   state.modal = null;
   history.replaceState({}, "", location.pathname);
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 function openTool(id) {
@@ -2837,7 +2837,7 @@ function openTool(id) {
   maybeResumeLatestSession(id);
   history.replaceState({}, "", location.pathname + "?tool=" + encodeURIComponent(id));
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 function closeTool() {
@@ -3285,7 +3285,7 @@ function openBuilder(experienceId = null, starter = "wheel") {
   state.modal = null;
   history.replaceState({}, "", location.pathname + "?builder=" + encodeURIComponent(draft.id));
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 async function persistBuilder(status = "draft") {
@@ -3393,19 +3393,7 @@ function downloadTextFile(text, filename, type = "application/json") {
 }
 
 function formatStorageBytes(value) {
-  const bytes = Number(value || 0);
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  const index = Math.min(
-    units.length - 1,
-    Math.floor(Math.log(bytes) / Math.log(1024))
-  );
-  const amount = bytes / (1024 ** index);
-  return (
-    amount >= 100 || index === 0
-      ? Math.round(amount)
-      : Math.round(amount * 10) / 10
-  ) + " " + units[index];
+  return localizedBytes(value);
 }
 
 async function refreshStorageStatus() {
@@ -4875,7 +4863,7 @@ function renderPortableImportModal(modal, config) {
       node("span", { text: "Created" }),
       node("strong", {
         text: summary.createdAt
-          ? new Intl.DateTimeFormat(undefined, {
+          ? new Intl.DateTimeFormat(currentRegionalLocale(), {
               dateStyle: "medium",
               timeStyle: "short"
             }).format(new Date(summary.createdAt))
@@ -5745,7 +5733,7 @@ function renderHistory() {
     return content;
   }
 
-  const formatter = new Intl.DateTimeFormat(undefined, {
+  const formatter = new Intl.DateTimeFormat(currentRegionalLocale(), {
     dateStyle: "medium",
     timeStyle: "short"
   });
@@ -5943,7 +5931,7 @@ function startWorkflowEditor(workflow = null) {
   state.toolId = null;
   history.replaceState({}, "", location.pathname + "?studio=edit");
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 function closeWorkflowEditor() {
@@ -6588,7 +6576,7 @@ function openWorkflowSession(sessionId) {
     location.pathname + "?workflowSession=" + encodeURIComponent(session.id)
   );
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
 }
 
 async function startWorkflowSession(workflow) {
@@ -7180,7 +7168,7 @@ function workflowCard(workflow) {
             "Latest · "
             + workflowStatusText(latest.status)
             + " · "
-            + new Intl.DateTimeFormat(undefined, {
+            + new Intl.DateTimeFormat(currentRegionalLocale(), {
               month: "short",
               day: "numeric",
               hour: "2-digit",
@@ -9802,7 +9790,7 @@ function replayStoredRun(run) {
     location.pathname + "?tool=" + encodeURIComponent(run.toolId)
   );
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
   announce("Replaying stored result. No randomness was used.");
 }
 
@@ -9860,7 +9848,7 @@ async function resumeStoredSession(session) {
     location.pathname + "?tool=" + encodeURIComponent(session.toolId)
   );
   render();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  scrollToTop();
   announce("Session resumed.");
 }
 
@@ -10793,7 +10781,7 @@ async function runTool(id) {
 
     if (id === "date") {
       const date = new Date(result.timestamp);
-      const localized = new Intl.DateTimeFormat(undefined, {
+      const localized = new Intl.DateTimeFormat(currentRegionalLocale(), {
         dateStyle: "long",
         timeZone: "UTC"
       }).format(date);
@@ -12904,7 +12892,7 @@ function renderRunDetailModal(modal, config) {
 
   modal.classList.add("run-detail-modal");
 
-  const formatter = new Intl.DateTimeFormat(undefined, {
+  const formatter = new Intl.DateTimeFormat(currentRegionalLocale(), {
     dateStyle: "medium",
     timeStyle: "long"
   });
