@@ -13815,6 +13815,23 @@ window.addEventListener("offline", () => {
   if (state.modal === "settings") render();
 });
 
+const contrastMediaQuery =
+  window.matchMedia?.("(prefers-contrast: more)") || null;
+if (contrastMediaQuery) {
+  const syncSystemContrast = () => {
+    if (
+      state.settings?.accessibility?.contrast === "system"
+    ) {
+      applyAccessibilityPreferences();
+    }
+  };
+  if (typeof contrastMediaQuery.addEventListener === "function") {
+    contrastMediaQuery.addEventListener("change", syncSystemContrast);
+  } else if (typeof contrastMediaQuery.addListener === "function") {
+    contrastMediaQuery.addListener(syncSystemContrast);
+  }
+}
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (state.reloadingForUpdate) {
