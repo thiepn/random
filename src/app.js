@@ -27,6 +27,7 @@ import {
   getRecentPage,
   getRecentForTool,
   getAllByIndex,
+  getLatestByCompoundPrefix,
   getMany,
   deleteMatching,
   DATABASE_VERSION,
@@ -746,14 +747,15 @@ async function loadData() {
     presets,
     ruleSets,
     sessionTemplates,
-    templateSessions,
-    partySessions,
     customExperiences,
     workflows,
-    workflowSessions,
     historyPage,
     runPage,
     activeSessions,
+    activeTemplateSessions,
+    activePartySessions,
+    activeWorkflowSessions,
+    pausedWorkflowSessions,
     pins,
     favorites,
     settings
@@ -763,11 +765,8 @@ async function loadData() {
     getAll("presets"),
     getAll("ruleSets"),
     getAll("sessionTemplates"),
-    getAll("templateSessions"),
-    getAll("partySessions"),
     getAll("customExperiences"),
     getAll("workflows"),
-    getAll("workflowSessions"),
     getRecentPage("history", "recent", {
       limit: HISTORY_PAGE_SIZE
     }),
@@ -775,10 +774,48 @@ async function loadData() {
       limit: HISTORY_PAGE_SIZE
     }),
     getAllByIndex("sessions", "status", "active"),
+    getAllByIndex("templateSessions", "status", "active"),
+    getAllByIndex("partySessions", "status", "active"),
+    getAllByIndex("workflowSessions", "status", "active"),
+    getAllByIndex("workflowSessions", "status", "paused"),
     getAll("historyPins"),
     getAll("favorites"),
     getSettings()
   ]);
+
+  const templateIds = [
+    ...BUILTIN_SESSION_TEMPLATES.map((template) => String(template.id)),
+    ...sessionTemplates.map((template) => String(template.id))
+  ];
+  const workflowIds = workflows.map((workflow) => String(workflow.id));
+
+  const [
+    latestTemplateSessions,
+    latestWorkflowSessions
+  ] = await Promise.all([
+    getLatestByCompoundPrefix(
+      "templateSessions",
+      "templateRecent",
+      templateIds
+    ),
+    getLatestByCompoundPrefix(
+      "workflowSessions",
+      "workflowRecent",
+      workflowIds
+    )
+  ]);
+
+  const templateSessions = mergeRecentRecords(
+    activeTemplateSessions,
+    latestTemplateSessions,
+    { sortKey: "updatedAt" }
+  );
+  const partySessions = activePartySessions;
+  const workflowSessions = mergeRecentRecords(
+    [...activeWorkflowSessions, ...pausedWorkflowSessions],
+    latestWorkflowSessions,
+    { sortKey: "updatedAt" }
+  );
 
   const activeSessionIds = new Set(
     activeSessions.map((session) => String(session.id))
