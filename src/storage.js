@@ -145,6 +145,50 @@ export async function getOne(store, id) {
 }
 
 
+export async function getMany(store, ids) {
+  const keys = [...new Set((ids || []).map(String))];
+  if (!keys.length) return [];
+
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const objectStore = tx.objectStore(store);
+    const output = [];
+    let remaining = keys.length;
+    let failed = false;
+
+    for (const id of keys) {
+      const request = objectStore.get(id);
+      request.onsuccess = () => {
+        if (request.result) output.push(request.result);
+        remaining -= 1;
+      };
+      request.onerror = () => {
+        failed = true;
+        reject(request.error);
+        try {
+          tx.abort();
+        } catch {
+          // Transaction may already be closing.
+        }
+      };
+    }
+
+    tx.oncomplete = () => {
+      if (!failed) resolve(output);
+    };
+    tx.onerror = () => {
+      if (!failed) reject(tx.error);
+    };
+    tx.onabort = () => {
+      if (!failed) {
+        reject(tx.error || new Error("IndexedDB batch read aborted."));
+      }
+    };
+  });
+}
+
+
 export async function getRecentPage(
   store,
   indexName = "recent",
