@@ -1,5 +1,5 @@
 const DB_NAME = "randomizer-arcade";
-export const DATABASE_VERSION = 10;
+export const DATABASE_VERSION = 11;
 export const PORTABLE_STORAGE_STORES = Object.freeze([
   "pools",
   "poolViews",
@@ -34,7 +34,8 @@ const INDEX_DEFINITIONS = Object.freeze({
   ],
   templateSessions: [
     ["recent", ["updatedAt", "id"], { unique: false }],
-    ["status", "status", { unique: false }]
+    ["status", "status", { unique: false }],
+    ["templateRecent", ["templateId", "updatedAt"], { unique: false }]
   ],
   partySessions: [
     ["recent", ["updatedAt", "id"], { unique: false }],
@@ -42,7 +43,8 @@ const INDEX_DEFINITIONS = Object.freeze({
   ],
   workflowSessions: [
     ["recent", ["updatedAt", "id"], { unique: false }],
-    ["status", "status", { unique: false }]
+    ["status", "status", { unique: false }],
+    ["workflowRecent", ["workflowId", "updatedAt"], { unique: false }]
   ]
 });
 
@@ -260,6 +262,62 @@ export async function getAllByIndex(
       .getAll(value);
     request.onsuccess = () => resolve(request.result || []);
     request.onerror = () => reject(request.error);
+  });
+}
+
+
+export async function getLatestByCompoundPrefix(
+  store,
+  indexName,
+  prefixValues
+) {
+  const prefixes = [...new Set(
+    (prefixValues || [])
+      .filter((value) => value != null)
+      .map(String)
+  )];
+  if (!prefixes.length) return [];
+
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const index = tx.objectStore(store).index(indexName);
+    const output = [];
+    let remaining = prefixes.length;
+    let explicitError = null;
+
+    for (const prefix of prefixes) {
+      const request = index.openCursor(
+        IDBKeyRange.bound(
+          [prefix, 0],
+          [prefix, Number.MAX_SAFE_INTEGER]
+        ),
+        "prev"
+      );
+
+      request.onerror = () => {
+        explicitError = request.error;
+        try {
+          tx.abort();
+        } catch {
+          // Transaction may already be closing.
+        }
+      };
+
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) output.push(cursor.value);
+        remaining -= 1;
+      };
+    }
+
+    tx.oncomplete = () => resolve(output);
+    tx.onerror = () => reject(explicitError || tx.error);
+    tx.onabort = () => reject(
+      explicitError
+      || tx.error
+      || new Error("IndexedDB grouped lookup aborted.")
+    );
   });
 }
 
