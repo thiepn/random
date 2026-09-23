@@ -1,0 +1,133 @@
+.skip-link{
+  position:fixed;
+  z-index:1000;
+  top:8px;
+  left:8px;
+  padding:10px 14px;
+  border:2px solid var(--cyan);
+  border-radius:12px;
+  background:var(--surface);
+  color:var(--text);
+  font-weight:850;
+  transform:translateY(-160%);
+  transition:transform .12s ease
+}
+.skip-link:focus{
+  transform:translateY(0)
+}
+
+#main-content:focus{
+  outline:none
+}
+
+.modal-backdrop{
+  overscroll-behavior:contain
+}
+.modal{
+  overscroll-behavior:contain
+}
+.modal:focus-visible{
+  outline:3px solid var(--cyan);
+  outline-offset:-6px
+}
+
+.workflow-node-card[tabindex="0"]{
+  cursor:pointer
+}
+.workflow-node-card[tabindex="0"]:focus-visible{
+  outline:3px solid var(--cyan);
+  outline-offset:3px
+}
+
+.settings-accessibility-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:10px 0 4px
+}
+
+html[data-contrast="more"]{
+  --border:rgba(255,255,255,.24);
+  --border-strong:rgba(255,255,255,.42);
+  --muted:#c5cbe0
+}
+html[data-contrast="more"] .secondary,
+html[data-contrast="more"] .small-action,
+html[data-contrast="more"] .icon-button,
+html[data-contrast="more"] .pill-button,
+html[data-contrast="more"] .field,
+html[data-contrast="more"] textarea.field,
+html[data-contrast="more"] select.field{
+  border-width:2px
+}
+html[data-contrast="more"] .nav-button:not(.active){
+  color:#b9c1d7
+}
+html[data-contrast="more"] .notice{
+  border-color:currentColor
+}
+
+html[data-control-size="large"] .small-action,
+html[data-control-size="large"] .segmented button,
+html[data-control-size="large"] .stepper button{
+  min-height:48px
+}
+html[data-control-size="large"] .field,
+html[data-control-size="large"] textarea.field,
+html[data-control-size="large"] select.field{
+  min-height:50px
+}
+html[data-control-size="large"] .icon-button{
+  width:48px;
+  min-height:48px
+}
+html[data-control-size="large"] .pill-button,
+html[data-control-size="large"] .nav-button{
+  min-height:48px
+}
+
+@media (pointer:coarse){
+  button,
+  [role="button"],
+  .workflow-node-card[tabindex="0"]{
+    min-height:44px
+  }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select{
+    min-height:44px
+  }
+  input[type="checkbox"],
+  input[type="radio"]{
+    width:22px;
+    height:22px
+  }
+}
+
+@media (max-width:700px){
+  .settings-accessibility-grid{
+    grid-template-columns:1fr
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .skip-link{
+    transition:none
+  }
+}
+
+@media (forced-colors:active){
+  .skip-link,
+  .workflow-node-card[tabindex="0"]:focus-visible,
+  .modal:focus-visible{
+    outline-color:Highlight;
+    border-color:Highlight
+  }
+}
+
+@media print{
+  .skip-link,
+  .topbar,
+  .bottom-nav{
+    display:none!important
+  }
+}
