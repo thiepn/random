@@ -17,10 +17,29 @@ export const CONTROL_SIZE_MODES = Object.freeze([
   "large"
 ]);
 
+export const THEME_MODES = Object.freeze([
+  "system",
+  "light",
+  "dark"
+]);
+
+export const ACCENT_MODES = Object.freeze([
+  "violet",
+  "cyan",
+  "blue",
+  "pink",
+  "red",
+  "gold",
+  "green",
+  "orange"
+]);
+
 export const DEFAULT_ACCESSIBILITY_SETTINGS = Object.freeze({
   regionalFormat: "auto",
   contrast: "system",
-  controlSize: "standard"
+  controlSize: "standard",
+  theme: "system",
+  accent: "violet"
 });
 
 export function normalizeAccessibilitySettings(settings = {}) {
@@ -36,7 +55,13 @@ export function normalizeAccessibilitySettings(settings = {}) {
         : DEFAULT_ACCESSIBILITY_SETTINGS.contrast,
       controlSize: CONTROL_SIZE_MODES.includes(source.controlSize)
         ? source.controlSize
-        : DEFAULT_ACCESSIBILITY_SETTINGS.controlSize
+        : DEFAULT_ACCESSIBILITY_SETTINGS.controlSize,
+      theme: THEME_MODES.includes(source.theme)
+        ? source.theme
+        : DEFAULT_ACCESSIBILITY_SETTINGS.theme,
+      accent: ACCENT_MODES.includes(source.accent)
+        ? source.accent
+        : DEFAULT_ACCESSIBILITY_SETTINGS.accent
     }
   };
 }
@@ -139,6 +164,15 @@ export function effectiveContrastMode(
   if (preference === "more") return "more";
   if (preference === "standard") return "standard";
   return systemMore ? "more" : "standard";
+}
+
+export function effectiveTheme(
+  preference = "system",
+  systemDark = false
+) {
+  if (preference === "light") return "light";
+  if (preference === "dark") return "dark";
+  return systemDark ? "dark" : "light";
 }
 
 export function focusableSelector() {
