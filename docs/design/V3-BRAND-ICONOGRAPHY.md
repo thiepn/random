@@ -58,7 +58,7 @@ This makes the icon family consistent across browser/platform font differences.
 
 All 25 built-in tools have dedicated SVG identities.
 
-### Shared actions
+### Shared actions and states
 
 V3 also defines reusable brand-consistent icons for:
 
@@ -68,7 +68,14 @@ V3 also defines reusable brand-consistent icons for:
 - favorite;
 - template;
 - lock;
-- workflow input/branch/output.
+- workflow input/branch/output;
+- success;
+- paused;
+- warning/error;
+- information;
+- offline state.
+
+The shared brand mark is also used in empty states, while warning and Party/Audience state icons replace miscellaneous status glyphs.
 
 ## Compatibility
 
