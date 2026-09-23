@@ -164,11 +164,6 @@
   font-size:1.2rem
 }
 
-.home-feature-copy small{
-  margin-top:var(--space-2);
-  color:var(--color-text-tertiary)
-}
-
 .home-quick-launch{
   position:relative;
   z-index:3;
@@ -486,8 +481,6 @@
   gap:var(--space-3);
   overflow-x:auto;
   padding:2px 1px var(--space-3);
-  overscroll-behavior-inline:contain;
-  scrollbar-width:thin
 }
 
 .home-library-layout{
@@ -540,9 +533,7 @@
   grid-template-columns:none;
   gap:var(--space-3);
   overflow-x:auto;
-  overscroll-behavior-inline:contain;
   padding:1px 1px var(--space-3);
-  scrollbar-width:thin
 }
 
 .arcade-hero-v2{
