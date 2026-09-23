@@ -1,6 +1,6 @@
 const DB_NAME = "randomizer-arcade";
-const DB_VERSION = 7;
-const STORES = [
+export const DATABASE_VERSION = 8;
+export const PORTABLE_STORAGE_STORES = Object.freeze([
   "pools",
   "poolViews",
   "ruleSets",
@@ -18,6 +18,26 @@ const STORES = [
   "favorites",
   "presets",
   "settings"
+]);
+const STORES = [
+  "pools",
+  "poolViews",
+  "ruleSets",
+  "sessionTemplates",
+  "templateSessions",
+  "partySessions",
+  "customExperiences",
+  "workflows",
+  "workflowSessions",
+  "history",
+  "runs",
+  "sessions",
+  "sessionEvents",
+  "historyPins",
+  "favorites",
+  "presets",
+  "settings",
+  "deviceMeta"
 ];
 
 let dbPromise;
@@ -35,7 +55,7 @@ function revisionConflict(expectedRevision, actualRevision) {
 function openDb() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(DB_NAME, DATABASE_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
       for (const store of STORES) {
@@ -414,4 +434,181 @@ export async function requestPersistentStorage() {
   } catch {
     return false;
   }
+}
+
+
+function assertKnownStore(name) {
+  if (!STORES.includes(name)) {
+    throw new Error("Unknown storage collection: " + name);
+  }
+}
+
+export async function dumpDatabaseStores(
+  storeNames = PORTABLE_STORAGE_STORES
+) {
+  const names = [...new Set(storeNames.map(String))];
+  names.forEach(assertKnownStore);
+  const db = await openDb();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(names, "readonly");
+    const output = {};
+    let remaining = names.length;
+    let failed = false;
+
+    if (!remaining) {
+      resolve(output);
+      return;
+    }
+
+    for (const name of names) {
+      const request = tx.objectStore(name).getAll();
+      request.onsuccess = () => {
+        output[name] = request.result || [];
+        remaining -= 1;
+      };
+      request.onerror = () => {
+        failed = true;
+        reject(request.error);
+        try {
+          tx.abort();
+        } catch {
+          // Transaction may already be closing.
+        }
+      };
+    }
+
+    tx.oncomplete = () => {
+      if (!failed) resolve(output);
+    };
+    tx.onerror = () => {
+      if (!failed) reject(tx.error);
+    };
+    tx.onabort = () => {
+      if (!failed) {
+        reject(tx.error || new Error("Database export transaction aborted."));
+      }
+    };
+  });
+}
+
+export async function replaceDatabaseStores(snapshot, {
+  storeNames = Object.keys(snapshot || {})
+} = {}) {
+  const names = [...new Set(storeNames.map(String))];
+  names.forEach(assertKnownStore);
+
+  for (const name of names) {
+    if (!Array.isArray(snapshot?.[name])) {
+      throw new Error("Restore data for " + name + " must be an array.");
+    }
+  }
+
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(names, "readwrite");
+    const counts = {};
+
+    try {
+      for (const name of names) {
+        const store = tx.objectStore(name);
+        store.clear();
+        counts[name] = snapshot[name].length;
+        for (const record of snapshot[name]) {
+          if (
+            !record
+            || typeof record !== "object"
+            || Array.isArray(record)
+            || record.id == null
+          ) {
+            throw new Error(
+              "Restore contains an invalid record in " + name + "."
+            );
+          }
+          store.put(record);
+        }
+      }
+    } catch (error) {
+      try {
+        tx.abort();
+      } catch {
+        // Transaction may already be closing.
+      }
+      reject(error);
+      return;
+    }
+
+    tx.oncomplete = () => resolve({ counts });
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(
+      tx.error || new Error("Database restore transaction aborted.")
+    );
+  });
+}
+
+export async function getStorageStatus() {
+  let estimate = null;
+  let persisted = false;
+
+  try {
+    if (navigator.storage?.estimate) {
+      estimate = await navigator.storage.estimate();
+    }
+  } catch {
+    estimate = null;
+  }
+
+  try {
+    if (navigator.storage?.persisted) {
+      persisted = await navigator.storage.persisted();
+    }
+  } catch {
+    persisted = false;
+  }
+
+  return {
+    persisted,
+    usage: Number(estimate?.usage || 0),
+    quota: Number(estimate?.quota || 0)
+  };
+}
+
+function defaultDeviceName() {
+  const platform =
+    navigator.userAgentData?.platform
+    || navigator.platform
+    || "Browser";
+  return String(platform).slice(0, 80) + " device";
+}
+
+export async function getDeviceIdentity() {
+  const current = await getOne("deviceMeta", "device");
+  if (current?.deviceId) return current;
+
+  const record = {
+    id: "device",
+    deviceId: globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : "device-" + Date.now().toString(36),
+    name: defaultDeviceName(),
+    platform:
+      navigator.userAgentData?.platform
+      || navigator.platform
+      || "",
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  await put("deviceMeta", record);
+  return record;
+}
+
+export async function renameDevice(name) {
+  const current = await getDeviceIdentity();
+  const next = {
+    ...current,
+    name: String(name || "").trim().slice(0, 120) || defaultDeviceName(),
+    updatedAt: Date.now()
+  };
+  await put("deviceMeta", next);
+  return next;
 }
