@@ -171,6 +171,9 @@ jobs:
       - name: Version baseline certification
         run: node tests/version-baseline.mjs
 
+      - name: Visual redesign contract certification
+        run: node tests/visual-redesign-contract.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
