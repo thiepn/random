@@ -5111,6 +5111,42 @@ function renderPools() {
   }
 
   content.append(list);
+
+  if (
+    groupWindow.hasMore
+    || state.historyPaging.runsHasMore
+    || state.historyPaging.historyHasMore
+  ) {
+    content.append(node("div", {
+      class: "history-load-more"
+    }, [
+      node("span", {
+        text:
+          groupWindow.shown
+          + " of "
+          + groups.length
+          + " loaded groups shown"
+      }),
+      node("button", {
+        class: "secondary",
+        type: "button",
+        disabled: state.historyPaging.loading ? "disabled" : null,
+        onClick: () => {
+          if (groupWindow.hasMore) {
+            state.historyRenderLimit = groupWindow.nextLimit;
+            render();
+          } else {
+            loadOlderHistory();
+          }
+        }
+      }, state.historyPaging.loading
+        ? "Loading…"
+        : groupWindow.hasMore
+          ? "Show more"
+          : "Load older History")
+    ]));
+  }
+
   return content;
 }
 function historyGroupPinKey(group) {
@@ -5122,14 +5158,14 @@ function historyGroupPinKey(group) {
 }
 
 async function clearStandaloneHistory() {
-  const standalone = state.runs.filter(
+  await deleteMatching(
+    "runs",
     (run) =>
       !run.sessionId
       && !run.templateSessionId
       && !run.partySessionId
       && !run.workflowSessionId
   );
-  await Promise.all(standalone.map((run) => remove("runs", run.id)));
   await clear("history");
 
   for (const key of [...state.historyPins]) {
@@ -5148,6 +5184,65 @@ async function clearStandaloneHistory() {
   );
   state.history = [];
   render();
+}
+
+async function loadOlderHistory() {
+  if (state.historyPaging.loading) return;
+  if (
+    !state.historyPaging.runsHasMore
+    && !state.historyPaging.historyHasMore
+  ) return;
+
+  state.historyPaging.loading = true;
+  render();
+
+  try {
+    const [runPage, historyPage] = await Promise.all([
+      state.historyPaging.runsHasMore
+        ? getRecentPage("runs", "recent", {
+            limit: HISTORY_PAGE_SIZE,
+            before: state.historyPaging.runsBefore
+          })
+        : Promise.resolve(null),
+      state.historyPaging.historyHasMore
+        ? getRecentPage("history", "recent", {
+            limit: HISTORY_PAGE_SIZE,
+            before: state.historyPaging.historyBefore
+          })
+        : Promise.resolve(null)
+    ]);
+
+    if (runPage) {
+      state.runs = mergeRecentRecords(
+        state.runs,
+        runPage.records,
+        { sortKey: "timestamp" }
+      );
+      state.historyPaging.runsBefore = runPage.nextCursor;
+      state.historyPaging.runsHasMore = runPage.hasMore;
+    }
+
+    if (historyPage) {
+      state.history = mergeRecentRecords(
+        state.history,
+        historyPage.records,
+        { sortKey: "timestamp" }
+      );
+      state.historyPaging.historyBefore = historyPage.nextCursor;
+      state.historyPaging.historyHasMore = historyPage.hasMore;
+    }
+
+    state.historyRenderLimit = nextProgressiveLimit(
+      state.historyRenderLimit,
+      state.runs.length + state.history.length,
+      HISTORY_RENDER_CHUNK
+    );
+  } catch (error) {
+    announce(error?.message || "Could not load older History.");
+  } finally {
+    state.historyPaging.loading = false;
+    render();
+  }
 }
 
 function renderHistory() {
@@ -5198,6 +5293,7 @@ function renderHistory() {
       type: "button",
       onClick: () => {
         state.historyFilter = value;
+        state.historyRenderLimit = HISTORY_RENDER_CHUNK;
         render();
       }
     }, label)
@@ -5233,9 +5329,14 @@ function renderHistory() {
     dateStyle: "medium",
     timeStyle: "short"
   });
+  const groupWindow = progressiveSlice(
+    groups,
+    state.historyRenderLimit,
+    HISTORY_RENDER_CHUNK
+  );
   const list = node("div", { class: "history-group-list" });
 
-  for (const group of groups) {
+  for (const group of groupWindow.visible) {
     const pinKey = historyGroupPinKey(group);
     const pinned = state.historyPins.has(pinKey);
     const latest = group.runs[0];
