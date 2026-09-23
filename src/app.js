@@ -404,6 +404,7 @@ function ensureToolState(toolId) {
       listText: defaultList(toolId),
       result: null,
       error: null,
+      computing: false,
       animating: false,
       wheelRotation: 0,
       previousWheelRotation: 0,
@@ -864,6 +865,7 @@ function cloneData(value) {
 function snapshotToolState(toolId, toolState) {
   const snapshot = cloneData(toolState);
   delete snapshot.error;
+  delete snapshot.computing;
   delete snapshot.animating;
   delete snapshot.pendingWheelRotation;
   delete snapshot.selectionOpen;
@@ -10083,10 +10085,11 @@ function buildControls(tool, ts) {
     class: "primary action-button",
     type: "button",
     onClick: () => runTool(tool.id)
-  }, actionLabel(tool.id, ts));
+  }, ts.computing ? "WORKING…" : actionLabel(tool.id, ts));
 
   if (
-    ts.replayRunId
+    ts.computing
+    || ts.replayRunId
     || (tool.id === "cards" && Array.isArray(ts.deck) && ts.deck.length === 0)
   ) {
     primary.disabled = true;
@@ -10286,6 +10289,8 @@ async function runTool(id) {
   const tool = resolveTool(id);
   let ts = ensureToolState(id);
 
+  if (ts.computing) return;
+
   if (ts.animating || ts.presentation) {
     if (skipPresentation(id)) return;
   }
@@ -10332,6 +10337,9 @@ async function runTool(id) {
     config.constraintFields = context.fields;
     config.historyPairs = [...historyPairsForTool(tool, ts)];
   }
+
+  ts.computing = true;
+  if (state.toolId === id || state.view === "party") render();
 
   try {
     let session = null;
@@ -10618,10 +10626,12 @@ async function runTool(id) {
       ts.animating = plan.duration > 0;
     }
 
+    ts.computing = false;
     render();
     announce(tool.name + " result: " + summary);
   } catch (error) {
     ts = ensureToolState(id);
+    ts.computing = false;
     ts.error = error?.message || "This randomizer could not run.";
     render();
     announce("Error: " + ts.error);
