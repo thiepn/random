@@ -4777,24 +4777,44 @@ function renderBuilder() {
   content.append(node("div", {
     class: "workbench-header builder-head"
   }, [
-    iconButton("Back to My Creations", "←", () => setView("creations")),
-    node("div", {}, [
-      node("div", {
-        class: "kicker",
-        text: draft.status === "published" ? "Published creation" : "Draft creation"
+    iconButton(
+      "Back to My Creations",
+      iconNode("back"),
+      () => setView("creations")
+    ),
+    node("div", { class: "workbench-header-copy" }, [
+      node("span", {
+        class: "workbench-eyebrow",
+        text: draft.status === "published"
+          ? "Published creation"
+          : "Draft creation"
       }),
       node("h1", {
-        class: "view-title",
         text: draft.name || "Untitled Creation"
       }),
       node("p", {
-        class: "view-subtitle",
         text:
           "Declarative only · "
           + draft.primitive
           + " · revision "
           + draft.revision
-      })
+      }),
+      node("div", { class: "workbench-stats" }, [
+        node("span", {}, [
+          node("strong", {
+            text: validation.valid ? "Ready" : "Needs work"
+          }),
+          node("small", { text: "validation" })
+        ]),
+        node("span", {}, [
+          node("strong", { text: String(builder.testIndex) }),
+          node("small", { text: "test runs" })
+        ]),
+        node("span", {}, [
+          node("strong", { text: draft.appearance.layout }),
+          node("small", { text: "stage" })
+        ])
+      ])
     ])
   ]));
 
