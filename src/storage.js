@@ -1,3 +1,5 @@
+import { assertSafeStorageRecord } from "./security.js";
+
 const DB_NAME = "randomizer-arcade";
 export const DATABASE_VERSION = 11;
 export const PORTABLE_STORAGE_STORES = Object.freeze([
@@ -792,6 +794,9 @@ export async function replaceDatabaseStores(snapshot, {
     if (!Array.isArray(snapshot?.[name])) {
       throw new Error("Restore data for " + name + " must be an array.");
     }
+    for (const record of snapshot[name]) {
+      assertSafeStorageRecord(record, { store: name });
+    }
   }
 
   const db = await openDb();
@@ -805,16 +810,6 @@ export async function replaceDatabaseStores(snapshot, {
         store.clear();
         counts[name] = snapshot[name].length;
         for (const record of snapshot[name]) {
-          if (
-            !record
-            || typeof record !== "object"
-            || Array.isArray(record)
-            || record.id == null
-          ) {
-            throw new Error(
-              "Restore contains an invalid record in " + name + "."
-            );
-          }
           store.put(record);
         }
       }
