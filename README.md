@@ -25,6 +25,8 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 - Per-device local identity, storage-quota/durability visibility, PWA install controls, offline awareness, and explicit in-app service-worker update activation
 - Background module-worker execution for heavy constrained/list randomization and large backup parsing/merge/serialization, with deterministic seeded equivalence and safe main-thread fallback
 - IndexedDB v11 recent/tool/group indexes, paged History loading, active/latest Session hydration, lazy historical Run loading, bounded Pool editor rendering, and capped result/Fairness DOM previews
+- Accessibility hardening with skip navigation, deterministic modal focus trapping/restoration, inert modal backgrounds, keyboard-operable graph nodes, 44px coarse-pointer targets, higher-contrast controls, and persistent display preferences
+- Regional-format internationalization architecture for locale-aware dates, numbers, and storage sizes across system, US English, German, French, and Korean formats while accurately keeping the current UI language English
 - History and favorites
 - Offline service worker + hardened web app manifest
 - 25 registered tools, including coin, dice, wheel, picker, multi-winner sampling, shuffle, teams, groups, pairs, assignments, elimination, ladder, Secret Santa, cards, tournament draws, chance, lottery, color, date/time, coordinates, direction, letters, and RPS
@@ -61,6 +63,7 @@ Then open `http://localhost:8080`.
 - `src/performance-model.js` — centralized paging, rendering, workload, and worker-offload thresholds
 - `src/compute-tasks.js` — deterministic pure task dispatcher shared by worker execution and CI equivalence tests
 - `src/worker-client.js` / `src/compute-worker.js` — lazy module-worker lifecycle, bounded task timeouts, error propagation, and background execution
+- `src/accessibility-i18n.js` — normalized accessibility preferences, regional locale resolution, locale-aware date/number/byte formatting, contrast resolution, and focus-navigation primitives
 - `src/storage.js` — IndexedDB persistence, v11 recent/status/tool/group indexes, cursor pagination, bounded Session hydration, targeted batch reads, atomic restore, storage durability/usage status, and local device identity
 - `src/registry.js` — declarative tool catalog
 - `src/app.js` — application controller and tool experiences
@@ -106,6 +109,14 @@ Large portable backup parsing, merging, and serialization also use the same work
 IndexedDB no longer loads the full `runs`, legacy `history`, stateful `sessions`, Party Sessions, or lifetime Workflow/Template Session stores during startup. The app reads recent Run/History pages through compound `[timestamp,id]` indexes, loads active stateful/Party Sessions through status indexes, and keeps only active plus latest-per-definition Template/Workflow Sessions through v11 compound indexes. Historical Runs and deep-linked older Sessions are batch-hydrated on demand. Tool-specific `[toolId,timestamp]` indexes preserve the full configured lookback semantics of history-aware constraints without loading unrelated Runs. Standalone-history deletion still scans the complete store transactionally, so pagination does not leave hidden old records behind.
 
 Rendering is similarly bounded: History groups and Pool editor rows grow progressively, large result lists/Fairness probability tables render capped previews while preserving the complete immutable data, and library cards use CSS `content-visibility` containment for off-screen work. Settings exposes the current compute path, loaded History cache, and last compute duration for diagnostics.
+
+## Accessibility, internationalization, and interaction hardening
+
+Phase 14 adds a stable accessibility contract without changing randomization semantics. Every ordinary view exposes a `main` landmark targeted by a keyboard **Skip to main content** link, the announcement region uses `role="status"`, segmented controls expose pressed state, and long-running randomization marks the app as busy. Dialogs derive accessible names/descriptions from their visible headings/copy, trap Tab/Shift+Tab inside the modal, mark the background app inert, preserve focus through modal rerenders, and restore focus to the control that opened the dialog when it closes.
+
+Decision Studio graph cards are now keyboard-selectable with Enter/Space instead of relying on pointer clicks. Coarse-pointer environments enforce minimum touch targets, an optional **Large controls** preference increases interactive sizes further, and a **Higher contrast** preference strengthens borders/muted text while respecting live `prefers-contrast` changes. Existing Reduced Motion behavior remains authoritative for animations and now also controls programmatic navigation scrolling.
+
+The current product language remains English; Phase 14 does not falsely mark English interface text as translated. Instead, Settings exposes a **Regional format** preference—System, `en-US`, `de-DE`, `fr-FR`, or `ko-KR`—which consistently controls displayed dates, numbers, and storage sizes through the shared internationalization model. The manifest/document continue declaring English/LTR until full message translation is implemented.
 
 ## Party mode and audience privacy
 
