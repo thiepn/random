@@ -19,6 +19,7 @@ A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not cha
 - [V3 Icon Catalog](./docs/design/icon-catalog-v3.json)
 - [V4 Adaptive App Shell](./docs/design/V4-ADAPTIVE-SHELL.md)
 - [V5 Home / Arcade V2](./docs/design/V5-HOME-ARCADE.md)
+- [V6 Tool Experience V2](./docs/design/V6-TOOL-EXPERIENCE.md)
 
 Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
 
@@ -29,6 +30,8 @@ Selected direction: **Expressive Utility Arcade** — tactile, precise, playful,
 **V4 shell:** mobile uses a safe-area-aware bottom bar, tablet uses a compact 84px rail, and desktop uses a full 236px application sidebar with a contextual top toolbar. Nested views retain their parent navigation state.
 
 **V5 discovery:** Home is now an editorial launcher with Continue, recent tools, Favorites, saved/guided content and exploration hierarchy; Arcade is a complete category-driven library with shared search and variable-size tool cards.
+
+**V6 tools:** Tool screens now prioritize result Stage → primary Action Dock → secondary Setup, with distinct Coin, Dice, Wheel, Cards, Color, list, people, competition, private and generator visual families. D6 uses real pips and Cards use a physical deck/card treatment while existing presentation choreography remains intact.
 
 ## Current foundation
 
