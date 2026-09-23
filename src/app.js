@@ -10538,19 +10538,8 @@ async function runTool(id) {
       customExperience
     ) && computeWorkerSupported();
 
-    let output;
-    if (offload) {
-      output = await runComputeTask("tool.execute", {
-        toolId: id,
-        config,
-        customExperience,
-        customInputItems: parseList(ts.customInputText),
-        randomSpec: prepared.workerRandomSpec
-      });
-      state.performance.workerTasks += 1;
-      state.performance.lastComputeMode = "worker";
-    } else {
-      output = customExperience
+    const executeOnMainThread = () => (
+      customExperience
         ? executeCustomExperience(
             customExperience,
             {
@@ -10558,7 +10547,36 @@ async function runTool(id) {
             },
             prepared.source
           )
-        : executeTool(id, config, prepared.source);
+        : executeTool(id, config, prepared.source)
+    );
+
+    let output;
+    if (offload) {
+      try {
+        output = await runComputeTask("tool.execute", {
+          toolId: id,
+          config,
+          customExperience,
+          customInputItems: parseList(ts.customInputText),
+          randomSpec: prepared.workerRandomSpec
+        });
+        state.performance.workerTasks += 1;
+        state.performance.lastComputeMode = "worker";
+      } catch (error) {
+        if ([
+          "COMPUTE_WORKER_UNAVAILABLE",
+          "COMPUTE_WORKER_POST_FAILED",
+          "COMPUTE_WORKER_CRASHED"
+        ].includes(error?.code)) {
+          output = executeOnMainThread();
+          state.performance.mainThreadTasks += 1;
+          state.performance.lastComputeMode = "main-fallback";
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      output = executeOnMainThread();
       state.performance.mainThreadTasks += 1;
       state.performance.lastComputeMode = "main";
     }
