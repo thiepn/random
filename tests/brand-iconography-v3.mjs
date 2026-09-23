@@ -165,6 +165,13 @@ assert.ok(
 );
 assert.ok(sw.includes('"./brand-icons.css"'));
 assert.ok(sw.includes('"./src/icon-system.js"'));
+assert.ok(sw.includes('"./assets/brand/random-spark-mark.svg"'));
+assert.ok(index.includes("./assets/brand/random-spark-mark.svg"));
+assert.equal(
+  index.includes('<div class="brand-mark" aria-hidden="true">✦</div>'),
+  false,
+  "Boot screen must not fall back to the legacy spark glyph."
+);
 
 for (const marker of [
   'visualToolIcon(tool, "tool-icon")',
