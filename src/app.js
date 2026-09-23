@@ -4190,9 +4190,9 @@ function renderCreations() {
   });
 
   const content = node("main", {
-    class: "content creations-view"
+    class: "content workbench-view creations-view"
   }, [
-    node("div", { class: "creation-page-head" }, [
+    node("div", { class: "workbench-header creation-page-head" }, [
       node("div", {}, [
         node("div", {
           class: "kicker",
@@ -4749,11 +4749,11 @@ function renderBuilder() {
   const validation = validateCustomExperience(draft);
 
   const content = node("main", {
-    class: "content builder-view"
+    class: "content workbench-view builder-view"
   });
 
   content.append(node("div", {
-    class: "builder-head"
+    class: "workbench-header builder-head"
   }, [
     iconButton("Back to My Creations", "←", () => setView("creations")),
     node("div", {}, [
@@ -5074,14 +5074,23 @@ function renderBuilder() {
     })
   ]);
 
-  content.append(
-    identity,
-    primitivePanel,
-    rulesPanel,
-    appearance,
-    test,
-    validationPanel
-  );
+  content.append(node("div", {
+    class: "builder-workspace"
+  }, [
+    node("div", { class: "builder-editor-stack" }, [
+      identity,
+      primitivePanel,
+      rulesPanel,
+      appearance
+    ]),
+    node("aside", {
+      class: "builder-inspector",
+      "aria-label": "Builder test and validation"
+    }, [
+      test,
+      validationPanel
+    ])
+  ]));
 
   content.append(node("div", {
     class: "builder-footer"
@@ -6127,6 +6136,35 @@ function workingSetFromView(pool, view) {
   return createWorkingSet(pool, { itemIds: items.map((item) => item.id) });
 }
 
+function workbenchHeader({
+  eyebrow,
+  title,
+  copy,
+  actions = [],
+  stats = []
+}) {
+  return node("header", { class: "workbench-header" }, [
+    node("div", { class: "workbench-header-copy" }, [
+      eyebrow ? node("span", { class: "workbench-eyebrow", text: eyebrow }) : null,
+      node("h1", { text: title }),
+      copy ? node("p", { text: copy }) : null,
+      stats.length
+        ? node("div", { class: "workbench-stats" },
+            stats.map(([value, label]) =>
+              node("span", {}, [
+                node("strong", { text: String(value) }),
+                node("small", { text: label })
+              ])
+            )
+          )
+        : null
+    ]),
+    actions.length
+      ? node("div", { class: "workbench-header-actions" }, actions)
+      : null
+  ]);
+}
+
 function renderPools() {
   const activePools = state.pools.filter((pool) => {
     if (!state.poolShowArchived && pool.archived) return false;
@@ -6142,13 +6180,24 @@ function renderPools() {
     return haystack.includes(query);
   });
 
-  const content = node("main", { class: "content" }, [
-    node("h1", { class: "view-title", text: "Pools" }),
-    node("p", {
-      class: "view-subtitle",
-      text: "Reusable source data with active items, tags, fields, weights, Views, and revision-safe editing."
-    }),
-    node("div", { class: "button-row" }, [
+  const content = node("main", {
+    class: "content workbench-view pools-workbench"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Library",
+    title: "Pools",
+    copy: "Reusable source data with active items, tags, fields, weights, Views, and revision-safe editing.",
+    stats: [
+      [state.pools.filter((pool) => !pool.archived).length, "active"],
+      [state.poolViews.length, "views"],
+      [state.pools.reduce((sum, pool) => sum + pool.items.length, 0), "items"]
+    ],
+    actions: [
+      node("button", {
+        class: "secondary",
+        type: "button",
+        onClick: () => openPoolImport()
+      }, "Import CSV"),
       node("button", {
         class: "primary",
         type: "button",
@@ -6156,14 +6205,9 @@ function renderPools() {
           state.modal = "pool";
           render();
         }
-      }, "+ New Pool"),
-      node("button", {
-        class: "secondary",
-        type: "button",
-        onClick: () => openPoolImport()
-      }, "Import CSV")
-    ])
-  ]);
+      }, "+ New Pool")
+    ]
+  }));
 
   const search = node("input", {
     class: "field pool-library-search",
@@ -6192,7 +6236,7 @@ function renderPools() {
     }
   }, state.poolShowArchived ? "← Active Pools" : "Archived");
 
-  content.append(node("div", { class: "pool-library-toolbar" }, [
+  content.append(node("div", { class: "workbench-commandbar pool-library-toolbar" }, [
     search,
     archivedToggle
   ]));
@@ -6415,13 +6459,19 @@ function renderHistory() {
     return bPin - aPin || b.timestamp - a.timestamp;
   });
 
-  const content = node("main", { class: "content" }, [
-    node("h1", { class: "view-title", text: "History" }),
-    node("p", {
-      class: "view-subtitle",
-      text: "Immutable Runs, resumable Sessions, exact Replay, and new-result Rerun."
-    })
-  ]);
+  const content = node("main", {
+    class: "content workbench-view history-workbench"
+  });
+  content.append(workbenchHeader({
+    eyebrow: "Activity",
+    title: "History",
+    copy: "Immutable Runs, resumable Sessions, exact Replay, and new-result Rerun.",
+    stats: [
+      [groups.length, "groups"],
+      [state.runs.length, "runs"],
+      [state.sessions.filter((session) => session.status === "active").length, "active sessions"]
+    ]
+  }));
 
   const tabs = node("div", {
     class: "segmented history-tabs",
@@ -6442,7 +6492,7 @@ function renderHistory() {
     }, label)
   ));
 
-  content.append(node("div", { class: "history-toolbar" }, [
+  content.append(node("div", { class: "workbench-commandbar history-toolbar" }, [
     tabs,
     (state.history.length || state.runs.some((run) => !run.sessionId))
       ? node("button", {
@@ -7124,8 +7174,8 @@ function renderWorkflowEditor() {
   const validation = workflowValidation(draft, true);
   const strict = workflowValidation(draft);
 
-  const content = node("main", { class: "content workflow-editor-view" }, [
-    node("div", { class: "workflow-page-head" }, [
+  const content = node("main", { class: "content workbench-view workflow-editor-view" }, [
+    node("div", { class: "workbench-header workflow-page-head" }, [
       node("div", {}, [
         node("div", { class: "kicker", text: "Decision Studio · Graph editor" }),
         node("h1", { class: "view-title", text: "Build a workflow" }),
@@ -7266,7 +7316,15 @@ function renderWorkflowEditor() {
     )
   ]);
 
-  content.append(identity, paletteBar, graph);
+  content.append(node("div", {
+    class: "workflow-editor-workspace"
+  }, [
+    node("aside", {
+      class: "workflow-editor-sidebar",
+      "aria-label": "Workflow configuration"
+    }, [identity, paletteBar]),
+    node("div", { class: "workflow-editor-canvas" }, [graph])
+  ]));
 
   const issues = strict.valid
     ? validation.warnings
@@ -7664,8 +7722,8 @@ function renderWorkflowRunner() {
     (nodeDef) => nodeDef.id === session.currentNodeId
   ) || null;
 
-  const content = node("main", { class: "content workflow-runner-view" }, [
-    node("div", { class: "workflow-page-head" }, [
+  const content = node("main", { class: "content workbench-view workflow-runner-view" }, [
+    node("div", { class: "workbench-header workflow-page-head" }, [
       node("div", {}, [
         node("div", { class: "kicker", text: "Decision Studio · Workflow run" }),
         node("h1", { class: "view-title", text: workflow.name }),
@@ -7952,8 +8010,8 @@ function workflowCard(workflow) {
 }
 
 function renderWorkflowLibrary() {
-  const content = node("main", { class: "content workflow-library-view" }, [
-    node("div", { class: "workflow-page-head" }, [
+  const content = node("main", { class: "content workbench-view workflow-library-view" }, [
+    node("div", { class: "workbench-header workflow-page-head" }, [
       node("div", {}, [
         node("div", { class: "kicker", text: "Decision Studio" }),
         node("h1", { class: "view-title", text: "Branch decisions into workflows." }),
