@@ -129,17 +129,9 @@ button{touch-action:manipulation}
 }
 textarea.field{min-height:130px;resize:vertical;line-height:1.5}
 .field:focus{border-color:var(--color-accent-secondary)}
-.action-button{width:100%;min-height:58px;border-radius:18px;font-size:15px}
 .stepper{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#0d1020}
 .stepper button{height:44px;border:0;background:var(--surface-2);cursor:pointer}
 .stepper output{text-align:center;font-weight:800}
-.result-list{display:grid;gap:8px;width:min(650px,100%);margin:16px auto 0;text-align:left}
-.result-row{border:1px solid var(--color-stroke-subtle);background:var(--color-surface-1);border-radius:var(--radius-control);padding:var(--space-5) var(--space-6);display:flex;gap:var(--space-5);align-items:center}
-.result-row .rank{width:28px;color:var(--muted);font-size:12px}
-.teams-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;width:100%;margin-top:12px}
-.team-card{background:var(--color-canvas-raised);border:1px solid var(--color-stroke-subtle);border-radius:var(--radius-component);padding:var(--space-6);text-align:left}
-.team-card strong{display:block;margin-bottom:9px;color:var(--accent,var(--cyan))}
-.team-member{padding:5px 0;border-top:1px solid rgba(255,255,255,.05);font-size:13px}
 .history-list,.pool-list{display:grid;gap:9px}
 .history-item,.pool-item{
   border:1px solid var(--color-stroke-subtle);background:var(--color-surface-1);border-radius:var(--radius-component);padding:var(--space-6);display:flex;align-items:center;gap:var(--space-5)
