@@ -5591,7 +5591,6 @@ function renderPlay() {
     }, [
       node("div", { class: "home-feature-orbit", "aria-hidden": "true" }, [
         node("span", { class: "home-feature-ring ring-one" }),
-        node("span", { class: "home-feature-ring ring-two" }),
         visualToolIcon(featureTool, "home-feature-icon")
       ]),
       node("div", { class: "home-feature-copy" }, [
