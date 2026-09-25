@@ -1,18 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Randomizer Arcade">
-  <defs>
-    <linearGradient id="accent" x1="96" y1="80" x2="416" y2="432" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8f83ff"/>
-      <stop offset="1" stop-color="#5ed8e8"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(256 224) rotate(90) scale(240)">
-      <stop stop-color="#8f83ff" stop-opacity=".2"/>
-      <stop offset="1" stop-color="#8f83ff" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="512" height="512" rx="148" fill="#090b12"/>
-  <circle cx="256" cy="256" r="208" fill="url(#glow)"/>
-  <rect x="82" y="82" width="348" height="348" rx="112" fill="#11151f" stroke="#ffffff" stroke-opacity=".09" stroke-width="8"/>
-  <path d="M256 142c10 56 42 88 98 98-56 10-88 42-98 98-10-56-42-88-98-98 56-10 88-42 98-98Z" fill="url(#accent)"/>
-  <circle cx="356" cy="150" r="24" fill="#f2c35b"/>
-  <circle cx="154" cy="362" r="18" fill="#5ed8e8"/>
+  <rect width="512" height="512" rx="148" fill="#11110e"/>
+  <rect x="82" y="82" width="348" height="348" rx="112" fill="#1c1c17" stroke="#f7f2e7" stroke-opacity=".14" stroke-width="8"/>
+  <path d="M256 142c10 56 42 88 98 98-56 10-88 42-98 98-10-56-42-88-98-98 56-10 88-42 98-98Z" fill="#9b8cff"/>
+  <circle cx="356" cy="150" r="24" fill="#e3b65b"/>
+  <circle cx="154" cy="362" r="18" fill="#d4cebd"/>
 </svg>
