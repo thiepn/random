@@ -2994,7 +2994,6 @@ function toolCard(tool, {
       class: "tool-card-visual",
       "aria-hidden": "true"
     }, [
-      node("span", { class: "tool-card-aura" }),
       toolArtNode(tool.id, { variant: "thumbnail" })
         || visualToolIcon(tool, "tool-icon")
     ]),
@@ -5606,7 +5605,6 @@ function renderPlay() {
       "aria-label": "Open Wheel"
     }, [
       node("div", { class: "home-feature-orbit", "aria-hidden": "true" }, [
-        node("span", { class: "home-feature-ring ring-one" }),
         toolArtNode(featureTool.id, { variant: "featured" })
           || visualToolIcon(featureTool, "home-feature-icon")
       ]),
