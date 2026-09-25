@@ -98,13 +98,19 @@ function wheel(active,stage,plan){
     {transform:"rotate(-.35deg) scale(1)",offset:.82},
     {transform:"rotate(0deg) scale(1)",offset:1}
   ],{duration:d,easing:EASE.mechanical});
-  add(active,pointer,[
-    {transform:"translateX(-50%) rotate(0deg)"},
-    {transform:"translateX(-50%) rotate(7deg)",offset:.3},
-    {transform:"translateX(-50%) rotate(-5deg)",offset:.55},
-    {transform:"translateX(-50%) rotate(2deg)",offset:.8},
-    {transform:"translateX(-50%) rotate(0deg)"}
-  ],{duration:Math.min(d,640),iterations:Math.max(1,Math.round(d/620)),easing:"ease-in-out"});
+  const tickDuration=Math.max(1,Number(plan?.activeMs||d));
+  const tickFrames=[{transform:"translateX(-50%) rotate(0deg)",offset:0}];
+  for(const [index,delay] of (plan?.tickSchedule||[]).entries()){
+    tickFrames.push({
+      transform:`translateX(-50%) rotate(${index%2===0?6:-5}deg)`,
+      offset:Math.min(.96,Math.max(.01,delay/tickDuration))
+    });
+  }
+  tickFrames.push({transform:"translateX(-50%) rotate(0deg)",offset:1});
+  add(active,pointer,tickFrames,{
+    duration:tickDuration,
+    easing:"linear"
+  });
   add(active,label,[{opacity:.55,transform:"scale(.96)"},{opacity:1,transform:"scale(1)"}],{
     duration:Math.min(420,d),delay:Math.max(0,Number(plan?.impactMs||0)-180),easing:EASE.impact
   });
