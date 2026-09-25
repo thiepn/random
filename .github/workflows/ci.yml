@@ -52,6 +52,7 @@ jobs:
           node --check src/worker-client.js
           node --check src/accessibility-i18n.js
           node --check src/visual-preferences.js
+          node --check src/visual-boot.js
           node --check src/security.js
           node --check src/compute-worker.js
           node --check src/storage.js
