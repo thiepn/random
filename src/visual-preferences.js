@@ -50,6 +50,19 @@ export function applyVisualPreferences(
   root.dataset.motion = reducedMotion ? "reduced" : "full";
   root.style.colorScheme = theme;
 
+  try {
+    localStorage.setItem("randomizer.visual.v1", JSON.stringify({
+      theme: accessibility.theme,
+      accent: accessibility.accent,
+      contrast: accessibility.contrast,
+      controlSize: accessibility.controlSize,
+      motion:
+        settings?.presentation?.motion
+        || settings?.motion
+        || "system"
+    }));
+  } catch {}
+
   document.querySelector('meta[name="theme-color"]')?.setAttribute(
     "content",
     theme === "light" ? "#f6f7fb" : "#0a0c18"
