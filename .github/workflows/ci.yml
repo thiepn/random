@@ -128,6 +128,9 @@ jobs:
       - name: Accessibility interaction regression certification
         run: node tests/accessibility-regression.mjs
 
+      - name: Optional DOM child regression certification
+        run: node tests/dom-optional-children.mjs
+
       - name: Background compute equivalence certification
         run: node tests/compute-tasks.mjs
 
