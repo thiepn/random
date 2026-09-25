@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 3,
+  "direction": "Tactile Chance Arcade",
+  "environments": {
+    "nightCabinet": {
+      "canvas": "#11110e",
+      "surface": "#1c1c17",
+      "raised": "#24241e",
+      "primaryText": "#f7f2e7",
+      "secondaryText": "#d4cebd",
+      "tertiaryText": "#aaa697"
+    },
+    "dayTable": {
+      "canvas": "#f3efe6",
+      "surface": "#fffdf7",
+      "raised": "#ebe5d9",
+      "primaryText": "#20211e",
+      "secondaryText": "#454741",
+      "tertiaryText": "#5b5d56"
+    }
+  },
+  "tokenGroups": {
+    "typography": [
+      "--font-display",
+      "--font-sans",
+      "--font-mono"
+    ],
+    "materials": [
+      "--material-cabinet",
+      "--material-panel",
+      "--material-panel-raised",
+      "--material-tray",
+      "--material-inset",
+      "--material-hardware",
+      "--material-hardware-hover",
+      "--material-rim",
+      "--material-rim-strong",
+      "--material-highlight",
+      "--material-shadow",
+      "--material-shadow-soft"
+    ],
+    "shapes": [
+      "--shape-control",
+      "--shape-panel",
+      "--shape-tray",
+      "--shape-stage",
+      "--shape-round"
+    ],
+    "depth": [
+      "--shadow-contact",
+      "--shadow-inset",
+      "--shadow-control",
+      "--shadow-object",
+      "--shadow-float",
+      "--shadow-overlay"
+    ]
+  },
+  "componentContracts": {
+    "primary": "raised accent hardware with press travel",
+    "secondary": "quiet panel hardware",
+    "smallAction": "shared compact utility hardware",
+    "field": "recessed inset material",
+    "segmented": "inset tray plus raised active hardware",
+    "stepper": "inset output plus raised controls",
+    "modal": "panel material plus tray shape and overlay depth",
+    "notice": "semantic side rail instead of card"
+  },
+  "cssArchitecture": {
+    "baselineRootStylesheets": 21,
+    "r2RootStylesheets": 19,
+    "removed": [
+      "visual-resilience.css",
+      "phase13.css"
+    ],
+    "cssBytes": 172802,
+    "productionCeiling": 175000,
+    "rule": "R3 must replace existing Home/Arcade styling in place rather than add an override-only stylesheet."
+  }
+}
