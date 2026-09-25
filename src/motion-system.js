@@ -1,4 +1,5 @@
 const ACTIVE = new Map();
+const GENERATION = new Map();
 
 const TOOL_MOTION_KIND = Object.freeze({
   coin:"coin",
@@ -230,13 +231,18 @@ export function motionKindForTool(toolId,sourceKind=""){
     || "instrument";
 }
 
-export function cancelPhysicalMotion(toolId){
-  const key=String(toolId||"");
+function clearActive(key){
   const animations=ACTIVE.get(key)||[];
   for(const animation of animations){
     try{animation.cancel();}catch{}
   }
   ACTIVE.delete(key);
+}
+
+export function cancelPhysicalMotion(toolId){
+  const key=String(toolId||"");
+  clearActive(key);
+  GENERATION.set(key,(GENERATION.get(key)||0)+1);
 }
 
 export function playPhysicalMotion({
@@ -245,7 +251,7 @@ export function playPhysicalMotion({
   plan
 }={}){
   const key=String(toolId||"");
-  cancelPhysicalMotion(key);
+  clearActive(key);
   if(!supportsMotion(stage)||!plan||plan.duration<=0||plan.reducedMotion) return [];
 
   const active=[];
@@ -277,11 +283,13 @@ export function playPhysicalMotion({
 export function schedulePhysicalMotion({toolId,plan}={}){
   if(typeof window==="undefined"||!plan||plan.duration<=0||plan.reducedMotion) return;
   const key=String(toolId||"");
+  const generation=GENERATION.get(key)||0;
   window.requestAnimationFrame(()=>{
+    if((GENERATION.get(key)||0)!==generation) return;
     window.requestAnimationFrame(()=>{
-      const stage=document.querySelector(
-        '.tool-stage-v2[data-tool="'+CSS.escape(key)+'"]'
-      );
+      if((GENERATION.get(key)||0)!==generation) return;
+      const stage=[...document.querySelectorAll(".tool-stage-v2")]
+        .find(node=>node.dataset.tool===key);
       if(stage) playPhysicalMotion({toolId:key,stage,plan});
     });
   });
