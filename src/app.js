@@ -1774,7 +1774,7 @@ async function openAudienceWindow(party = activePartySession()) {
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   link.style.display = "none";
-  document.appendPresent(body, link);
+  appendPresent(document.body, link);
   link.click();
   link.remove();
 
@@ -3689,7 +3689,7 @@ function downloadCustomExperience(experience) {
     (experience.name || "custom-experience") + ".randomizer.json",
     "custom-experience.randomizer.json"
   );
-  document.appendPresent(body, link);
+  appendPresent(document.body, link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -3707,7 +3707,7 @@ function downloadTextFile(text, filename, type = "application/json") {
     filename,
     "randomizer-export.json"
   );
-  document.appendPresent(body, link);
+  appendPresent(document.body, link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -14689,7 +14689,7 @@ function render() {
 
   const modal = renderModal(previousModalFocus);
   if (modal) {
-    document.appendPresent(body, modal);
+    appendPresent(document.body, modal);
     modalFocusSignature = nextSignature;
   } else {
     modalFocusSignature = null;
