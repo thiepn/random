@@ -5560,28 +5560,27 @@ function renderPlay() {
     class: "home-hero-v2 accent-rainbow"
   }, [
     node("div", { class: "home-hero-copy" }, [
-      node("div", { class: "kicker", text: "Randomizer Arcade" }),
-      node("h1", { text: "Make the choice. Keep the moment." }),
+      node("div", { class: "kicker", text: "Chance cabinet" }),
+      node("h1", { text: "Leave it to chance." }),
       node("p", {
         text:
-          "Fast randomizers for everyday decisions, games, groups, "
-          + "and anything that should be left to chance."
+          "Pick a machine, make the call, and move on."
       }),
       homeSearchBox({
         className: "home-primary-search",
-        placeholder: "Search tools, uses, or ideas…"
+        placeholder: "Find a machine or use…"
       }),
       node("div", { class: "home-hero-actions" }, [
         node("button", {
           class: "primary home-hero-primary",
           type: "button",
           onClick: () => openTool("picker")
-        }, "Pick something"),
+        }, "Pick for me"),
         node("button", {
           class: "secondary",
           type: "button",
           onClick: () => setView("arcade")
-        }, "Browse all tools")
+        }, "Open the Arcade")
       ])
     ]),
     node("button", {
@@ -5596,9 +5595,9 @@ function renderPlay() {
         visualToolIcon(featureTool, "home-feature-icon")
       ]),
       node("div", { class: "home-feature-copy" }, [
-        node("span", { text: "Featured randomizer" }),
+        node("span", { text: "House machine" }),
         node("strong", { text: featureTool.name }),
-        node("small", { text: "Spin any list into a decision." })
+        node("small", { text: "Spin any list." })
       ])
     ])
   ]);
@@ -5829,9 +5828,9 @@ function renderPlay() {
     class: "home-section explore-section"
   }, [
     homeSectionHeader(
-      "Explore",
-      "Useful starting points across the Arcade.",
-      "All " + TOOLS.length + " tools",
+      "More machines",
+      "Open a cabinet and make the call.",
+      "All " + TOOLS.length + " machines",
       () => setView("arcade")
     ),
     node("div", { class: "home-tool-grid explore-tool-grid" },
@@ -5857,12 +5856,11 @@ function renderArcade() {
 
   content.append(node("section", { class: "arcade-hero-v2" }, [
     node("div", { class: "arcade-hero-copy" }, [
-      node("span", { class: "kicker", text: "Complete library" }),
-      node("h1", { text: "The Arcade" }),
+      node("span", { class: "kicker", text: "Machine library" }),
+      node("h1", { text: "Choose a machine." }),
       node("p", {
         text:
-          "Every randomizer in one place—organized by what you "
-          + "want chance to do."
+          "Pick the kind of chance you need."
       }),
       node("div", { class: "arcade-stats" }, [
         node("span", {}, [
@@ -5890,7 +5888,7 @@ function renderArcade() {
     ]),
     homeSearchBox({
       className: "arcade-primary-search",
-      placeholder: "Search all randomizers…"
+      placeholder: "Search the cabinet…"
     })
   ]));
 
@@ -6021,7 +6019,7 @@ function renderArcade() {
         tools.map((tool, index) =>
           toolCard(tool, {
             variant: index === 0 ? "feature" : "standard",
-            eyebrow: index === 0 ? "Category pick" : ""
+            eyebrow: index === 0 ? "House pick" : ""
           })
         )
       )
