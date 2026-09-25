@@ -227,6 +227,9 @@ jobs:
       - name: R7 Themes, Personalization & Accessibility Art certification
         run: node tests/redesign-r7-accessibility-art.mjs
 
+      - name: R8 Full Visual QA & v1.2 Release Readiness certification
+        run: node tests/redesign-r8-release-readiness.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 

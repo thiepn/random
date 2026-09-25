@@ -43,6 +43,7 @@ for (const file of [
   "tests/redesign-r5-art.mjs",
   "tests/redesign-r6-motion.mjs",
   "tests/redesign-r7-accessibility-art.mjs",
+  "tests/redesign-r8-release-readiness.mjs",
   "docs/design/V10-VISUAL-RELEASE-READINESS.md",
   "docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md",
   "docs/redesign/r1-visual-baseline.json",
@@ -58,6 +59,9 @@ for (const file of [
   "docs/redesign/r6-motion-contract.json",
   "docs/redesign/R7-THEMES-PERSONALIZATION-ACCESSIBILITY-ART.md",
   "docs/redesign/r7-accessibility-art-contract.json",
+  "docs/redesign/R8-FULL-VISUAL-QA-RELEASE-READINESS.md",
+  "docs/redesign/r8-release-readiness.json",
+  "RELEASE-NOTES-v1.2.0.md",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -243,6 +247,7 @@ for (const requiredStep of [
   "R5 Hero Objects, Graphics & Art certification",
   "R6 Physical Motion & Microinteractions certification",
   "R7 Themes, Personalization & Accessibility Art certification",
+  "R8 Full Visual QA & v1.2 Release Readiness certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {

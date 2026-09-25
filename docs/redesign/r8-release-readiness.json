@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "phase": "R8",
+  "direction": "Tactile Chance Arcade",
+  "targetRelease": "1.2.0",
+  "status": "release-candidate",
+  "releaseDecision": "hold",
+  "sourceQA": {
+    "r1ThroughR7": true,
+    "builtinToolArtCoverage": 25,
+    "builtinToolMotionCoverage": 25,
+    "legacyOrdinarySurfaceCleanup": true,
+    "offlineModuleGraph": true,
+    "securityBoundaryPreserved": true
+  },
+  "liveVisualQA": {
+    "status": "blocked-tooling",
+    "screenshotsCaptured": false,
+    "pagesReaderAccessible": false,
+    "requiredBeforeRelease": true,
+    "reason": "No screenshot-capable browser is exposed in this chat and the available web reader cannot access the GitHub Pages site."
+  },
+  "requiredLiveMatrix": {
+    "surfaces": [
+      "home",
+      "arcade",
+      "coin",
+      "dice",
+      "wheel",
+      "cards",
+      "people-list-tools",
+      "generators",
+      "secret-santa",
+      "settings",
+      "workbench"
+    ],
+    "widths": [
+      320,
+      390,
+      768,
+      1440,
+      1920
+    ],
+    "themes": [
+      "dark",
+      "light"
+    ],
+    "accessibility": [
+      "higher-contrast",
+      "forced-colors",
+      "reduced-motion",
+      "large-controls",
+      "browser-zoom"
+    ],
+    "inputs": [
+      "keyboard",
+      "mouse",
+      "touch"
+    ]
+  },
+  "auditedLegacyFiles": [
+    "phase1.css",
+    "phase3.css",
+    "phase5.css",
+    "phase12.css"
+  ],
+  "sourceBaseline": {
+    "rootStylesheets": 19,
+    "cssBytes": 173924,
+    "cssProductionLimit": 175000,
+    "cssHeadroom": 1076,
+    "appBytes": 422181,
+    "productionJsBytes": 757042,
+    "heroArtBytes": 16192,
+    "motionSystemBytes": 11287
+  },
+  "releaseRequirements": [
+    "exact-head CI success",
+    "exact-head Pages deployment success",
+    "live browser/device visual matrix complete",
+    "no unresolved R8 release blocker"
+  ],
+  "versionPolicy": {
+    "stableVersionDuringR8": "1.1.0",
+    "versionBumpDeferred": true,
+    "tagDeferred": true,
+    "githubReleaseDeferred": true
+  }
+}

@@ -2,6 +2,12 @@
 
 Randomizer Arcade reached its v1.0.0 architectural production baseline on 2026-09-23 and released the backward-compatible v1.1.0 visual redesign on 2026-09-25.
 
+## Open v1.2.0 release candidate
+
+The R1–R8 **Tactile Chance Arcade** redesign track is source-complete but is not the stable maintenance baseline yet. Until v1.2.0 is explicitly finalized and released, VERSION remains v1.1.0 and the v1.1.0 maintenance rules below remain authoritative.
+
+v1.2.0 publication is blocked until exact-head CI and Pages deployment succeed and the R8 live browser/device visual matrix is completed.
+
 ## Default scope after v1.1.0
 
 The default development mode is maintenance, not continued roadmap expansion.

@@ -4,6 +4,15 @@ All notable production changes to Randomizer Arcade are recorded here.
 
 This project uses semantic versioning from the v1.0.0 production baseline onward.
 
+## [Unreleased] — v1.2.0 release candidate
+
+### Tactile Chance Arcade
+
+- R1–R8 full visual/experience overhaul: material system, quiet cabinet shell, machine discovery, Tool Experience 3.0, authored object art, physical motion, and adaptive accessibility art.
+- final legacy ordinary-surface cleanup removes pre-redesign dark-only styling from Tool errors/ladder/brackets, Dice/Number advanced controls, constraint/rule-builder surfaces, and Settings data/backup surfaces.
+- release-candidate source budgets remain within production limits and draft v1.2.0 release notes are prepared.
+- **Release hold:** exact-head CI + Pages success and live browser/device screenshot QA are required before version/tag/publication.
+
 ## [1.1.0] — 2026-09-25
 
 ### Visual redesign

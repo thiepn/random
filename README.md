@@ -24,6 +24,9 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 - [R6 Motion Contract](./docs/redesign/r6-motion-contract.json)
 - [R7 Themes, Personalization & Accessibility Art Pass](./docs/redesign/R7-THEMES-PERSONALIZATION-ACCESSIBILITY-ART.md)
 - [R7 Adaptive Art Contract](./docs/redesign/r7-accessibility-art-contract.json)
+- [R8 Full Visual QA & v1.2 Release Readiness](./docs/redesign/R8-FULL-VISUAL-QA-RELEASE-READINESS.md)
+- [R8 Release Readiness Contract](./docs/redesign/r8-release-readiness.json)
+- [v1.2.0 Release Candidate Notes](./RELEASE-NOTES-v1.2.0.md)
 
 **R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
 
@@ -38,6 +41,8 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 **R6 motion:** authored objects now use cancelable, performance-aware physical motion—toss, throw, mechanical response, deal/flip, scatter, ticket draw, instrument response, seal reveal, trophy impact and palette fan—while Reduced Motion keeps only the short opacity reveal.
 
 **R7 adaptive art:** Night Cabinet and Day Table now have theme-aware physical materials, Light mode keeps a genuinely light result chamber, authored art has explicit Higher Contrast/Forced Colors/Reduced Motion behavior, and the machine layouts are hardened for large controls, 320px/text zoom, touch, ultrawide and PWA launch surfaces.
+
+**R8 release candidate:** R1–R7 are source-audited together, remaining ordinary dark-only legacy surfaces are migrated to materials, and v1.2.0 release notes are staged. The release decision remains **HOLD** until exact-head CI/Pages succeed and the live browser/device screenshot matrix is completed.
 
 ## v1.1 visual redesign — released
 
