@@ -22,7 +22,6 @@ const SHELL = [
   "./app-shell.css",
   "./home-arcade.css",
   "./tool-experience.css",
-  "./visual-resilience.css",
   "./manifest.webmanifest",
   "./icon.svg",
   "./assets/brand/random-spark-mark.svg",
