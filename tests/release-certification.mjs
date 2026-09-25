@@ -30,6 +30,7 @@ for (const file of [
   "src/random-core.js",
   "src/tool-engine.js",
   "tests/security.mjs",
+  "tests/dom-optional-children.mjs",
   "tests/cross-feature-regression.mjs",
   "tests/adversarial-fuzz.mjs",
   "tests/release-certification.mjs",
@@ -227,6 +228,7 @@ assert.ok(fs.statSync("manifest.webmanifest").size <= 16384);
 
 for (const requiredStep of [
   "Security, privacy and integrity certification",
+  "Optional DOM child regression certification",
   "Cross-feature release regression certification",
   "Adversarial fuzz certification",
   "Version baseline certification",
