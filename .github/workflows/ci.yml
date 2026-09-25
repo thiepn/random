@@ -217,6 +217,9 @@ jobs:
       - name: R4 Tool Experience 3.0 certification
         run: node tests/redesign-r4-tool-experience.mjs
 
+      - name: R5 Hero Objects, Graphics & Art certification
+        run: node tests/redesign-r5-art.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
