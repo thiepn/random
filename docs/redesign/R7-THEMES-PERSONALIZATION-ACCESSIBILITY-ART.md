@@ -185,6 +185,14 @@ The document also declares:
 
 so native browser UI knows both schemes are supported.
 
+The install icon and reusable Random Spark brand mark now use the same final default identity:
+
+- Night Cabinet background;
+- Violet primary spark;
+- Gold hardware accent;
+- warm neutral secondary dot;
+- no legacy violet/cyan tech gradient.
+
 ## 12. Visual simplification and budget recovery
 
 R7 initially exceeded the CSS ceiling after adding adaptive material tokens.
