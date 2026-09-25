@@ -19,6 +19,8 @@ for (const file of [
   "home-arcade.css",
   "tool-experience.css",
   "visual-resilience.css",
+  "src/visual-preferences.js",
+  "src/visual-boot.js",
   "sw.js",
   "src/app.js",
   "src/security.js",
@@ -31,6 +33,9 @@ for (const file of [
   "tests/release-certification.mjs",
   "tests/version-baseline.mjs",
   "tests/themes-resilience-v9.mjs",
+  "tests/visual-release-v10.mjs",
+  "docs/design/V10-VISUAL-RELEASE-READINESS.md",
+  "RELEASE-NOTES-v1.1.0.md",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -211,6 +216,7 @@ for (const requiredStep of [
   "Results and Motion V7 certification",
   "Professional Surfaces V8 certification",
   "Themes & Visual Resilience V9 certification",
+  "Final Visual QA & v1.1 Readiness V10 certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
