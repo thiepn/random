@@ -14,6 +14,10 @@ import {
   colorArtNode,
   playingCardArtNode
 } from "./hero-art.js";
+import {
+  cancelPhysicalMotion,
+  schedulePhysicalMotion
+} from "./motion-system.js";
 import { executeTool } from "./tool-engine.js";
 import { describeDiceExpression } from "./dice-engine.js";
 import {
@@ -837,6 +841,7 @@ function presentationCapabilities() {
 }
 
 function clearPresentationTimers(toolId) {
+  cancelPhysicalMotion(toolId);
   const timer = presentationTimers.get(toolId);
   if (timer) {
     clearTimeout(timer);
@@ -1001,6 +1006,7 @@ function beginPresentation(toolId, ts, result, { silent = false } = {}) {
       plan.duration
     );
     presentationTimers.set(toolId, timer);
+    schedulePhysicalMotion({ toolId, plan });
   } else {
     ts.presentation = null;
     ts.animating = false;
