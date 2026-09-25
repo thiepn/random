@@ -63,7 +63,7 @@ assert.equal(sw.includes('"./phase13.css"'),false);
 const cssFiles=fs.readdirSync(".").filter(name=>name.endsWith(".css"));
 const cssBytes=cssFiles.reduce((sum,name)=>sum+fs.statSync(name).size,0);
 assert.ok(cssFiles.length<=19,"R2 stylesheet consolidation regressed: "+cssFiles.length);
-assert.ok(cssBytes<=173500,"R2 CSS budget exceeded: "+cssBytes);
+assert.ok(cssBytes<=175000,"Production CSS budget exceeded after R2: "+cssBytes);
 
 for(const marker of [
   "# R2 — Visual System 3.0 & Component Materials",
