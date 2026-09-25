@@ -135,7 +135,7 @@ function wheelArt({variant="stage",hardwareOnly=false}={}){
     circle(100,88,72,{fill:hardwareOnly?"none":"none",stroke:"var(--art-hardware-stroke)","stroke-width":8}),
     circle(100,88,67,{fill:"none",stroke:"var(--art-hardware-dark)","stroke-width":2}),
     circle(100,88,19,{fill:"var(--material-hardware)",stroke:"var(--art-hardware-stroke)","stroke-width":4}),
-    circle(100,88,7,{fill:"var(--machine-accent,var(--color-accent-primary))"})
+    circle(100,88,7,{fill:"var(--machine-accent,var(--accent,var(--color-accent-primary)))"})
   );
   if(!hardwareOnly){
     svg.append(path("M88 10h24l-12 27Z",{fill:"var(--art-paper-hi)",stroke:"var(--art-hardware-stroke)","stroke-width":2,"stroke-linejoin":"round"}));
@@ -186,7 +186,7 @@ function cardFaceArt(card,{variant="stage"}={}){
   return svg;
 }
 
-function tokenArt({variant="stage",accent="var(--machine-accent,var(--color-accent-primary))"}={}){
+function tokenArt({variant="stage",accent="var(--machine-accent,var(--accent,var(--color-accent-primary)))"}={}){
   const svg=root("tokens",{variant,label:"Chance tokens"});
   shadow(svg,100,139,57,8);
   const chips=[[70,92,32,-10],[119,94,34,11],[98,66,35,2]];
@@ -238,9 +238,9 @@ function instrumentArt({variant="stage",value="?"}={}){
   svg.append(
     rect(35,35,130,94,16,{fill:"var(--material-hardware)",stroke:"var(--art-hardware-stroke)","stroke-width":3}),
     rect(49,50,102,47,8,{fill:glass,stroke:"var(--art-hardware-dark)","stroke-width":2}),
-    text(100,82,String(value??"?").slice(0,8),{"text-anchor":"middle",fill:"var(--machine-accent,var(--color-accent-primary))","font-size":24,"font-family":"var(--font-mono)"}),
+    text(100,82,String(value??"?").slice(0,8),{"text-anchor":"middle",fill:"var(--machine-accent,var(--accent,var(--color-accent-primary)))","font-size":24,"font-family":"var(--font-mono)"}),
     circle(62,112,7,{fill:"var(--art-hardware-dark)",stroke:"var(--art-hardware-stroke)","stroke-width":2}),
-    circle(100,112,7,{fill:"var(--machine-accent,var(--color-accent-primary))",stroke:"var(--art-hardware-stroke)","stroke-width":2}),
+    circle(100,112,7,{fill:"var(--machine-accent,var(--accent,var(--color-accent-primary)))",stroke:"var(--art-hardware-stroke)","stroke-width":2}),
     circle(138,112,7,{fill:"var(--art-hardware-dark)",stroke:"var(--art-hardware-stroke)","stroke-width":2})
   );
   return svg;
@@ -306,7 +306,7 @@ export function toolArtNode(toolId,{variant="stage",result=null}={}){
     case "die": return dieArt({value:Array.isArray(result?.values)?result.values[0]:"•",sides:result?.sides||6,variant});
     case "wheel": return wheelArt({variant});
     case "card-back": return cardBackArt({variant});
-    case "palette": return paletteArt({variant,color:typeof result==="string"?result:"#7C5CFF"});
+    case "palette": return paletteArt({variant,color:typeof result==="string"?result:"var(--color-accent-primary)"});
     case "tokens": return tokenArt({variant});
     case "tickets": return ticketArt({variant});
     case "envelope": return envelopeArt({variant});
