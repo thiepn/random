@@ -39,4 +39,8 @@
     saved.controlSize === "large" ? "large" : "standard";
   root.dataset.motion = motion;
   root.style.colorScheme = theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    "content",
+    theme === "light" ? "#f3efe6" : "#11110e"
+  );
 })();
