@@ -137,9 +137,11 @@ function wheelArt({variant="stage",hardwareOnly=false}={}){
     circle(100,88,72,{fill:hardwareOnly?"none":"none",stroke:"#b6ad9c","stroke-width":8}),
     circle(100,88,67,{fill:"none",stroke:"#4a463d","stroke-width":2}),
     circle(100,88,19,{fill:"var(--material-hardware)",stroke:"#b6ad9c","stroke-width":4}),
-    circle(100,88,7,{fill:"var(--machine-accent,var(--color-accent-primary))"}),
-    path("M88 10h24l-12 27Z",{fill:"#ede6d7",stroke:"#6d675b","stroke-width":2,"stroke-linejoin":"round"})
+    circle(100,88,7,{fill:"var(--machine-accent,var(--color-accent-primary))"})
   );
+  if(!hardwareOnly){
+    svg.append(path("M88 10h24l-12 27Z",{fill:"#ede6d7",stroke:"#6d675b","stroke-width":2,"stroke-linejoin":"round"}));
+  }
   for(let i=0;i<8;i++){
     const [cx,cy]=polar(100,88,69,i*45);
     svg.append(circle(cx.toFixed(2),cy.toFixed(2),2.6,{fill:"#e6dfd1",stroke:"#5f5a50","stroke-width":1}));
