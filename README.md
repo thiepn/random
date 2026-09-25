@@ -12,8 +12,12 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 
 - [R1 Visual Audit & Art Direction Lock](./docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md)
 - [R1 Machine-readable Baseline](./docs/redesign/r1-visual-baseline.json)
+- [R2 Visual System 3.0 & Component Materials](./docs/redesign/R2-VISUAL-SYSTEM-COMPONENT-MATERIALS.md)
+- [R2 Design Tokens V3](./docs/redesign/design-tokens-v3.json)
 
 **R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
+
+**R2 foundation:** Night Cabinet + Day Table environments, material/shape/depth tokens, tactile shared controls, distributed theme/accessibility ownership, and CSS consolidation now establish the visual physics for the v1.2 redesign.
 
 ## v1.1 visual redesign — released
 
