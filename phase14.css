@@ -47,15 +47,25 @@
 }
 
 html[data-contrast="more"]{
-  --color-stroke-subtle:rgba(255,255,255,.20);
-  --color-stroke-default:rgba(255,255,255,.28);
-  --color-stroke-strong:rgba(255,255,255,.45);
-  --color-stroke-emphasis:rgba(255,255,255,.58);
-  --color-text-secondary:#d6dbea;
-  --color-text-tertiary:#c5cbe0;
+  --color-stroke-subtle:rgba(247,242,231,.2);
+  --color-stroke-default:rgba(247,242,231,.3);
+  --color-stroke-strong:rgba(247,242,231,.48);
+  --color-stroke-emphasis:rgba(247,242,231,.64);
+  --color-text-secondary:#e3ddcc;
+  --color-text-tertiary:#cbc5b5;
+  --material-rim:var(--color-stroke-default);
+  --material-rim-strong:var(--color-stroke-strong);
   --border:var(--color-stroke-default);
   --border-strong:var(--color-stroke-strong);
   --muted:var(--color-text-tertiary)
+}
+html[data-theme="light"][data-contrast="more"]{
+  --color-stroke-subtle:rgba(32,33,30,.24);
+  --color-stroke-default:rgba(32,33,30,.36);
+  --color-stroke-strong:rgba(32,33,30,.56);
+  --color-stroke-emphasis:rgba(32,33,30,.7);
+  --color-text-secondary:#353731;
+  --color-text-tertiary:#44463f
 }
 html[data-contrast="more"] .secondary,
 html[data-contrast="more"] .small-action,
@@ -121,13 +131,13 @@ html[data-control-size="large"] .nav-button{
   }
 }
 
+html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-motion="reduced"] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+@media(prefers-reduced-motion:reduce){html:not([data-motion="full"]) *,html:not([data-motion="full"]) *::before,html:not([data-motion="full"]) *::after{scroll-behavior:auto!important}}
 @media (forced-colors:active){
-  .skip-link,
-  .workflow-node-card[tabindex="0"]:focus-visible,
-  .modal:focus-visible{
-    outline-color:Highlight;
-    border-color:Highlight
-  }
+  .skip-link,.workflow-node-card[tabindex="0"]:focus-visible,.modal:focus-visible{outline-color:Highlight;border-color:Highlight}
+  .settings-accent-choice,.primary,.secondary,.danger,.field,.tool-stage-v2,.tool-card-v2,.workbench-commandbar{forced-color-adjust:auto;background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none}
+  .settings-accent-choice.active,.nav-button.active,[aria-current="page"]{border-color:Highlight;color:Highlight}
+  .settings-accent-swatch{background:Highlight;border:1px solid CanvasText}
 }
 
 @media print{
