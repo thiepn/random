@@ -11,6 +11,8 @@ const visual=read("src/visual-preferences.js");
 const boot=read("src/visual-boot.js");
 const index=read("index.html");
 const manifest=JSON.parse(read("manifest.webmanifest"));
+const icon=read("icon.svg");
+const brandMark=read("assets/brand/random-spark-mark.svg");
 const ci=read(".github/workflows/ci.yml");
 const doc=read("docs/redesign/R7-THEMES-PERSONALIZATION-ACCESSIBILITY-ART.md");
 const contract=JSON.parse(read("docs/redesign/r7-accessibility-art-contract.json"));
@@ -86,6 +88,11 @@ assert.ok(index.includes('<meta name="color-scheme" content="dark light">'));
 
 assert.equal(manifest.background_color,"#11110e");
 assert.equal(manifest.theme_color,"#11110e");
+for(const source of [icon,brandMark]){
+  assert.ok(source.includes("#9b8cff"));
+  assert.ok(source.includes("#e3b65b"));
+  assert.equal(source.includes("#5ed8e8"),false,"Legacy cyan brand accent returned.");
+}
 assert.ok(visual.includes('theme === "light" ? "#f3efe6" : "#11110e"'));
 assert.ok(boot.includes('theme === "light" ? "#f3efe6" : "#11110e"'));
 
