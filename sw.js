@@ -27,6 +27,7 @@ const SHELL = [
   "./src/app.js",
   "./src/icon-system.js",
   "./src/hero-art.js",
+  "./src/motion-system.js",
   "./src/random-core.js",
   "./src/tool-engine.js",
   "./src/selection-model.js",
