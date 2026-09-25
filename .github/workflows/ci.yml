@@ -32,6 +32,7 @@ jobs:
           node --check src/random-core.js
           node --check src/icon-system.js
           node --check src/hero-art.js
+          node --check src/motion-system.js
           node --check src/tool-engine.js
           node --check src/selection-model.js
           node --check src/dice-engine.js
