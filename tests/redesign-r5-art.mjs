@@ -75,10 +75,12 @@ for(const marker of [
 assert.equal(css.includes("border:7px double"),false,"Coin must no longer be CSS-painted.");
 assert.equal(css.includes("background:linear-gradient(145deg,#fff,#e6e8ef"),false,"Dice must no longer be CSS-painted.");
 assert.equal(css.includes("linear-gradient(145deg,#6353d6,#312877)"),false,"Card back must no longer be CSS-painted.");
-assert.ok(css.includes(".stage-orb.flipping"));
-assert.ok(css.includes(".dice-row.rolling .die"));
+assert.ok(css.includes(".stage-orb{"));
+assert.ok(css.includes(".die{"));
 assert.ok(css.includes(".wheel-pointer"));
 assert.ok(css.includes(".playing-card"));
+assert.ok(app.includes('class: "stage-orb "'));
+assert.ok(app.includes('class: "dice-row "'));
 
 assert.ok(sw.includes('"./src/hero-art.js"'),"R5 art renderer must be precached.");
 assert.ok(ci.includes("node --check src/hero-art.js"),"R5 art renderer must be syntax-checked.");
