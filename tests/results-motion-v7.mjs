@@ -7,7 +7,7 @@ import {
 
 const app=fs.readFileSync("src/app.js","utf8");
 const css=fs.readFileSync("phase7.css","utf8");
-const legacy=fs.readFileSync("styles.css","utf8");
+const a11y=fs.readFileSync("phase14.css","utf8");
 
 const settings=normalizeExperienceSettings({
   presentation:{mode:"normal",effects:"high",sound:true,haptics:"standard",motion:"full"}
@@ -83,7 +83,7 @@ for(const marker of [
 assert.ok(css.includes("calc(var(--impact-delay) - 100ms"));
 assert.ok(css.includes(".tool-stage.is-reduced-reveal *"));
 assert.ok(
-  legacy.includes("*:not(.is-reduced-reveal):not(.is-reduced-reveal *)"),
+  a11y.includes("*:not(.is-reduced-reveal):not(.is-reduced-reveal *)"),
   "Global reduced-motion rule must preserve V7 opacity reveal."
 );
 assert.ok(
