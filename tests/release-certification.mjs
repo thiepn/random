@@ -35,7 +35,10 @@ for (const file of [
   "tests/version-baseline.mjs",
   "tests/themes-resilience-v9.mjs",
   "tests/visual-release-v10.mjs",
+  "tests/redesign-r1-contract.mjs",
   "docs/design/V10-VISUAL-RELEASE-READINESS.md",
+  "docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md",
+  "docs/redesign/r1-visual-baseline.json",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -214,6 +217,7 @@ for (const requiredStep of [
   "Professional Surfaces V8 certification",
   "Themes & Visual Resilience V9 certification",
   "Final Visual QA & v1.1 Readiness V10 certification",
+  "R1 Visual Audit & Art Direction Lock certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
