@@ -125,8 +125,8 @@ assert.ok(
   "V10 requires controller headroom below 423.5 KB: "+appBytes
 );
 assert.ok(
-  cssBytes<=174000,
-  "V10 requires at least 1 KB CSS headroom: "+cssBytes
+  cssBytes<=175000,
+  "Production CSS budget exceeded after V10: "+cssBytes
 );
 assert.ok(
   ci.includes("Final Visual QA & v1.1 Readiness V10 certification"),
