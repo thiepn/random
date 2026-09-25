@@ -26,19 +26,19 @@
 @keyframes contextSettle{from{opacity:.45}to{opacity:1}}
 
 .tool-stage.reveal-coin.is-presenting .stage-orb{position:relative;color:#2a2009}
-.tool-stage.reveal-coin.is-presenting .stage-orb.flipping{animation:coinFlip var(--active-duration) var(--ease-emphasized) both,coinFaceInk var(--present-duration) linear both}
+.tool-stage.reveal-coin.is-presenting .stage-orb.flipping{animation:coinFaceInk var(--present-duration) linear both}
 .tool-stage.reveal-coin.is-presenting .stage-orb::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;color:#2a2009;font-size:58px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
 @keyframes coinFaceInk{0%,67%{color:transparent}68%,100%{color:#2a2009}}@keyframes placeholderFade{0%,64%{opacity:1}70%,100%{opacity:0}}
 .tool-stage.presentation-showtime.reveal-coin .stage-orb{filter:drop-shadow(0 24px 28px rgba(242,195,91,.2))}
 
-.tool-stage.reveal-dice.is-presenting .die{position:relative;animation:diceRoll var(--active-duration) var(--ease-emphasized) both,diceFaceInk var(--present-duration) linear both}
+.tool-stage.reveal-dice.is-presenting .die{position:relative;animation:diceFaceInk var(--present-duration) linear both}
 .tool-stage.reveal-dice.is-presenting .die::after{content:"•";position:absolute;inset:0;display:grid;place-items:center;color:#161923;font-size:30px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
-.tool-stage.reveal-dice.is-presenting .die:nth-child(2n){animation-delay:35ms,0ms}.tool-stage.reveal-dice.is-presenting .die:nth-child(3n){animation-delay:65ms,0ms}
+.tool-stage.reveal-dice.is-presenting .die:nth-child(2n){animation-delay:35ms}.tool-stage.reveal-dice.is-presenting .die:nth-child(3n){animation-delay:65ms}
 @keyframes diceFaceInk{0%,64%{color:transparent}67%,100%{color:#161923}}
 .tool-stage.reveal-dice.is-presenting .dice-group-card{animation:stagePop 400ms var(--ease-emphasized) var(--impact-delay) both}
 
 .tool-stage.reveal-wheel.is-presenting .wheel{will-change:transform}
-.tool-stage.reveal-wheel.is-presenting .wheel-pointer{animation:wheelPointerFeel var(--active-duration) linear both}
+.tool-stage.reveal-wheel.is-presenting .wheel-pointer{will-change:transform}
 @keyframes wheelPointerFeel{0%,8%,17%,27%,38%,50%,63%,77%,89%,100%{transform:translateX(-50%) translateY(0)}4%,12%,22%,32%,44%,56%,70%,83%,95%{transform:translateX(-50%) translateY(3px)}}
 .tool-stage.reveal-wheel.presentation-showtime .wheel{box-shadow:0 28px 72px rgba(0,0,0,.4),0 0 38px color-mix(in srgb,var(--accent,var(--color-accent-secondary)) 18%,transparent),inset 0 0 40px rgba(0,0,0,.2)}
 
@@ -53,10 +53,9 @@
 .tool-stage.reveal-assignment.is-presenting .result-row{opacity:0;animation:assignmentLink 400ms var(--ease-emphasized) both;animation-delay:calc(var(--anticipation-duration) + 70ms + var(--reveal-index,0) * var(--reveal-stagger))}
 @keyframes assignmentLink{0%{opacity:0;transform:translateX(-20px)}70%{opacity:1;transform:translateX(3px)}100%{opacity:1;transform:none}}
 
-.tool-stage.reveal-card.is-presenting .card-deck{animation:deckKick var(--active-duration) var(--ease-emphasized) both}
-.tool-stage.reveal-card.is-presenting .playing-card{animation:physicalCardDraw var(--reveal-duration) var(--ease-emphasized) var(--anticipation-duration) both}
+.tool-stage.reveal-card.is-presenting .card-deck,.tool-stage.reveal-card.is-presenting .playing-card{will-change:transform,opacity}
 .tool-stage.reveal-card.is-presenting .custom-play-card{animation:cardDraw var(--reveal-duration) var(--ease-emphasized) var(--anticipation-duration) both}
-@keyframes deckKick{0%{transform:translateX(0) rotate(-7deg)}28%{transform:translateX(-9px) rotate(-11deg)}100%{transform:translateX(0) rotate(-7deg)}}
+
 @keyframes physicalCardDraw{0%,18%{opacity:0;transform:translateY(34px) rotateY(82deg) rotate(5deg) scale(.92)}72%{opacity:1;transform:translateY(-4px) rotateY(-4deg) rotate(5deg) scale(1.035)}100%{opacity:1;transform:rotate(5deg)}}
 @keyframes cardDraw{0%,18%{opacity:0;transform:translateY(34px) rotateY(82deg) scale(.92)}72%{opacity:1;transform:translateY(-4px) rotateY(-4deg) scale(1.035)}100%{opacity:1;transform:none}}
 
