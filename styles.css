@@ -33,22 +33,14 @@ button{touch-action:manipulation}
   width:74px;height:74px;margin:auto;display:grid;place-items:center;border-radius:var(--radius-feature);font-size:2rem;color:var(--color-text-on-accent);
   background:linear-gradient(135deg,var(--color-accent-primary),var(--color-accent-secondary));box-shadow:var(--shadow-level-2)
 }
-.layout{min-height:100vh;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
-.topbar{
-  position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
-  background:linear-gradient(to bottom,rgba(9,11,20,.96),rgba(9,11,20,.82),transparent);
-  backdrop-filter:blur(14px)
-}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-icon{
   width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--cyan));
-  color:#070914;font-weight:900;box-shadow:0 8px 28px rgba(124,92,255,.28)
+  color:var(--color-text-on-accent);font-weight:900;box-shadow:0 8px 28px rgba(124,92,255,.28)
 }
 .brand-copy{display:flex;flex-direction:column;line-height:1.05}
 .brand-copy strong{font-size:15px}
 .brand-copy span{font-size:11px;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-top:4px}
-.top-actions{display:flex;align-items:center;gap:8px}
 .icon-button,.pill-button{
   border:1px solid var(--color-stroke-default);background:var(--color-surface-1);min-height:var(--tap-min);cursor:pointer;transition:background var(--duration-fast) var(--ease-standard),border-color var(--duration-fast) var(--ease-standard),transform var(--duration-fast) var(--ease-emphasized)
 }
@@ -89,18 +81,6 @@ button{touch-action:manipulation}
 }
 .quick-button span{font-size:23px;color:var(--text)}
 .quick-button:hover{background:var(--color-surface-2);color:var(--color-text-primary)}
-.bottom-nav{
-  position:fixed;z-index:30;bottom:0;left:0;right:0;height:calc(var(--nav-h) + env(safe-area-inset-bottom));
-  padding:8px 8px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
-  background:color-mix(in srgb,var(--color-canvas) 92%,transparent);border-top:1px solid var(--color-stroke-subtle);backdrop-filter:blur(20px)
-}
-.nav-button{
-  border:0;background:transparent;border-radius:var(--radius-control);color:var(--color-text-tertiary);cursor:pointer;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:4px;min-height:52px;font-size:10px;font-weight:700
-}
-.nav-button span{font-size:19px;line-height:1}
-.nav-button.active{background:color-mix(in srgb,var(--color-accent-primary) 14%,transparent);color:var(--color-text-primary)}
-.nav-button.active span{color:var(--color-accent-secondary)}
 .empty{
   border:1px dashed var(--border-strong);border-radius:22px;padding:30px;text-align:center;color:var(--muted)
 }
@@ -129,7 +109,7 @@ button{touch-action:manipulation}
 }
 textarea.field{min-height:130px;resize:vertical;line-height:1.5}
 .field:focus{border-color:var(--color-accent-secondary)}
-.stepper{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#0d1020}
+.stepper{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--color-surface-1)}
 .stepper button{height:44px;border:0;background:var(--surface-2);cursor:pointer}
 .stepper output{text-align:center;font-weight:800}
 .workbench-view{padding-top:var(--space-6);padding-bottom:var(--space-12)}
