@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "phase": "R3",
+  "direction": "Tactile Chance Arcade",
+  "targetRelease": "1.2.0",
+  "shell": {
+    "metaphor": "quiet cabinet",
+    "mobile": "physical bottom rail",
+    "tabletRailPx": 78,
+    "desktopSidebarPx": 216,
+    "topbarPx": 64,
+    "forbidden": [
+      "backdrop blur",
+      "topbar gradient",
+      "gradient brand housing",
+      "status card chrome"
+    ]
+  },
+  "home": {
+    "metaphor": "arcade entrance",
+    "headline": "Leave it to chance.",
+    "primaryAction": "Pick for me",
+    "secondaryAction": "Open the Arcade",
+    "heroMachine": "wheel",
+    "quickBay": [
+      "coin",
+      "dice",
+      "wheel",
+      "number"
+    ],
+    "hierarchy": [
+      "entry copy",
+      "primary action",
+      "house machine",
+      "search",
+      "continuations",
+      "recent/favorites",
+      "saved/guided"
+    ]
+  },
+  "machineTile": {
+    "layers": [
+      "recessed machine window",
+      "tool object placeholder",
+      "constrained accent ring",
+      "nameplate",
+      "optional favorite indicator"
+    ],
+    "variants": [
+      "standard",
+      "compact",
+      "wide",
+      "feature"
+    ],
+    "decorativeGradientCount": 0
+  },
+  "arcade": {
+    "headline": "Choose a machine.",
+    "categoryMode": "sticky cabinet hardware",
+    "registryDriven": true,
+    "categoryCount": 4,
+    "builtinToolCount": 25
+  },
+  "architecture": {
+    "newRootStylesheets": 0,
+    "maxRootStylesheets": 19,
+    "homeArcadeMaxBytes": 18000,
+    "shellMaxBytes": 10000,
+    "totalCssMaxBytes": 175000,
+    "appMaxBytes": 425000,
+    "rule": "R4 must replace Tool Experience styling in place."
+  }
+}
