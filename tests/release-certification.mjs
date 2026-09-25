@@ -35,9 +35,12 @@ for (const file of [
   "tests/themes-resilience-v9.mjs",
   "tests/visual-release-v10.mjs",
   "tests/redesign-r1-contract.mjs",
+  "tests/redesign-r2-system.mjs",
   "docs/design/V10-VISUAL-RELEASE-READINESS.md",
   "docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md",
   "docs/redesign/r1-visual-baseline.json",
+  "docs/redesign/R2-VISUAL-SYSTEM-COMPONENT-MATERIALS.md",
+  "docs/redesign/design-tokens-v3.json",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -217,6 +220,7 @@ for (const requiredStep of [
   "Themes & Visual Resilience V9 certification",
   "Final Visual QA & v1.1 Readiness V10 certification",
   "R1 Visual Audit & Art Direction Lock certification",
+  "R2 Visual System 3.0 & Component Materials certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
