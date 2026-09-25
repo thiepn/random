@@ -213,6 +213,9 @@ jobs:
       - name: R3 Shell, Home & Arcade Composition certification
         run: node tests/redesign-r3-composition.mjs
 
+      - name: R4 Tool Experience 3.0 certification
+        run: node tests/redesign-r4-tool-experience.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
