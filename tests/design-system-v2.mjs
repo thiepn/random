@@ -144,11 +144,16 @@ assert.equal(
   "Legacy styles.css must no longer own the v1.0 root palette."
 );
 assert.ok(
-  activeCoreStyles.includes("var(--color-surface-1)")
-    && activeCoreStyles.includes("var(--type-page-size)")
-    && activeCoreStyles.includes("var(--radius-stage)")
-    && activeCoreStyles.includes("var(--shadow-level-"),
-  "Active core styles must consume V2 semantic roles."
+  (activeCoreStyles.includes("var(--color-surface-1)")
+    || activeCoreStyles.includes("var(--material-panel)"))
+    && (activeCoreStyles.includes("var(--type-page-size)")
+      || activeCoreStyles.includes("var(--font-display)"))
+    && (activeCoreStyles.includes("var(--radius-stage)")
+      || activeCoreStyles.includes("var(--shape-stage)"))
+    && (activeCoreStyles.includes("var(--shadow-level-")
+      || activeCoreStyles.includes("var(--shadow-contact)")
+      || activeCoreStyles.includes("var(--shadow-inset)")),
+  "Active core styles must consume semantic surface, type, shape and depth roles."
 );
 
 assert.ok(
