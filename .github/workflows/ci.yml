@@ -201,6 +201,9 @@ jobs:
       - name: Themes & Visual Resilience V9 certification
         run: node tests/themes-resilience-v9.mjs
 
+      - name: Final Visual QA & v1.1 Readiness V10 certification
+        run: node tests/visual-release-v10.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
