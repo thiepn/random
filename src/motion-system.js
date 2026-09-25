@@ -269,6 +269,11 @@ export function playPhysicalMotion({
     runner(active,stage,plan);
   }
 
+  if(!active.length){
+    ACTIVE.delete(key);
+    return active;
+  }
+
   for(const animation of active){
     animation.finished.catch(()=>{}).finally(()=>{
       const current=ACTIVE.get(key);
