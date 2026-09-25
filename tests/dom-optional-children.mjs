@@ -22,6 +22,16 @@ assert.equal(
   "Modal/body builders must not call native body.append with optional null children."
 );
 
+assert.equal(
+  app.includes("document.appendPresent("),
+  false,
+  "appendPresent must receive document.body, not be called as a document method."
+);
+assert.ok(
+  app.includes("appendPresent(document.body,"),
+  "Document-level optional children must use appendPresent(document.body, ...)."
+);
+
 for(const marker of [
   "appendPresent(wrap,",
   "appendPresent(body,"
