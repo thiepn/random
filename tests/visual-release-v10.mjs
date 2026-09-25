@@ -5,7 +5,6 @@ const read=(file)=>fs.readFileSync(file,"utf8");
 const index=read("index.html");
 const styles=read("styles.css");
 const shell=read("app-shell.css");
-const resilience=read("visual-resilience.css");
 const tool=read("tool-experience.css");
 const app=read("src/app.js");
 const visual=read("src/visual-preferences.js");
@@ -73,8 +72,8 @@ assert.ok(
   "Brand foreground must use the semantic on-accent token."
 );
 assert.ok(
-  styles.includes("background:var(--color-surface-1)}"),
-  "Stepper must use semantic surface color."
+  styles.includes("background:var(--material-inset);box-shadow:var(--shadow-inset)"),
+  "Stepper must use semantic inset material."
 );
 assert.equal(
   styles.includes("background:#0d1020"),
@@ -92,6 +91,7 @@ for(const marker of [
   assert.ok(shell.includes(marker),"Missing shell resilience contract: "+marker);
 }
 
+const resilience=[read("design-system.css"),styles,shell,tool,read("home-arcade.css"),read("phase14.css")].join("\n");
 for(const marker of [
   ':root[data-theme="light"]',
   ':root[data-theme="dark"]',
@@ -100,7 +100,7 @@ for(const marker of [
   '@media(max-width:359px)',
   '(orientation:landscape)',
   '@media(min-width:1600px)',
-  '@media(forced-colors:active)',
+  '@media (forced-colors:active)',
   'overflow-wrap:anywhere'
 ]){
   assert.ok(resilience.includes(marker),"Missing V10 visual resilience: "+marker);
