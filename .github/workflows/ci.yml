@@ -224,6 +224,9 @@ jobs:
       - name: R6 Physical Motion & Microinteractions certification
         run: node tests/redesign-r6-motion.mjs
 
+      - name: R7 Themes, Personalization & Accessibility Art certification
+        run: node tests/redesign-r7-accessibility-art.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
