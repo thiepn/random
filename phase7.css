@@ -27,14 +27,14 @@
 
 .tool-stage.reveal-coin.is-presenting .stage-orb{position:relative;color:#2a2009}
 .tool-stage.reveal-coin.is-presenting .stage-orb.flipping{animation:coinFaceInk var(--present-duration) linear both}
-.tool-stage.reveal-coin.is-presenting .stage-orb::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;color:#2a2009;font-size:58px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
-@keyframes coinFaceInk{0%,67%{color:transparent}68%,100%{color:#2a2009}}@keyframes placeholderFade{0%,64%{opacity:1}70%,100%{opacity:0}}
+.tool-stage.reveal-coin.is-presenting .stage-orb::after{content:"?";position:absolute;inset:0;display:grid;place-items:center;color:var(--art-metal-ink);font-size:58px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
+@keyframes coinFaceInk{0%,67%{color:transparent}68%,100%{color:var(--art-metal-ink)}}@keyframes placeholderFade{0%,64%{opacity:1}70%,100%{opacity:0}}
 .tool-stage.presentation-showtime.reveal-coin .stage-orb{filter:drop-shadow(0 24px 28px rgba(242,195,91,.2))}
 
 .tool-stage.reveal-dice.is-presenting .die{position:relative;animation:diceFaceInk var(--present-duration) linear both}
-.tool-stage.reveal-dice.is-presenting .die::after{content:"•";position:absolute;inset:0;display:grid;place-items:center;color:#161923;font-size:30px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
+.tool-stage.reveal-dice.is-presenting .die::after{content:"•";position:absolute;inset:0;display:grid;place-items:center;color:var(--art-enamel-ink);font-size:30px;font-weight:900;animation:placeholderFade var(--present-duration) linear both}
 .tool-stage.reveal-dice.is-presenting .die:nth-child(2n){animation-delay:35ms}.tool-stage.reveal-dice.is-presenting .die:nth-child(3n){animation-delay:65ms}
-@keyframes diceFaceInk{0%,64%{color:transparent}67%,100%{color:#161923}}
+@keyframes diceFaceInk{0%,64%{color:transparent}67%,100%{color:var(--art-enamel-ink)}}
 .tool-stage.reveal-dice.is-presenting .dice-group-card{animation:stagePop 400ms var(--ease-emphasized) var(--impact-delay) both}
 
 .tool-stage.reveal-wheel.is-presenting .wheel{will-change:transform}
