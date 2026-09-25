@@ -25,9 +25,7 @@ function root(kind,{className="",variant="stage",viewBox="0 0 200 160",label=""}
   const svg=element("svg",{
     viewBox,
     class:["machine-art","machine-art-"+kind,"art-"+variant,className].filter(Boolean).join(" "),
-    role:label?"img":null,
-    "aria-label":label||null,
-    "aria-hidden":label?null:"true",
+    "aria-hidden":"true",
     focusable:"false"
   });
   return svg;
