@@ -18,6 +18,8 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 - [R3 Composition Contract](./docs/redesign/r3-composition-contract.json)
 - [R4 Tool Experience 3.0](./docs/redesign/R4-TOOL-EXPERIENCE-3.md)
 - [R4 Tool Experience Contract](./docs/redesign/r4-tool-experience-contract.json)
+- [R5 Hero Objects, Graphics & Art](./docs/redesign/R5-HERO-OBJECTS-GRAPHICS-ART.md)
+- [R5 Art Contract](./docs/redesign/r5-art-contract.json)
 
 **R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
 
@@ -26,6 +28,8 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 **R3 composition:** the shell now behaves like a quiet cabinet, Home is an arcade entrance with one House Machine and Quick Bay, and Arcade discovery uses recessed machine windows/nameplates rather than gradient cards.
 
 **R4 tool experience:** Rules, Stage and Action now form one physical machine; the result chamber is recessed, primary action hardware is attached to the machine, Setup uses progressive native disclosure, and legacy rule/fairness card styling has been removed.
+
+**R5 art:** every built-in tool now maps to authored local vector artwork—minted Coin, enamel Dice, mechanical Wheel, paper Cards, tokens, tickets, instrument panels, private envelope, competition trophy, and physical color palette—used in both machine discovery and live tool stages.
 
 ## v1.1 visual redesign — released
 
