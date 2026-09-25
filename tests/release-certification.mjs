@@ -21,6 +21,7 @@ for (const file of [
   "tool-experience.css",
   "src/visual-preferences.js",
   "src/visual-boot.js",
+  "src/hero-art.js",
   "sw.js",
   "src/app.js",
   "src/security.js",
@@ -38,6 +39,7 @@ for (const file of [
   "tests/redesign-r2-system.mjs",
   "tests/redesign-r3-composition.mjs",
   "tests/redesign-r4-tool-experience.mjs",
+  "tests/redesign-r5-art.mjs",
   "docs/design/V10-VISUAL-RELEASE-READINESS.md",
   "docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md",
   "docs/redesign/r1-visual-baseline.json",
@@ -47,6 +49,8 @@ for (const file of [
   "docs/redesign/r3-composition-contract.json",
   "docs/redesign/R4-TOOL-EXPERIENCE-3.md",
   "docs/redesign/r4-tool-experience-contract.json",
+  "docs/redesign/R5-HERO-OBJECTS-GRAPHICS-ART.md",
+  "docs/redesign/r5-art-contract.json",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -229,6 +233,7 @@ for (const requiredStep of [
   "R2 Visual System 3.0 & Component Materials certification",
   "R3 Shell, Home & Arcade Composition certification",
   "R4 Tool Experience 3.0 certification",
+  "R5 Hero Objects, Graphics & Art certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
