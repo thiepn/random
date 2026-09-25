@@ -217,9 +217,17 @@ function palette(active,stage,plan){
 }
 
 const RUNNERS={coin,dice,wheel,card,tokens,tickets,instrument,envelope,trophy,palette};
+const SOURCE_MOTION_KIND=Object.freeze({
+  coin:"coin",dice:"dice",wheel:"wheel",card:"card",
+  pick:"tokens",teams:"tokens",pairs:"tokens",shuffle:"tickets",
+  assignment:"tickets",private:"envelope",tournament:"trophy",
+  elimination:"trophy",ladder:"trophy",generator:"instrument"
+});
 
-export function motionKindForTool(toolId){
-  return TOOL_MOTION_KIND[String(toolId||"")]||"instrument";
+export function motionKindForTool(toolId,sourceKind=""){
+  return TOOL_MOTION_KIND[String(toolId||"")]
+    || SOURCE_MOTION_KIND[String(sourceKind||"")]
+    || "instrument";
 }
 
 export function cancelPhysicalMotion(toolId){
@@ -242,7 +250,7 @@ export function playPhysicalMotion({
 
   const active=[];
   ACTIVE.set(key,active);
-  const kind=motionKindForTool(key);
+  const kind=motionKindForTool(key,plan.sourceKind);
   const runner=RUNNERS[kind]||RUNNERS.instrument;
 
   if(plan.effects==="low"){
