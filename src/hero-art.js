@@ -66,7 +66,7 @@ function coinArt({face="?",variant="stage"}={}){
     circle(100,76,38,{fill:"none",stroke:"#865719","stroke-width":1.5,opacity:.72}),
     path("M72 51c14-14 37-17 56-7",{fill:"none",stroke:"#fff7d5","stroke-width":5,"stroke-linecap":"round",opacity:.55}),
     text(100,89,face,{
-      "text-anchor":"middle",fill:"#52340f","font-size":44,"font-weight":850,
+      "text-anchor":"middle",fill:variant==="stage"?"currentColor":"#52340f","font-size":44,"font-weight":850,
       "font-family":"var(--font-display)"
     })
   );
@@ -101,11 +101,11 @@ function dieArt({value="•",sides=6,variant="stage"}={}){
     const coords={1:[53,50],3:[107,50],4:[53,74],5:[80,74],6:[107,74],7:[53,98],9:[107,98]};
     for(const pos of PIPS[numeric]){
       const [cx,cy]=coords[pos];
-      svg.append(circle(cx,cy,8,{class:"die-pip pip-"+pos,fill:"#282722"}));
+      svg.append(circle(cx,cy,8,{class:"die-pip pip-"+pos,fill:variant==="stage"?"currentColor":"#282722"}));
     }
   }else{
     svg.append(text(80,88,value,{
-      "text-anchor":"middle",fill:"#282722","font-size":36,"font-weight":850,
+      "text-anchor":"middle",fill:variant==="stage"?"currentColor":"#282722","font-size":36,"font-weight":850,
       "font-family":"var(--font-display)"
     }));
   }
