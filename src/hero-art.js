@@ -219,6 +219,19 @@ function ticketArt({variant="stage"}={}){
   return svg;
 }
 
+function displayValue(value){
+  if(value==null) return "?";
+  if(["string","number","boolean"].includes(typeof value)) return String(value);
+  if(Array.isArray(value)) return value.length?displayValue(value[0]):"?";
+  if(typeof value==="object"){
+    if(value.summary!=null) return displayValue(value.summary);
+    if(value.total!=null) return displayValue(value.total);
+    if(Array.isArray(value.values)&&value.values.length) return displayValue(value.values[0]);
+    if(value.value!=null) return displayValue(value.value);
+  }
+  return "READY";
+}
+
 function instrumentArt({variant="stage",value="?"}={}){
   const svg=root("instrument",{variant,label:"Random instrument"});
   const d=defs(svg);
@@ -300,7 +313,7 @@ export function toolArtNode(toolId,{variant="stage",result=null}={}){
     case "tickets": return ticketArt({variant});
     case "envelope": return envelopeArt({variant});
     case "competition": return trophyArt({variant});
-    case "instrument": return instrumentArt({variant,value:result?.summary??result??"?"});
+    case "instrument": return instrumentArt({variant,value:displayValue(result)});
     default:return null;
   }
 }
