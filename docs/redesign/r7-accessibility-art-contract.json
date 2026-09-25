@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "phase": "R7",
+  "direction": "Tactile Chance Arcade",
+  "targetRelease": "1.2.0",
+  "environments": {
+    "night": {
+      "name": "Night Cabinet",
+      "canvas": "#11110e"
+    },
+    "day": {
+      "name": "Day Table",
+      "canvas": "#f3efe6"
+    }
+  },
+  "artMaterials": {
+    "adaptiveNeutral": [
+      "enamel",
+      "paper",
+      "hardware",
+      "glass"
+    ],
+    "stablePhysical": [
+      "coin-metal",
+      "card-back",
+      "wax",
+      "trophy-brass"
+    ]
+  },
+  "accentPriority": [
+    "machine-accent",
+    "tool-accent",
+    "user-accent"
+  ],
+  "accessibility": {
+    "higherContrastArt": true,
+    "forcedColorsSystemGeometry": true,
+    "reducedMotionStaticArt": true,
+    "largeMachineControls": true,
+    "browserZoom": true
+  },
+  "responsive": {
+    "extremeWidthPx": 320,
+    "ultrawidePx": 1600,
+    "touchHoverDisabled": true,
+    "boundedArtScaling": true
+  },
+  "pwa": {
+    "staticThemeColor": "#11110e",
+    "dayRuntimeThemeColor": "#f3efe6",
+    "nightRuntimeThemeColor": "#11110e",
+    "colorSchemeMeta": "dark light"
+  },
+  "architecture": {
+    "newRootStylesheets": 0,
+    "maxRootStylesheets": 19,
+    "homeArcadeMaxBytes": 18000,
+    "toolExperienceMaxBytes": 18000,
+    "totalCssMaxBytes": 175000,
+    "appMaxBytes": 425000,
+    "heroArtMaxBytes": 18000,
+    "productionJsMaxBytes": 1048576,
+    "rule": "R8 may consolidate and polish but must preserve R7 adaptive art and accessibility contracts."
+  }
+}
