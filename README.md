@@ -16,12 +16,16 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 - [R2 Design Tokens V3](./docs/redesign/design-tokens-v3.json)
 - [R3 Shell, Home & Arcade Composition](./docs/redesign/R3-SHELL-HOME-ARCADE-COMPOSITION.md)
 - [R3 Composition Contract](./docs/redesign/r3-composition-contract.json)
+- [R4 Tool Experience 3.0](./docs/redesign/R4-TOOL-EXPERIENCE-3.md)
+- [R4 Tool Experience Contract](./docs/redesign/r4-tool-experience-contract.json)
 
 **R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
 
 **R2 foundation:** Night Cabinet + Day Table environments, material/shape/depth tokens, tactile shared controls, distributed theme/accessibility ownership, and CSS consolidation now establish the visual physics for the v1.2 redesign.
 
 **R3 composition:** the shell now behaves like a quiet cabinet, Home is an arcade entrance with one House Machine and Quick Bay, and Arcade discovery uses recessed machine windows/nameplates rather than gradient cards.
+
+**R4 tool experience:** Rules, Stage and Action now form one physical machine; the result chamber is recessed, primary action hardware is attached to the machine, Setup uses progressive native disclosure, and legacy rule/fairness card styling has been removed.
 
 ## v1.1 visual redesign — released
 
