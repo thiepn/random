@@ -1,16 +1,23 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const css=fs.readFileSync("visual-resilience.css","utf8");
-const index=fs.readFileSync("index.html","utf8");
-const app=fs.readFileSync("src/app.js","utf8");
-const visual=fs.readFileSync("src/visual-preferences.js","utf8");
+const read=(file)=>fs.readFileSync(file,"utf8");
+const design=read("design-system.css");
+const styles=read("styles.css");
+const shell=read("app-shell.css");
+const tool=read("tool-experience.css");
+const home=read("home-arcade.css");
+const a11y=read("phase14.css");
+const index=read("index.html");
+const app=read("src/app.js");
+const visual=read("src/visual-preferences.js");
 const runtime=app+"\n"+visual;
-const sw=fs.readFileSync("sw.js","utf8");
+const sw=read("sw.js");
+const css=[design,styles,shell,tool,home,a11y].join("\n");
 
-assert.ok(index.includes('./visual-resilience.css'));
-assert.ok(index.indexOf('./tool-experience.css')<index.indexOf('./visual-resilience.css'));
-assert.ok(sw.includes('"./visual-resilience.css"'));
+assert.equal(fs.existsSync("visual-resilience.css"),false);
+assert.equal(index.includes('./visual-resilience.css'),false);
+assert.equal(sw.includes('"./visual-resilience.css"'),false);
 assert.ok(sw.includes('"./src/visual-preferences.js"'));
 assert.match(index,/viewport-fit=cover/);
 assert.doesNotMatch(index,/user-scalable\s*=\s*no|maximum-scale\s*=\s*1/i);
@@ -31,7 +38,7 @@ for(const marker of [
   '@media(max-width:359px)',
   '(orientation:landscape)',
   '@media(min-width:1600px)',
-  '@media(forced-colors:active)',
+  '@media (forced-colors:active)',
   'overflow-wrap:anywhere'
 ]) assert.ok(css.includes(marker),"Missing V9 resilience marker: "+marker);
 
@@ -48,12 +55,12 @@ for(const marker of [
 ]) assert.ok(runtime.includes(marker),"Missing V9 runtime contract: "+marker);
 
 for(const [token,value] of [
-  ["--color-canvas","#f6f7fb"],
-  ["--color-surface-1","#fff"],
-  ["--color-text-primary","#10131a"],
-  ["--color-text-secondary","#3b4558"],
-  ["--color-text-tertiary","#566176"]
-]) assert.ok(css.includes(token+":"+value),"Missing light-theme token: "+token);
+  ["--color-canvas","#f3efe6"],
+  ["--color-surface-1","#fffdf7"],
+  ["--color-text-primary","#20211e"],
+  ["--color-text-secondary","#454741"],
+  ["--color-text-tertiary","#5b5d56"]
+]) assert.ok(design.includes(token+":"+value),"Missing light-theme token: "+token);
 
 function rgb(hex){
   let h=hex.replace("#","");
@@ -70,9 +77,9 @@ function contrast(a,b){
   return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
 }
 
-for(const text of ["#10131a","#3b4558","#566176"]){
-  assert.ok(contrast(text,"#f6f7fb")>=4.5,text+" fails light canvas contrast");
-  assert.ok(contrast(text,"#ffffff")>=4.5,text+" fails light surface contrast");
+for(const text of ["#20211e","#454741","#5b5d56"]){
+  assert.ok(contrast(text,"#f3efe6")>=4.5,text+" fails light canvas contrast");
+  assert.ok(contrast(text,"#fffdf7")>=4.5,text+" fails light surface contrast");
 }
 
 const rootCss=fs.readdirSync(".").filter(name=>name.endsWith(".css"));
@@ -81,5 +88,5 @@ assert.ok(totalCss<=175000,"V9 exceeded global CSS budget: "+totalCss);
 
 console.log("Themes, responsiveness and visual resilience V9 certification passed",JSON.stringify({
   cssBytes:totalCss,
-  v9Bytes:fs.statSync("visual-resilience.css").size
+  ownership:"distributed"
 }));
