@@ -210,6 +210,9 @@ jobs:
       - name: R2 Visual System 3.0 & Component Materials certification
         run: node tests/redesign-r2-system.mjs
 
+      - name: R3 Shell, Home & Arcade Composition certification
+        run: node tests/redesign-r3-composition.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
