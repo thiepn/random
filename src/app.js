@@ -5,6 +5,15 @@ import {
   toolIconId,
   categoryIconId
 } from "./icon-system.js";
+import {
+  toolArtNode,
+  coinArtNode,
+  dieArtNode,
+  wheelHardwareNode,
+  cardBackArtNode,
+  colorArtNode,
+  playingCardArtNode
+} from "./hero-art.js";
 import { executeTool } from "./tool-engine.js";
 import { describeDiceExpression } from "./dice-engine.js";
 import {
@@ -2980,7 +2989,8 @@ function toolCard(tool, {
       "aria-hidden": "true"
     }, [
       node("span", { class: "tool-card-aura" }),
-      visualToolIcon(tool, "tool-icon")
+      toolArtNode(tool.id, { variant: "thumbnail" })
+        || visualToolIcon(tool, "tool-icon")
     ]),
     node("div", { class: "tool-card-copy" }, [
       eyebrow
@@ -5591,7 +5601,8 @@ function renderPlay() {
     }, [
       node("div", { class: "home-feature-orbit", "aria-hidden": "true" }, [
         node("span", { class: "home-feature-ring ring-one" }),
-        visualToolIcon(featureTool, "home-feature-icon")
+        toolArtNode(featureTool.id, { variant: "featured" })
+          || visualToolIcon(featureTool, "home-feature-icon")
       ]),
       node("div", { class: "home-feature-copy" }, [
         node("span", { text: "House machine" }),
@@ -9255,53 +9266,20 @@ function buildCustomStage(tool, ts, wrap) {
 
 function diceFaceNode(value, sides) {
   const numeric = Number(value);
-  const isPipFace =
+  const pipFace =
     Number(sides) === 6
     && Number.isInteger(numeric)
     && numeric >= 1
     && numeric <= 6;
 
-  if (!isPipFace) {
-    return node("div", {
-      class: "die die-number",
-      text: String(value)
-    });
-  }
-
-  const patterns = {
-    1: [5],
-    2: [1, 9],
-    3: [1, 5, 9],
-    4: [1, 3, 7, 9],
-    5: [1, 3, 5, 7, 9],
-    6: [1, 3, 4, 6, 7, 9]
-  };
-
   return node("div", {
-    class: "die die-pips",
-    "aria-label": String(numeric)
-  }, patterns[numeric].map((position) =>
-    node("span", {
-      class: "die-pip pip-" + position,
-      "aria-hidden": "true"
-    })
-  ));
+    class: "die " + (pipFace ? "die-pips" : "die-number"),
+    "aria-label": String(value)
+  }, [dieArtNode(value, sides)]);
 }
 
 function playingCardVisual(card) {
-  const text = String(card || "");
-  const suit = text.slice(-1);
-  const rank = text.slice(0, -1) || "?";
-  const red = /[♥♦]/.test(suit);
-
-  return node("div", {
-    class: "play-card playing-card " + (red ? "red-card" : "black-card"),
-    "aria-label": text || "No card drawn"
-  }, [
-    node("span", { class: "card-corner top", text: rank + suit }),
-    node("span", { class: "card-suit", text: suit || "?" }),
-    node("span", { class: "card-corner bottom", text: rank + suit })
-  ]);
+  return playingCardArtNode(card);
 }
 
 function buildStage(tool, ts) {
@@ -9323,15 +9301,20 @@ function buildStage(tool, ts) {
   });
   const wrap = node("div", { class: "stage-content" });
   const result = ts.result;
+  const genericArt = !["coin", "dice", "wheel", "cards", "color"].includes(tool.id)
+    ? toolArtNode(tool.id, { variant: "stage", result })
+    : null;
+  if (genericArt) wrap.append(genericArt);
 
   if (tool.custom) {
     buildCustomStage(tool, ts, wrap);
   } else if (tool.id === "coin") {
     wrap.append(
       node("div", {
-        class: "stage-orb " + (ts.animating ? "flipping" : ""),
-        text: result ? (result === "Heads" ? "H" : "T") : "?"
-      }),
+        class: "stage-orb " + (ts.animating ? "flipping" : "")
+      }, [
+        coinArtNode(result ? (result === "Heads" ? "H" : "T") : "?")
+      ]),
       node("div", { class: "stage-label", text: "Coin Flip" }),
       node("div", { class: "stage-result", text: result || "READY" })
     );
@@ -9422,6 +9405,7 @@ function buildStage(tool, ts) {
 
     const wheelWrap = node("div", { class: "wheel-wrap" }, [
       wheel,
+      wheelHardwareNode(),
       node("div", { class: "wheel-pointer", "aria-hidden": "true" }),
       node("div", {
         class: "wheel-center-label",
@@ -9453,9 +9437,7 @@ function buildStage(tool, ts) {
         "aria-hidden": result ? "true" : null
       }, [
         node("div", { class: "card-deck" }, [
-          node("span", { class: "card-deck-mark" },
-            iconNode("brand")
-          )
+          cardBackArtNode()
         ]),
         result
           ? playingCardVisual(result.card)
@@ -9489,9 +9471,8 @@ function buildStage(tool, ts) {
     const color = result || "#7C5CFF";
     wrap.append(
       node("div", {
-        class: "color-swatch",
-        style: { background: color }
-      }),
+        class: "color-swatch"
+      }, [colorArtNode(color)]),
       node("div", { class: "stage-label", text: "HEX Color" }),
       node("div", { class: "stage-result", text: color })
     );
