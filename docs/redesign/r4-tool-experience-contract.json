@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "phase": "R4",
+  "direction": "Tactile Chance Arcade",
+  "targetRelease": "1.2.0",
+  "composition": [
+    "identity header",
+    "rule instrumentation",
+    "result chamber",
+    "machine action console",
+    "progressive setup"
+  ],
+  "setup": {
+    "element": "details",
+    "desktopDefault": "open",
+    "mobileBeforeResult": "open",
+    "mobileAfterResult": "collapsed",
+    "error": "open",
+    "nativeDisclosure": true
+  },
+  "machine": {
+    "bodyClass": "tool-play-column",
+    "stageClass": "tool-stage-v2",
+    "consoleClass": "tool-machine-console",
+    "ruleLabel": "Rules",
+    "primaryActionMinPx": 62,
+    "mobilePrimaryActionMinPx": 56
+  },
+  "stage": {
+    "defaultBackground": "material tray",
+    "genericResultGlow": false,
+    "familyDecorativeBackgrounds": false,
+    "familyHooks": [
+      "coin",
+      "dice",
+      "wheel",
+      "cards",
+      "color",
+      "list",
+      "people",
+      "competition",
+      "private",
+      "generator"
+    ]
+  },
+  "accessibility": {
+    "reducedRevealPreserved": true,
+    "setupKeyboardNative": true,
+    "forcedColors": true
+  },
+  "architecture": {
+    "newRootStylesheets": 0,
+    "maxRootStylesheets": 19,
+    "toolExperienceMaxBytes": 18000,
+    "totalCssMaxBytes": 175000,
+    "appMaxBytes": 425000,
+    "rule": "R5 must add authored object art without creating an override-only stylesheet."
+  }
+}
