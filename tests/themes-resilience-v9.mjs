@@ -36,9 +36,9 @@ for(const marker of [
 ]) assert.ok(css.includes(marker),"Missing V9 resilience marker: "+marker);
 
 for(const marker of [
-  'rootElement.dataset.theme = theme',
-  'rootElement.dataset.accent = accessibility.accent',
-  'rootElement.dataset.motion =',
+  'root.dataset.theme = theme',
+  'root.dataset.accent = accessibility.accent',
+  'root.dataset.motion =',
   '"(prefers-color-scheme: dark)"',
   '"(prefers-reduced-motion: reduce)"',
   'meta[name="theme-color"]',
