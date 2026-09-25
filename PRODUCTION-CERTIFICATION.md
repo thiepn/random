@@ -32,6 +32,7 @@ The automated gate covers:
 - absence of production Math.random, eval/new Function, document.write, innerHTML assignment, outerHTML assignment, and insertAdjacentHTML.
 - absence of remote JavaScript module dependencies.
 - production JavaScript, CSS, service-worker, and manifest size budgets.
+- V1–V10 visual contracts: design tokens, iconography, adaptive shell, discovery, tool stages, motion, workbench surfaces, themes, first-paint preferences, responsive/safe-area resilience, and release headroom.
 
 ## Operational release checks
 
@@ -47,6 +48,10 @@ Before calling a specific deployment fully released, also verify the deployed Gi
 - Party audience mode does not reveal Secret Santa assignments.
 - keyboard navigation and modal Escape/focus behavior remain usable.
 - mobile layout has no blocking horizontal overflow.
+- System/Light/Dark switching is spot-checked on Home, Tool, Pools, and Studio.
+- 320px and short landscape-mobile layouts remain usable.
+- Reduced Motion and Forced Colors remain usable on the deployed build.
+- a reload/PWA relaunch starts in the expected visual theme without a blocking wrong-theme flash.
 
 These deployment checks validate the hosting/browser layer that pure Node certification cannot reproduce.
 
