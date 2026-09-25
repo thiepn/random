@@ -207,6 +207,9 @@ jobs:
       - name: R1 Visual Audit & Art Direction Lock certification
         run: node tests/redesign-r1-contract.mjs
 
+      - name: R2 Visual System 3.0 & Component Materials certification
+        run: node tests/redesign-r2-system.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 
