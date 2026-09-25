@@ -8,7 +8,7 @@ const history=fs.readFileSync("phase6.css","utf8");
 const presets=fs.readFileSync("phase8.css","utf8");
 const builder=fs.readFileSync("phase10.css","utf8");
 const studio=fs.readFileSync("phase11.css","utf8");
-const containment=fs.readFileSync("phase13.css","utf8");
+const containment=fs.readFileSync("styles.css","utf8");
 const brand=fs.readFileSync("brand-icons.css","utf8");
 const sw=fs.readFileSync("sw.js","utf8");
 
