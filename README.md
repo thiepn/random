@@ -23,6 +23,7 @@ A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not cha
 - [V7 Results, Motion & Game Feel V2](./docs/design/V7-RESULTS-MOTION.md)
 - [V8 Professional Surfaces](./docs/design/V8-PROFESSIONAL-SURFACES.md)
 - [V9 Themes & Visual Resilience](./docs/design/V9-THEMES-RESILIENCE.md)
+- [V10 Final Visual QA & v1.1 Readiness](./docs/design/V10-VISUAL-RELEASE-READINESS.md)
 
 Selected direction: **Expressive Utility Arcade** — tactile, precise, playful, tool-specific, high-hierarchy, and restrained in its use of depth/effects.
 
@@ -41,6 +42,8 @@ Selected direction: **Expressive Utility Arcade** — tactile, precise, playful,
 **V8 workbench:** Pools, History, Presets/Templates, Builder and Decision Studio now use a dense professional surface language with command bars, rows, inspectors, graph canvas/node ports and activity timelines rather than repeated rounded cards.
 
 **V9 resilience:** System/Light/Dark themes, eight persistent accents, live OS preference updates, 320px-to-ultrawide breakpoints, landscape/PWA safe areas, long-text hardening, Light-mode contrast certification, forced-colors fallbacks and global reduced-motion handling now complete the cross-environment visual layer.
+
+**V10 release candidate:** first-paint visual preferences now apply before CSS, obsolete pre-V4 shell CSS has been removed, display controls were extracted from the app controller, runtime budget headroom is enforced, and the v1.1.0 release notes/checklist are prepared. The visual-redesign track is complete; VERSION remains unchanged until an explicit release step.
 
 ## Current foundation
 
