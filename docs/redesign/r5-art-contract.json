@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "phase": "R5",
+  "direction": "Tactile Chance Arcade",
+  "targetRelease": "1.2.0",
+  "renderer": "src/hero-art.js",
+  "families": {
+    "coin": [
+      "coin"
+    ],
+    "die": [
+      "dice"
+    ],
+    "wheel": [
+      "wheel"
+    ],
+    "card": [
+      "cards"
+    ],
+    "palette": [
+      "color"
+    ],
+    "tokens": [
+      "picker",
+      "sampler",
+      "teams",
+      "groups",
+      "pairs"
+    ],
+    "tickets": [
+      "shuffle",
+      "assignment",
+      "lottery"
+    ],
+    "instrument": [
+      "number",
+      "chance",
+      "date",
+      "time",
+      "coordinate",
+      "direction",
+      "letter"
+    ],
+    "envelope": [
+      "secret-santa"
+    ],
+    "competition": [
+      "elimination",
+      "tournament",
+      "ladder",
+      "rps"
+    ]
+  },
+  "materials": [
+    "minted-metal",
+    "enamel",
+    "mechanical-hardware",
+    "paper",
+    "chips",
+    "tickets",
+    "instrument-glass",
+    "wax-seal"
+  ],
+  "integration": {
+    "homeArcadeThumbnails": true,
+    "homeHouseMachine": true,
+    "liveStage": true,
+    "resultTextRemainsDom": true,
+    "customFallback": "existing local SVG icon"
+  },
+  "safety": {
+    "remoteAssets": false,
+    "runtimeFetch": false,
+    "innerHTML": false,
+    "mathRandom": false,
+    "serviceWorkerCached": true
+  },
+  "architecture": {
+    "newRootStylesheets": 0,
+    "maxRootStylesheets": 19,
+    "heroArtMaxBytes": 18000,
+    "toolExperienceMaxBytes": 18000,
+    "totalCssMaxBytes": 175000,
+    "productionJsMaxBytes": 1048576,
+    "appMaxBytes": 425000,
+    "rule": "R6 must animate the authored R5 objects rather than replace them."
+  }
+}
