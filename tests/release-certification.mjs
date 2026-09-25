@@ -19,7 +19,6 @@ for (const file of [
   "app-shell.css",
   "home-arcade.css",
   "tool-experience.css",
-  "visual-resilience.css",
   "src/visual-preferences.js",
   "src/visual-boot.js",
   "sw.js",
