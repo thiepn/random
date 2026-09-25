@@ -11391,8 +11391,9 @@ function buildControls(tool, ts) {
 function buildToolActionDock(tool, ts) {
   const dock = node("div", {
     class:
-      "tool-action-dock tool-machine-console tool-action-"
+      "tool-action-dock tool-action-"
       + toolVisualFamily(tool)
+      + " tool-machine-console"
       + (ts.presentation ? " is-presenting" : ""),
     "aria-label": "Machine action console",
     style: presentationStageStyle(ts)
