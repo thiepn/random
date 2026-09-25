@@ -22,6 +22,8 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 - [R5 Art Contract](./docs/redesign/r5-art-contract.json)
 - [R6 Physical Motion & Microinteractions](./docs/redesign/R6-PHYSICAL-MOTION-MICROINTERACTIONS.md)
 - [R6 Motion Contract](./docs/redesign/r6-motion-contract.json)
+- [R7 Themes, Personalization & Accessibility Art Pass](./docs/redesign/R7-THEMES-PERSONALIZATION-ACCESSIBILITY-ART.md)
+- [R7 Adaptive Art Contract](./docs/redesign/r7-accessibility-art-contract.json)
 
 **R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
 
@@ -34,6 +36,8 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 **R5 art:** every built-in tool now maps to authored local vector artwork—minted Coin, enamel Dice, mechanical Wheel, paper Cards, tokens, tickets, instrument panels, private envelope, competition trophy, and physical color palette—used in both machine discovery and live tool stages.
 
 **R6 motion:** authored objects now use cancelable, performance-aware physical motion—toss, throw, mechanical response, deal/flip, scatter, ticket draw, instrument response, seal reveal, trophy impact and palette fan—while Reduced Motion keeps only the short opacity reveal.
+
+**R7 adaptive art:** Night Cabinet and Day Table now have theme-aware physical materials, Light mode keeps a genuinely light result chamber, authored art has explicit Higher Contrast/Forced Colors/Reduced Motion behavior, and the machine layouts are hardened for large controls, 320px/text zoom, touch, ultrawide and PWA launch surfaces.
 
 ## v1.1 visual redesign — released
 
