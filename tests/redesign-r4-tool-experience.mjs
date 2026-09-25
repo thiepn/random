@@ -23,7 +23,8 @@ for(const marker of [
   'node("strong", { text: "Setup" })',
   '|| !ts.result',
   '"(min-width:760px)"',
-  '"tool-action-dock tool-action-"',\n  '+ " tool-machine-console"',
+  '"tool-action-dock tool-action-"',
+  '+ " tool-machine-console"',
   '"aria-label": "Machine action console"',
   'class: "tool-play-column"',
   'class: "tool-rule-label", text: "Rules"'
