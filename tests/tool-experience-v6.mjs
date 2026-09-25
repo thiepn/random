@@ -24,12 +24,16 @@ for (const marker of [
   '"tool-stage tool-stage-v2 stage-family-"',
   'dataset: {',
   "function diceFaceNode(value, sides)",
-  'class: "die die-pips"',
   "function playingCardVisual(card)",
   'class: "card-stage-visual"'
 ]) {
   assert.ok(app.includes(marker), "Missing V6 implementation marker: " + marker);
 }
+
+assert.ok(
+  app.includes('class: "die " + (pipFace ? "die-pips" : "die-number")'),
+  "D6 dice must retain the V6 die-pips class while non-D6 dice use die-number."
+);
 
 const controlsStart = app.indexOf("function buildControls(tool, ts) {");
 const controlsEnd = app.indexOf("\nfunction buildToolActionDock(", controlsStart);
