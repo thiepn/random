@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "phase": "R6",
+  "direction": "Tactile Chance Arcade",
+  "targetRelease": "1.2.0",
+  "renderer": "src/motion-system.js",
+  "principle": "Result is committed before motion presents it.",
+  "families": {
+    "coin": [
+      "coin"
+    ],
+    "dice": [
+      "dice"
+    ],
+    "wheel": [
+      "wheel"
+    ],
+    "card": [
+      "cards"
+    ],
+    "palette": [
+      "color"
+    ],
+    "tokens": [
+      "picker",
+      "sampler",
+      "teams",
+      "groups",
+      "pairs"
+    ],
+    "tickets": [
+      "shuffle",
+      "assignment",
+      "lottery"
+    ],
+    "instrument": [
+      "number",
+      "chance",
+      "date",
+      "time",
+      "coordinate",
+      "direction",
+      "letter"
+    ],
+    "envelope": [
+      "secret-santa"
+    ],
+    "trophy": [
+      "elimination",
+      "tournament",
+      "ladder",
+      "rps"
+    ]
+  },
+  "behavior": {
+    "perpetualIdle": false,
+    "finePointerHover": true,
+    "touchHover": false,
+    "lowEffects": "single bounded scale/opacity response",
+    "reducedMotion": "no WAAPI physical transforms; V7 opacity reveal remains"
+  },
+  "cancellation": {
+    "activeAnimations": true,
+    "pendingFrameLaunches": true,
+    "generationGuard": true,
+    "cleanupOwner": "clearPresentationTimers"
+  },
+  "architecture": {
+    "newRootStylesheets": 0,
+    "maxRootStylesheets": 19,
+    "phase7MaxBytes": 15000,
+    "toolExperienceMaxBytes": 18000,
+    "totalCssMaxBytes": 175000,
+    "productionJsMaxBytes": 1048576,
+    "appMaxBytes": 425000,
+    "motionSystemMaxBytes": 14000,
+    "rule": "R7 may restyle authored objects but must preserve R6 motion hooks."
+  }
+}
