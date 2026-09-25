@@ -41,6 +41,7 @@ for (const required of [
   "./tool-experience.css",
   "./assets/brand/random-spark-mark.svg",
   "./src/icon-system.js",
+  "./src/hero-art.js",
   "./phase14.css",
   "./src/performance-model.js",
   "./src/worker-client.js",
