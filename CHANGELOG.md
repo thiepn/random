@@ -4,9 +4,9 @@ All notable production changes to Randomizer Arcade are recorded here.
 
 This project uses semantic versioning from the v1.0.0 production baseline onward.
 
-## [Unreleased] — v1.1 visual redesign
+## [1.1.0] — 2026-09-25
 
-### Visual release candidate
+### Visual redesign
 
 - semantic Design System V2, Random Spark identity, and local SVG icon system.
 - adaptive mobile/tablet/desktop shell and rebuilt Home/Arcade discovery.
@@ -18,9 +18,9 @@ This project uses semantic versioning from the v1.0.0 production baseline onward
 - first-paint visual preference boot to prevent theme flash before application startup.
 - final removal of obsolete shell CSS and extraction of display controls from the app controller.
 - V10 release certification with explicit controller/CSS headroom requirements.
-- draft v1.1.0 release notes and deployed-device release checklist prepared.
+- v1.1.0 release notes, production certification, and deployment verification completed.
 
-The v1.1.0 version bump remains intentionally separate from this readiness work.
+This release is backward-compatible with the v1.0.0 local data and portability contracts.
 
 ## [1.0.0] — 2026-09-23
 

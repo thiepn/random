@@ -18,8 +18,6 @@ assert.match(
   /^\d+\.\d+\.\d+$/,
   "VERSION must contain a semantic version"
 );
-assert.equal(version, "1.0.0");
-
 assert.ok(
   app.includes(
     'const PORTABILITY_APP_VERSION = "' + version + '";'

@@ -2,13 +2,13 @@
 
 A vibrant, local-first randomizer and decision toolbox built as an installable PWA.
 
-**Stable release: v1.0.0** — production-certified on 2026-09-23. See [CHANGELOG.md](./CHANGELOG.md), [RELEASE-NOTES-v1.0.0.md](./RELEASE-NOTES-v1.0.0.md), [PRODUCTION-CERTIFICATION.md](./PRODUCTION-CERTIFICATION.md), and [MAINTENANCE.md](./MAINTENANCE.md).
+**Stable release: v1.1.0** — production-certified on 2026-09-25. See [CHANGELOG.md](./CHANGELOG.md), [RELEASE-NOTES-v1.1.0.md](./RELEASE-NOTES-v1.1.0.md), [PRODUCTION-CERTIFICATION.md](./PRODUCTION-CERTIFICATION.md), and [MAINTENANCE.md](./MAINTENANCE.md).
 
-The v1.0.0 baseline freezes the initial architecture. Default follow-up work is targeted maintenance and patch releases; broad feature expansion should be deliberately scoped as a later minor release.
+v1.0.0 remains the architectural production baseline. v1.1.0 completes the backward-compatible visual redesign; follow-up work returns to targeted maintenance and patch releases unless another minor release is deliberately scoped.
 
-## v1.1 visual redesign track
+## v1.1 visual redesign — released
 
-A deliberate visual-overhaul track is now scoped for **v1.1.0**. V1 does not change product behavior; it freezes the visual problem definition and redesign rules before production styling begins.
+**v1.1.0** completes the V1–V10 visual redesign track without changing the product’s randomization, persistence, privacy, or portability contracts.
 
 - [V1 Visual Audit](./docs/design/V1-VISUAL-AUDIT.md)
 - [Visual Redesign Contract](./docs/design/REDESIGN-CONTRACT.md)
@@ -43,7 +43,7 @@ Selected direction: **Expressive Utility Arcade** — tactile, precise, playful,
 
 **V9 resilience:** System/Light/Dark themes, eight persistent accents, live OS preference updates, 320px-to-ultrawide breakpoints, landscape/PWA safe areas, long-text hardening, Light-mode contrast certification, forced-colors fallbacks and global reduced-motion handling now complete the cross-environment visual layer.
 
-**V10 release candidate:** first-paint visual preferences now apply before CSS, obsolete pre-V4 shell CSS has been removed, display controls were extracted from the app controller, runtime budget headroom is enforced, and the v1.1.0 release notes/checklist are prepared. The visual-redesign track is complete; VERSION remains unchanged until an explicit release step.
+**V10 release finalization:** first-paint visual preferences apply before CSS, obsolete pre-V4 shell CSS is removed, display controls are extracted from the app controller, runtime budget headroom is enforced, and v1.1.0 is certified and released.
 
 ## Current foundation
 

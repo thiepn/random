@@ -1,7 +1,5 @@
 # Randomizer Arcade v1.1.0 — Visual Redesign
 
-> Release-readiness draft. The repository remains on its current VERSION until an explicit v1.1 release step.
-
 v1.1.0 completes the V1–V10 visual redesign track while preserving the local-first randomization architecture and existing product semantics.
 
 ## Highlights
@@ -56,18 +54,18 @@ v1.1.0 does not intentionally change:
 
 Existing local data should continue to load without migration.
 
-## Release checklist
+## Certification
 
-Before changing `VERSION` to `1.1.0`:
+v1.1.0 is published only after the complete repository gate succeeds:
 
-- [ ] V1–V10 visual certification passes.
-- [ ] Full functional production certification passes.
-- [ ] GitHub Pages deploy succeeds.
-- [ ] Dark and Light are spot-checked on deployed Home, Tool, Pools and Studio surfaces.
-- [ ] 320px mobile and landscape mobile are spot-checked.
-- [ ] Reduced Motion and Forced Colors are spot-checked.
-- [ ] Settings persistence survives reload and PWA relaunch.
-- [ ] No new horizontal overflow is found.
-- [ ] Release notes are reviewed.
-- [ ] `CHANGELOG.md` receives the final v1.1.0 entry.
-- [ ] `VERSION`, document version metadata and service-worker cache generation are bumped together.
+1. focused syntax/model/engine/regression certification;
+2. accessibility, security, persistence, worker, offline, and performance checks;
+3. V1–V10 visual certification;
+4. cross-feature release regression and adversarial fuzzing;
+5. final production repository/PWA certification.
+
+The release workflow tags the exact certified main-branch commit. GitHub Pages deployment is verified against the same release commit.
+
+## Compatibility
+
+No IndexedDB or portable-backup schema migration is required for v1.1.0. Existing local data remains compatible with the v1.0.0 production baseline.

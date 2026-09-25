@@ -5,12 +5,13 @@ import path from "node:path";
 const root = process.cwd();
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const exists = (file) => fs.existsSync(path.join(root, file));
+const version = read("VERSION").trim();
 
 for (const file of [
   "VERSION",
   "CHANGELOG.md",
   "MAINTENANCE.md",
-  "RELEASE-NOTES-v1.0.0.md",
+  "RELEASE-NOTES-v" + version + ".md",
   "index.html",
   "manifest.webmanifest",
   "design-system.css",
@@ -35,7 +36,6 @@ for (const file of [
   "tests/themes-resilience-v9.mjs",
   "tests/visual-release-v10.mjs",
   "docs/design/V10-VISUAL-RELEASE-READINESS.md",
-  "RELEASE-NOTES-v1.1.0.md",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -46,9 +46,6 @@ const sw = read("sw.js");
 const app = read("src/app.js");
 const ci = read(".github/workflows/ci.yml");
 const manifest = JSON.parse(read("manifest.webmanifest"));
-const version = read("VERSION").trim();
-
-assert.equal(version, "1.0.0");
 assert.ok(
   app.includes(
     'const PORTABILITY_APP_VERSION = "' + version + '";'

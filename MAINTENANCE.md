@@ -1,12 +1,12 @@
 # Maintenance Baseline
 
-Randomizer Arcade reached its v1.0.0 production baseline on 2026-09-23.
+Randomizer Arcade reached its v1.0.0 architectural production baseline on 2026-09-23 and released the backward-compatible v1.1.0 visual redesign on 2026-09-25.
 
-## Default scope after v1.0.0
+## Default scope after v1.1.0
 
 The default development mode is maintenance, not continued roadmap expansion.
 
-Acceptable v1.0.x work:
+Acceptable v1.1.x work:
 
 - correctness fixes
 - regression fixes
@@ -18,7 +18,7 @@ Acceptable v1.0.x work:
 - narrowly scoped UX fixes that preserve established product behavior
 - test and release-infrastructure improvements
 
-Work that should normally require a planned v1.1.0 or later scope:
+Work that should normally require a planned v1.2.0 or later scope:
 
 - new major tools or game modes
 - new persistence models
