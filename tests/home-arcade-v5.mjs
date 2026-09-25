@@ -19,7 +19,7 @@ for (const marker of [
   '"Jump back in"',
   '"Favorites"',
   '"Saved & guided"',
-  '"Explore"',
+  '"More machines"',
   'class: "content arcade-v2"',
   'class: "arcade-category-jumps"',
   '"arcade-category-" + category.id',
