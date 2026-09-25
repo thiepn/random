@@ -8216,9 +8216,10 @@ function renderTool() {
 
   const workspace = node("div", { class: "tool-workspace" }, [
     node("div", { class: "tool-play-column" }, [
+      ruleStrip,
       stage,
       actions
-    ]),
+    ].filter(Boolean)),
     controls
   ]);
 
@@ -8234,7 +8235,7 @@ function renderTool() {
       tool: tool.id,
       family
     }
-  }, [head, ruleStrip, workspace].filter(Boolean)));
+  }, [head, workspace]));
 
   return content;
 }
@@ -8764,9 +8765,12 @@ function renderRuleStrip(tool, ts) {
   return node("div", {
     class: "tool-rule-strip",
     "aria-label": "Active rules"
-  }, rules.map((rule) =>
-    node("span", { class: "rule-chip", text: rule })
-  ));
+  }, [
+    node("span", { class: "tool-rule-label", text: "Rules" }),
+    ...rules.map((rule) =>
+      node("span", { class: "rule-chip", text: rule })
+    )
+  ]);
 }
 function dieTrace(die) {
   const parts = die.chain.map((part) => {
@@ -11072,17 +11076,22 @@ function customControls(tool, ts) {
 
 function buildControls(tool, ts) {
   const family = toolVisualFamily(tool);
-  const controls = node("div", {
+  const setupOpen =
+    Boolean(ts.error)
+    || !ts.result
+    || Boolean(window.matchMedia?.("(min-width:760px)")?.matches);
+  const controls = node("details", {
     class:
       "controls tool-controls tool-controls-"
-      + family
+      + family,
+    open: setupOpen ? "" : null
   });
   const grid = node("div", { class: "control-grid" });
 
-  controls.append(node("div", { class: "tool-controls-head" }, [
+  controls.append(node("summary", { class: "tool-controls-head" }, [
     node("div", {}, [
-      node("span", { text: "Setup" }),
-      node("strong", { text: "Tune this randomizer" })
+      node("span", { text: "Machine controls" }),
+      node("strong", { text: "Setup" })
     ]),
     node("small", {
       text:
@@ -11382,9 +11391,10 @@ function buildControls(tool, ts) {
 function buildToolActionDock(tool, ts) {
   const dock = node("div", {
     class:
-      "tool-action-dock tool-action-"
+      "tool-action-dock tool-machine-console tool-action-"
       + toolVisualFamily(tool)
       + (ts.presentation ? " is-presenting" : ""),
+    "aria-label": "Machine action console",
     style: presentationStageStyle(ts)
   });
 
