@@ -41,7 +41,6 @@ for (const required of [
   "./tool-experience.css",
   "./assets/brand/random-spark-mark.svg",
   "./src/icon-system.js",
-  "./phase13.css",
   "./phase14.css",
   "./src/performance-model.js",
   "./src/worker-client.js",
@@ -85,9 +84,15 @@ assert.ok(
   index.indexOf('./design-system.css') < index.indexOf('./styles.css'),
   "Design System V2 must load before legacy component styles."
 );
-assert.ok(
+assert.equal(
   index.includes('./phase13.css'),
-  "index.html must load Phase 13 styles."
+  false,
+  "Phase 13 containment is consolidated into core styles."
+);
+assert.equal(
+  entries.includes("./phase13.css"),
+  false,
+  "Offline shell must not reference retired Phase 13 CSS."
 );
 assert.ok(
   index.includes('./phase14.css'),
