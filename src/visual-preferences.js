@@ -65,7 +65,7 @@ export function applyVisualPreferences(
 
   document.querySelector('meta[name="theme-color"]')?.setAttribute(
     "content",
-    theme === "light" ? "#f6f7fb" : "#0a0c18"
+    theme === "light" ? "#f3efe6" : "#11110e"
   );
 
   return normalized;
