@@ -403,6 +403,14 @@ function node(tag, options, children) {
   return element;
 }
 
+function appendPresent(parent, ...children) {
+  for (const child of children) {
+    if (child == null) continue;
+    parent.append(child);
+  }
+  return parent;
+}
+
 function iconButton(label, glyph, handler, extraClass = "") {
   return node("button", {
     class: "icon-button " + extraClass,
@@ -1766,7 +1774,7 @@ async function openAudienceWindow(party = activePartySession()) {
   link.target = "_blank";
   link.rel = "noopener noreferrer";
   link.style.display = "none";
-  document.body.append(link);
+  document.appendPresent(body, link);
   link.click();
   link.remove();
 
@@ -3065,7 +3073,7 @@ function homeSearchBox({
     }
   });
 
-  wrap.append(search);
+  appendPresent(wrap, search);
   return wrap;
 }
 
@@ -3681,7 +3689,7 @@ function downloadCustomExperience(experience) {
     (experience.name || "custom-experience") + ".randomizer.json",
     "custom-experience.randomizer.json"
   );
-  document.body.append(link);
+  document.appendPresent(body, link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -3699,7 +3707,7 @@ function downloadTextFile(text, filename, type = "application/json") {
     filename,
     "randomizer-export.json"
   );
-  document.body.append(link);
+  document.appendPresent(body, link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -4673,7 +4681,7 @@ function renderCompoundStep(builder, step, index) {
 
   if (["pick", "sample", "shuffle"].includes(step.primitive)) {
     if (step.input.kind === "config") {
-      body.append(builderTextarea(
+      appendPresent(body, builderTextarea(
         "Step entries · label | weight | value",
         weightedRowsText(step.config.entries || []),
         (value) => {
@@ -4683,7 +4691,7 @@ function renderCompoundStep(builder, step, index) {
       ));
     }
     if (step.primitive === "sample") {
-      body.append(builderTextInput(
+      appendPresent(body, builderTextInput(
         "Draw count",
         step.config.count || 2,
         (value) => {
@@ -4694,7 +4702,7 @@ function renderCompoundStep(builder, step, index) {
       ));
     }
   } else if (step.primitive === "number") {
-    body.append(node("div", { class: "builder-grid" }, [
+    appendPresent(body, node("div", { class: "builder-grid" }, [
       builderTextInput("Minimum", step.config.min ?? 1, (value) => {
         step.config.min = value;
         markBuilderDirty();
@@ -4705,7 +4713,7 @@ function renderCompoundStep(builder, step, index) {
       }, { type: "number" })
     ]));
   } else if (step.primitive === "dice") {
-    body.append(builderTextInput(
+    appendPresent(body, builderTextInput(
       "Dice expression",
       step.config.expression || "1d6",
       (value) => {
@@ -4714,7 +4722,7 @@ function renderCompoundStep(builder, step, index) {
       }
     ));
   } else if (step.primitive === "faces") {
-    body.append(builderTextarea(
+    appendPresent(body, builderTextarea(
       "Faces",
       simpleLinesText(step.config.faces || []),
       (value) => {
@@ -4723,7 +4731,7 @@ function renderCompoundStep(builder, step, index) {
       }
     ));
   } else if (step.primitive === "table") {
-    body.append(builderTextarea(
+    appendPresent(body, builderTextarea(
       "Rows · label | weight | value",
       weightedRowsText(step.config.rows || []),
       (value) => {
@@ -8895,7 +8903,7 @@ function diceExpressionEditor(tool, ts) {
     }
   });
 
-  wrap.append(node("div", { class: "control" }, [
+  appendPresent(wrap, node("div", { class: "control" }, [
     node("label", { text: "Expression" }),
     input
   ]));
@@ -8910,24 +8918,24 @@ function diceExpressionEditor(tool, ts) {
     { label: "Exploding D6", expression: "1d6!" },
     { label: "Reroll 1s", expression: "4d6r=1" }
   ];
-  wrap.append(dicePresetRow(tool, ts, presets));
+  appendPresent(wrap, dicePresetRow(tool, ts, presets));
 
   try {
     const description = describeDiceExpression(ts.diceExpression);
-    wrap.append(node("div", { class: "dice-expression-preview" }, [
+    appendPresent(wrap, node("div", { class: "dice-expression-preview" }, [
       node("strong", { text: description.canonical }),
       ...description.groups.map((group) =>
         node("span", { text: group })
       )
     ]));
   } catch (error) {
-    wrap.append(node("div", {
+    appendPresent(wrap, node("div", {
       class: "dice-expression-preview is-invalid",
       text: error?.message || "Expression is incomplete."
     }));
   }
 
-  wrap.append(node("button", {
+  appendPresent(wrap, node("button", {
     class: "dice-help-toggle",
     type: "button",
     "aria-expanded": String(Boolean(ts.diceHelpOpen)),
@@ -8938,7 +8946,7 @@ function diceExpressionEditor(tool, ts) {
   }, ts.diceHelpOpen ? "Hide notation help" : "Notation help"));
 
   if (ts.diceHelpOpen) {
-    wrap.append(node("div", { class: "dice-help" }, [
+    appendPresent(wrap, node("div", { class: "dice-help" }, [
       node("div", { text: "NdS — roll N dice with S sides" }),
       node("div", { text: "kh / kl — keep highest / lowest" }),
       node("div", { text: "dh / dl — drop highest / lowest" }),
@@ -9087,7 +9095,7 @@ function buildCustomStage(tool, ts, wrap) {
   const experience = customExperienceFromToolId(tool.id);
   const result = ts.result;
   if (!experience) {
-    wrap.append(node("div", {
+    appendPresent(wrap, node("div", {
       class: "stage-result",
       text: "UNAVAILABLE"
     }));
@@ -9125,7 +9133,7 @@ function buildCustomStage(tool, ts, wrap) {
     const labels = wheelLabels(model);
     if (labels) wheel.append(labels);
 
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "wheel-wrap" }, [
         wheel,
         node("div", {
@@ -9165,7 +9173,7 @@ function buildCustomStage(tool, ts, wrap) {
       );
     }
 
-    wrap.append(
+    appendPresent(wrap, 
       rolls.length
         ? node("div", {
             class: "dice-row " + (ts.animating ? "rolling" : "")
@@ -9190,7 +9198,7 @@ function buildCustomStage(tool, ts, wrap) {
 
   if (layout === "card") {
     const cards = customResultListValues(result);
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "stage-label",
         text: experience.appearance.resultLabel
@@ -9220,7 +9228,7 @@ function buildCustomStage(tool, ts, wrap) {
 
   if (layout === "list") {
     const values = customResultListValues(result);
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "stage-label",
         text: experience.appearance.resultLabel
@@ -9236,7 +9244,7 @@ function buildCustomStage(tool, ts, wrap) {
   }
 
   if (layout === "table" && result?.label != null) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "stage-label",
         text: result.label
@@ -9249,7 +9257,7 @@ function buildCustomStage(tool, ts, wrap) {
     return;
   }
 
-  wrap.append(
+  appendPresent(wrap, 
     node("div", {
       class: "stage-label",
       text: experience.appearance.resultLabel
@@ -9308,12 +9316,12 @@ function buildStage(tool, ts) {
   const genericArt = !["coin", "dice", "wheel", "cards", "color"].includes(tool.id)
     ? toolArtNode(tool.id, { variant: "stage", result })
     : null;
-  if (genericArt) wrap.append(genericArt);
+  if (genericArt) appendPresent(wrap, genericArt);
 
   if (tool.custom) {
     buildCustomStage(tool, ts, wrap);
   } else if (tool.id === "coin") {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "stage-orb " + (ts.animating ? "flipping" : "")
       }, [
@@ -9324,7 +9332,7 @@ function buildStage(tool, ts) {
     );
   } else if (tool.id === "dice") {
     if (ts.diceMode === "expression") {
-      wrap.append(
+      appendPresent(wrap, 
         node("div", {
           class: "stage-label",
           text: result ? result.expression : "Dice expression"
@@ -9344,7 +9352,7 @@ function buildStage(tool, ts) {
     } else {
       const values = result?.values
         || Array.from({ length: ts.diceCount }, () => "•");
-      wrap.append(
+      appendPresent(wrap, 
         node("div", {
           class: "dice-row " + (ts.animating ? "rolling" : "")
         }, values.map((value) =>
@@ -9369,7 +9377,7 @@ function buildStage(tool, ts) {
   } else if (tool.id === "number") {
     const localizedValues = localizedNumberResultValues(result);
     if (localizedValues.length > 1) {
-      wrap.append(
+      appendPresent(wrap, 
         node("div", { class: "stage-label", text: "Random numbers" }),
         node("div", {
           class: "stage-result",
@@ -9379,7 +9387,7 @@ function buildStage(tool, ts) {
         resultList(localizedValues)
       );
     } else {
-      wrap.append(
+      appendPresent(wrap, 
         node("div", { class: "stage-label", text: "Random number" }),
         node("div", {
           class: "stage-result",
@@ -9417,7 +9425,7 @@ function buildStage(tool, ts) {
       })
     ]);
 
-    wrap.append(
+    appendPresent(wrap, 
       wheelWrap,
       node("div", { class: "stage-label", text: "Result" }),
       node("div", {
@@ -9435,7 +9443,7 @@ function buildStage(tool, ts) {
       }));
     }
   } else if (tool.id === "cards") {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "card-stage-visual",
         "aria-hidden": result ? "true" : null
@@ -9469,7 +9477,7 @@ function buildStage(tool, ts) {
     );
   } else if (tool.id === "color") {
     const color = result || "#7C5CFF";
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "color-swatch"
       }, [colorArtNode(color)]),
@@ -9477,12 +9485,12 @@ function buildStage(tool, ts) {
       node("div", { class: "stage-result", text: color })
     );
   } else if (tool.id === "sampler" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Selected" }),
       resultList(result)
     );
   } else if (tool.id === "shuffle" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Random order" }),
       resultList(result),
       node("div", {
@@ -9491,43 +9499,43 @@ function buildStage(tool, ts) {
       })
     );
   } else if (tool.id === "teams" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Random teams" }),
       teamsResult(result, "Team")
     );
   } else if (tool.id === "groups" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Random groups" }),
       teamsResult(result, "Group")
     );
   } else if (tool.id === "pairs" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Random pairs" }),
       resultList(result.map((pair) =>
         pair.length === 2 ? pair.join("  ↔  ") : pair[0] + "  —  unmatched"
       ))
     );
   } else if (tool.id === "assignment" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Assignments" }),
       resultList(result.map((item) => item.source + "  →  " + item.target))
     );
   } else if (tool.id === "ladder" && Array.isArray(result)) {
     const inputs = parseList(ts.listText);
     const outcomes = parseList(ts.ladderOutcomes);
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Ghost Ladder" }),
       ts.ladder ? ladderBoard(inputs, outcomes, ts.ladder) : null,
       resultList(result.map((item) => item.source + "  →  " + item.target))
     );
   } else if (tool.id === "tournament" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "First-round draw" }),
       tournamentResult(result)
     );
   } else if (tool.id === "elimination") {
     const remaining = ts.eliminationRemaining || parseList(ts.listText);
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "stage-label",
         text: result?.winner ? "Winner" : "Elimination"
@@ -9553,7 +9561,7 @@ function buildStage(tool, ts) {
   } else if (tool.id === "secret-santa") {
     if (ts.secretAssignments && ts.secretReveal != null) {
       const assignment = ts.secretAssignments[ts.secretReveal];
-      wrap.append(
+      appendPresent(wrap, 
         node("div", {
           class: "private-badge",
           text: "PRIVATE REVEAL"
@@ -9572,7 +9580,7 @@ function buildStage(tool, ts) {
         })
       );
     } else {
-      wrap.append(
+      appendPresent(wrap, 
         node("div", {
           class: "stage-label",
           text: "Private assignment"
@@ -9591,7 +9599,7 @@ function buildStage(tool, ts) {
       );
     }
   } else if (tool.id === "lottery" && Array.isArray(result)) {
-    wrap.append(
+    appendPresent(wrap, 
       node("div", { class: "stage-label", text: "Draw" }),
       node("div", {
         class: "stage-result",
@@ -9601,7 +9609,7 @@ function buildStage(tool, ts) {
     );
   } else {
     const text = result?.summary || result || readyLabel(tool.id);
-    wrap.append(
+    appendPresent(wrap, 
       node("div", {
         class: "stage-label",
         text: stageLabel(tool.id)
@@ -9907,7 +9915,7 @@ function listControls(tool, ts) {
     textarea
   ]);
 
-  wrap.append(sourceControl, runControl);
+  appendPresent(wrap, sourceControl, runControl);
   return wrap;
 }
 function updateSelectionEntry(ts, key, patch) {
@@ -11000,7 +11008,7 @@ function customControls(tool, ts) {
     return toolError("This Custom Experience no longer exists.");
   }
 
-  wrap.append(node("div", { class: "custom-runtime-summary" }, [
+  appendPresent(wrap, node("div", { class: "custom-runtime-summary" }, [
     node("div", {}, [
       node("strong", { text: experience.primitive }),
       node("span", {
@@ -11028,7 +11036,7 @@ function customControls(tool, ts) {
       ts.customInputText = input.value;
       invalidateTool(tool.id, ts);
     });
-    wrap.append(node("div", {
+    appendPresent(wrap, node("div", {
       class: "control custom-prompt-input"
     }, [
       node("label", { text: "Input for this run" }),
@@ -11043,7 +11051,7 @@ function customControls(tool, ts) {
       || experience.config.steps?.length
       || null;
 
-    wrap.append(node("div", {
+    appendPresent(wrap, node("div", {
       class: "notice custom-definition-notice",
       text:
         "Definition is locked at runtime"
@@ -13109,12 +13117,12 @@ function renderAddRuleModal(modal, config) {
   };
 
   if (config.ruleType === "together" || config.ruleType === "apart") {
-    body.append(
+    appendPresent(body, 
       itemSelect("Item A", config.itemA, (value) => { config.itemA = value; }),
       itemSelect("Item B", config.itemB, (value) => { config.itemB = value; })
     );
   } else if (config.ruleType === "fixed") {
-    body.append(
+    appendPresent(body, 
       itemSelect("Item", config.itemA, (value) => { config.itemA = value; })
     );
     const target = node("select", {
@@ -13125,7 +13133,7 @@ function renderAddRuleModal(modal, config) {
     ));
     target.value = config.targetId || context.targets[0]?.id || "";
     target.addEventListener("change", () => { config.targetId = target.value; });
-    body.append(node("div", { class: "control" }, [
+    appendPresent(body, node("div", { class: "control" }, [
       node("label", { text: "Target" }),
       target
     ]));
@@ -13138,7 +13146,7 @@ function renderAddRuleModal(modal, config) {
       "aria-label": "Maximum items per target"
     });
     max.addEventListener("input", () => { config.max = Number(max.value); });
-    body.append(node("div", { class: "control" }, [
+    appendPresent(body, node("div", { class: "control" }, [
       node("label", { text: "Maximum per target" }),
       max
     ]));
@@ -13166,7 +13174,7 @@ function renderAddRuleModal(modal, config) {
     });
     count.addEventListener("input", () => { config.count = Number(count.value); });
 
-    body.append(
+    appendPresent(body, 
       node("div", { class: "control" }, [
         node("label", { text: "Tag" }),
         tag,
@@ -13184,7 +13192,7 @@ function renderAddRuleModal(modal, config) {
   } else if (config.ruleType === "balanceField") {
     const numericFields = context.fields.filter((field) => field.type === "number");
     if (!numericFields.length) {
-      body.append(node("div", { class: "constraint-validation is-warning" }, [
+      appendPresent(body, node("div", { class: "constraint-validation is-warning" }, [
         node("strong", { text: "No numeric Pool fields" }),
         node("span", {
           text: "Add a Number field to the source Pool, refresh this WorkingSet, then add a balance rule."
@@ -13199,7 +13207,7 @@ function renderAddRuleModal(modal, config) {
       ));
       field.value = config.fieldId || numericFields[0].id;
       field.addEventListener("change", () => { config.fieldId = field.value; });
-      body.append(node("div", { class: "control" }, [
+      appendPresent(body, node("div", { class: "control" }, [
         node("label", { text: "Field to balance" }),
         field
       ]));
@@ -13214,7 +13222,7 @@ function renderAddRuleModal(modal, config) {
       "aria-label": "Recent run depth"
     });
     depth.addEventListener("input", () => { config.depth = Number(depth.value); });
-    body.append(node("div", { class: "control" }, [
+    appendPresent(body, node("div", { class: "control" }, [
       node("label", { text: "Look back this many runs" }),
       depth
     ]));
@@ -13232,7 +13240,7 @@ function renderAddRuleModal(modal, config) {
     priority.addEventListener("input", () => {
       config.priority = Number(priority.value);
     });
-    body.append(node("div", { class: "control" }, [
+    appendPresent(body, node("div", { class: "control" }, [
       node("label", { text: "Preference priority" }),
       priority
     ]));
@@ -14681,7 +14689,7 @@ function render() {
 
   const modal = renderModal(previousModalFocus);
   if (modal) {
-    document.body.append(modal);
+    document.appendPresent(body, modal);
     modalFocusSignature = nextSignature;
   } else {
     modalFocusSignature = null;
