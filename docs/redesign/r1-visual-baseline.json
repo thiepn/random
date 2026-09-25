@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "phase": "R1",
+  "status": "locked",
+  "baselineVersion": "1.1.0",
+  "targetRelease": "1.2.0",
+  "sourceBasis": "released main-branch source; no screenshot-capable interactive browser available in this chat",
+  "metrics": {
+    "rootStylesheets": 21,
+    "productionCssBytesApprox": 173117,
+    "directHexOccurrences": 115,
+    "rgbRgbaOccurrences": 183,
+    "gradientOccurrences": 66,
+    "boxShadowDeclarations": 49,
+    "borderRadiusDeclarations": 155,
+    "mediaQueryBlocks": 80,
+    "keyframeBlocks": 31,
+    "importantOccurrences": 62,
+    "backdropFilterDeclarations": 15,
+    "appRenderFunctions": 31,
+    "builtinTools": 25,
+    "primaryCategories": 4
+  },
+  "strengthsToPreserve": [
+    "semantic design tokens",
+    "Light and Dark themes",
+    "Higher Contrast and Forced Colors",
+    "Reduced Motion",
+    "keyboard and focus behavior",
+    "responsive shell",
+    "safe areas",
+    "result-first tool hierarchy",
+    "professional workbench separation",
+    "local SVG icon infrastructure",
+    "offline/local-first asset model",
+    "performance budgets"
+  ],
+  "selectedDirection": {
+    "id": "tactile-chance-arcade",
+    "name": "Tactile Chance Arcade",
+    "coreMetaphor": "The app is the cabinet; each randomizer is a machine or physical chance object.",
+    "personality": [
+      "playful-not-childish",
+      "tactile-not-skeuomorphic",
+      "vivid-not-chaotic",
+      "premium-not-luxurious",
+      "clear",
+      "fast"
+    ],
+    "compositionLayers": [
+      "environment",
+      "hero-object",
+      "interaction-hardware",
+      "result-layer",
+      "feedback-layer"
+    ],
+    "materialFamilies": [
+      "metal",
+      "enamel",
+      "lacquer-hardware",
+      "paper-felt",
+      "tokens-chips",
+      "tickets-slips",
+      "instrument-panel",
+      "private-envelope"
+    ]
+  },
+  "laws": [
+    "object-before-container",
+    "one-focal-point",
+    "color-has-a-job",
+    "depth-has-a-job",
+    "motion-uses-verbs",
+    "shell-stays-quiet",
+    "workbench-stays-professional",
+    "light-is-authored",
+    "reduced-motion-is-designed",
+    "replace-and-consolidate-before-layering",
+    "no-stock-core-identity",
+    "performance-is-visual-quality"
+  ],
+  "forbiddenPatterns": [
+    "dashboard-first-composition",
+    "glow-everywhere",
+    "decorative-gradients-without-material-purpose",
+    "uniform-large-radii",
+    "decorative-glassmorphism",
+    "emoji-product-icons",
+    "stock-core-illustration",
+    "remote-runtime-fonts-or-assets",
+    "motion-without-semantic-verb",
+    "multiple-simultaneous-focal-animations",
+    "default-confetti",
+    "neon-contrast-failures",
+    "arcade-spectacle-in-dense-workbench-rows",
+    "override-only-phase-stylesheets"
+  ],
+  "priorities": {
+    "P0": [
+      "home",
+      "arcade",
+      "coin",
+      "dice",
+      "wheel",
+      "cards",
+      "primary-action",
+      "result-stage"
+    ],
+    "P1": [
+      "picker-sampler",
+      "teams-groups-pairs",
+      "number-chance",
+      "tool-setup",
+      "navigation",
+      "settings"
+    ],
+    "P2": [
+      "pools",
+      "history",
+      "presets-templates",
+      "builder",
+      "decision-studio"
+    ]
+  },
+  "implementationPhases": [
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8"
+  ]
+}

@@ -204,6 +204,9 @@ jobs:
       - name: Final Visual QA & v1.1 Readiness V10 certification
         run: node tests/visual-release-v10.mjs
 
+      - name: R1 Visual Audit & Art Direction Lock certification
+        run: node tests/redesign-r1-contract.mjs
+
       - name: Production release certification
         run: node tests/release-certification.mjs
 

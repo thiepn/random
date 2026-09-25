@@ -6,6 +6,15 @@ A vibrant, local-first randomizer and decision toolbox built as an installable P
 
 v1.0.0 remains the architectural production baseline. v1.1.0 completes the backward-compatible visual redesign; follow-up work returns to targeted maintenance and patch releases unless another minor release is deliberately scoped.
 
+## v1.2 experience redesign track
+
+v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/experience overhaul** is now open because the released interface still does not meet the desired art and interaction quality.
+
+- [R1 Visual Audit & Art Direction Lock](./docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md)
+- [R1 Machine-readable Baseline](./docs/redesign/r1-visual-baseline.json)
+
+**R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
+
 ## v1.1 visual redesign — released
 
 **v1.1.0** completes the V1–V10 visual redesign track without changing the product’s randomization, persistence, privacy, or portability contracts.
