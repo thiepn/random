@@ -9441,11 +9441,7 @@ function buildStage(tool, ts) {
         ]),
         result
           ? playingCardVisual(result.card)
-          : node("div", {
-              class: "play-card playing-card card-placeholder"
-            }, [
-              node("span", { class: "card-suit", text: "?" })
-            ])
+          : playingCardArtNode("?", "card-placeholder")
       ]),
       node("div", {
         class: "stage-label",
