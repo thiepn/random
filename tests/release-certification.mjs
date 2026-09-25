@@ -36,11 +36,14 @@ for (const file of [
   "tests/visual-release-v10.mjs",
   "tests/redesign-r1-contract.mjs",
   "tests/redesign-r2-system.mjs",
+  "tests/redesign-r3-composition.mjs",
   "docs/design/V10-VISUAL-RELEASE-READINESS.md",
   "docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md",
   "docs/redesign/r1-visual-baseline.json",
   "docs/redesign/R2-VISUAL-SYSTEM-COMPONENT-MATERIALS.md",
   "docs/redesign/design-tokens-v3.json",
+  "docs/redesign/R3-SHELL-HOME-ARCADE-COMPOSITION.md",
+  "docs/redesign/r3-composition-contract.json",
   ".github/workflows/ci.yml"
 ]) {
   assert.ok(exists(file), "Release-critical file is missing: " + file);
@@ -221,6 +224,7 @@ for (const requiredStep of [
   "Final Visual QA & v1.1 Readiness V10 certification",
   "R1 Visual Audit & Art Direction Lock certification",
   "R2 Visual System 3.0 & Component Materials certification",
+  "R3 Shell, Home & Arcade Composition certification",
   "Production release certification",
   "Versioned GitHub release"
 ]) {
