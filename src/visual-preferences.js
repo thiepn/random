@@ -103,6 +103,78 @@ export function createThemeAccentControls({
   return [themes, accents];
 }
 
+export function createDisplayPreferenceControls({
+  node,
+  settings,
+  onChange
+}) {
+  const accessibility =
+    normalizeAccessibilitySettings(settings).accessibility;
+  const [themes, accents] = createThemeAccentControls({
+    node,
+    settings,
+    onChange
+  });
+
+  function select(label, value, options, key) {
+    const control = node("select", {
+      class: "field",
+      "aria-label": label
+    }, options.map(([optionValue, text]) =>
+      node("option", { value: optionValue, text })
+    ));
+    control.value = value;
+    control.addEventListener("change", () =>
+      onChange(key, control.value)
+    );
+    return control;
+  }
+
+  const regional = select(
+    "Regional format",
+    accessibility.regionalFormat,
+    [
+      ["auto", "Region · System default"],
+      ["en-US", "Region · English (United States)"],
+      ["de-DE", "Region · Deutsch (Deutschland)"],
+      ["fr-FR", "Region · Français (France)"],
+      ["ko-KR", "Region · 한국어 (대한민국)"]
+    ],
+    "regionalFormat"
+  );
+
+  const contrast = select(
+    "Contrast preference",
+    accessibility.contrast,
+    [
+      ["system", "Contrast · System"],
+      ["standard", "Contrast · Standard"],
+      ["more", "Contrast · Higher"]
+    ],
+    "contrast"
+  );
+
+  const controlSize = select(
+    "Control size",
+    accessibility.controlSize,
+    [
+      ["standard", "Controls · Standard"],
+      ["large", "Controls · Large"]
+    ],
+    "controlSize"
+  );
+
+  return [
+    themes,
+    accents,
+    node("div", { class: "settings-accessibility-grid" }, [
+      regional,
+      contrast,
+      controlSize
+    ])
+  ];
+}
+
 function listen(query, callback) {
   const media = window.matchMedia?.(query) || null;
   if (!media) return;
