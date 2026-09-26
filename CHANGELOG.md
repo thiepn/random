@@ -11,7 +11,9 @@ This project uses semantic versioning from the v1.0.0 production baseline onward
 - R1–R8 full visual/experience overhaul: material system, quiet cabinet shell, machine discovery, Tool Experience 3.0, authored object art, physical motion, and adaptive accessibility art.
 - final legacy ordinary-surface cleanup removes pre-redesign dark-only styling from Tool errors/ladder/brackets, Dice/Number advanced controls, constraint/rule-builder surfaces, and Settings data/backup surfaces.
 - release-candidate source budgets remain within production limits and draft v1.2.0 release notes are prepared.
-- **Release hold:** exact-head CI + Pages success and live browser/device screenshot QA are required before version/tag/publication.
+- live visual QA verified from the exact Pages artifact in Chromium: 39 rendered checkpoints, 25/25 built-in tool runs, all accents across both themes, accessibility/input states, and long-label/mobile stress.
+- live QA found and fixed optional nullish DOM-child rendering and string-result subtitle inheritance defects, both now regression-tested.
+- **Release hold:** only the evidence-recording exact-head CI + Pages pass remains before the atomic version/tag/publication commit.
 
 ## [1.1.0] — 2026-09-25
 

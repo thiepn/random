@@ -1,6 +1,6 @@
 # R8 — Full Visual QA, Consolidation & v1.2 Release Readiness
 
-Status: **release candidate source QA complete — release hold remains**  
+Status: **source QA + live visual QA verified — pre-release CI hold**  
 Direction: **Tactile Chance Arcade**  
 Target: **v1.2.0**
 
@@ -25,14 +25,11 @@ R8 does **not** bump `VERSION`, create a v1.2.0 tag, or publish a GitHub Release
 
 The repository is currently:
 
-**SOURCE-READY / LIVE-VISUAL-QA HOLD**
+**LIVE VISUAL QA VERIFIED / PRE-RELEASE CI HOLD**
 
-The hold exists for two concrete reasons:
+The exact Pages artifact from visual payload head `215abff4b6db97a07cf8c7bdc0ab1536fbc8b334` was rendered in Chromium and the required visual/runtime matrix was completed.
 
-1. the exact final-head GitHub Actions/Pages jobs have remained queued or been superseded/cancelled by newer commits rather than producing a complete final certification result;
-2. this chat does not expose a screenshot-capable browser surface, and the available web reader cannot access the GitHub Pages site, so pixel-level live browser/device screenshots cannot be honestly certified here.
-
-R8 therefore refuses to turn source confidence into an unsupported claim of full visual verification.
+The remaining hold is procedural: this evidence-recording head must itself pass CI and Pages before the atomic v1.2.0 version/release commit.
 
 ## Source QA completed
 
@@ -133,36 +130,23 @@ Source-certified:
 - touch does not receive sticky hover transforms;
 - keyboard-accessible navigation/tool/setup controls.
 
-## Live visual matrix still required
+## Live visual matrix — verified
 
-Before v1.2.0 is tagged, perform screenshot/device smoke checks for:
+The live matrix is complete. See [R8 Live Visual QA](./R8-LIVE-VISUAL-QA.md).
 
-| Surface | Required states |
-| --- | --- |
-| Home | Night + Day, 320/390/768/1440/1920 |
-| Arcade | Night + Day, category rail/grid, long labels |
-| Coin | idle, reveal, result, Reduced Motion |
-| Dice | multi-die, expression, result, Reduced Motion |
-| Wheel | long labels, spin, result, Day Table |
-| Cards | pre-draw, deal, result, deck reset |
-| People/list tools | token/ticket art, long lists, team results |
-| Generators | instrument art, long/structured values |
-| Secret Santa | generated state + private reveal |
-| Settings | themes, all accents, Higher Contrast, Large Controls |
-| Workbench | Pools, History, Builder, Decision Studio |
-| Forced Colors | Home, Arcade, one Tool, one workbench |
-| Touch | mobile navigation, Quick Bay, Setup, primary action |
-| Keyboard | shell navigation, tool actions, Setup, modal flows |
+Verified evidence includes:
 
-Any clipping, unreadable contrast, broken object layering, sticky hover, animation leakage, or Day/Night mismatch is a release blocker.
+- Home/Arcade at 320, 390, 768, 1440 and 1920 widths across Day Table and Night Cabinet;
+- core tool idle/result states;
+- 25/25 built-in tool execution;
+- all eight accents across both themes;
+- Higher Contrast, Forced Colors, Reduced Motion and Large Controls;
+- 320px text-zoom stress;
+- keyboard focus and touch;
+- long-label Wheel at 390px;
+- Pools, History and Decision Studio workbench surfaces.
 
-## Browser evidence limit
-
-No screenshot evidence is attached to R8 because no valid screenshot-capable browser was available in this chat.
-
-The live Pages URL also could not be opened by the available web reader.
-
-This is recorded as a limitation, not silently treated as a pass.
+No unresolved visual/runtime blocker remained after the two QA-discovered rendering defects were fixed.
 
 ## Final source budgets
 
@@ -171,8 +155,8 @@ R8 records the current source baseline:
 - root stylesheets: **19**;
 - total CSS: **173,924 bytes**;
 - CSS headroom under 175,000: **1,076 bytes**;
-- `src/app.js`: **422,181 bytes**;
-- total production JavaScript: **757,042 bytes**;
+- `src/app.js`: **422,958 bytes**;
+- total production JavaScript: **757,819 bytes**;
 - `src/hero-art.js`: **16,192 bytes**;
 - `src/motion-system.js`: **11,287 bytes**.
 
@@ -184,12 +168,12 @@ The stable release remains **v1.1.0** during R8.
 
 A draft `RELEASE-NOTES-v1.2.0.md` is prepared, but version/tag/release creation is deliberately deferred.
 
-The release-finalization step should only change the R8 release decision after:
+The release-finalization step should change the R8 release decision after this evidence-recording head has:
 
-1. exact-head full CI succeeds;
-2. exact-head Pages deployment succeeds;
-3. the live browser/device visual matrix is completed;
-4. no R8 blocker remains.
+1. exact-head full CI success;
+2. exact-head Pages deployment success.
+
+The live browser/device visual matrix is already verified and no R8 blocker remains.
 
 ## Exit criteria
 
@@ -204,7 +188,7 @@ R8 source QA is complete when:
 - draft v1.2.0 release notes exist;
 - CI includes the R8 gate;
 - release certification protects R8 artifacts;
-- release decision remains HOLD until live browser evidence is available.
+- live visual QA is verified; release decision remains HOLD only until this evidence-recording head passes CI and Pages.
 
 ## Next
 

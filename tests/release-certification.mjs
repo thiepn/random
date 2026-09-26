@@ -62,6 +62,7 @@ for (const file of [
   "docs/redesign/r7-accessibility-art-contract.json",
   "docs/redesign/R8-FULL-VISUAL-QA-RELEASE-READINESS.md",
   "docs/redesign/r8-release-readiness.json",
+  "docs/redesign/R8-LIVE-VISUAL-QA.md",
   "RELEASE-NOTES-v1.2.0.md",
   ".github/workflows/ci.yml"
 ]) {

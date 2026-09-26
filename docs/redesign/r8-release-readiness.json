@@ -5,6 +5,7 @@
   "targetRelease": "1.2.0",
   "status": "release-candidate",
   "releaseDecision": "hold",
+  "releaseHoldReason": "Live visual QA is verified; waiting for this evidence-recording head to pass CI and Pages before the atomic v1.2.0 release commit.",
   "sourceQA": {
     "r1ThroughR7": true,
     "builtinToolArtCoverage": 25,
@@ -14,11 +15,24 @@
     "securityBoundaryPreserved": true
   },
   "liveVisualQA": {
-    "status": "blocked-tooling",
-    "screenshotsCaptured": false,
+    "status": "verified",
+    "screenshotsCaptured": true,
     "pagesReaderAccessible": false,
-    "requiredBeforeRelease": true,
-    "reason": "No screenshot-capable browser is exposed in this chat and the available web reader cannot access the GitHub Pages site."
+    "requiredBeforeRelease": false,
+    "method": "Exact GitHub Pages artifact rendered in Chromium through an in-memory import-map/blob-module harness because administrator policy blocks URL navigation in the QA runtime.",
+    "browser": "Chromium 144.0.7559.96",
+    "visualPayloadHead": "215abff4b6db97a07cf8c7bdc0ab1536fbc8b334",
+    "pagesRunId": 36211622306,
+    "pagesArtifactId": 10895961562,
+    "artifactDigest": "sha256:4df731ad58e20dc6d52757dfbacfcdea63e4a92bae6c98e1308221a47aa64698",
+    "screenshotsAndCheckpoints": 39,
+    "allToolRuns": 25,
+    "accentThemeStates": 16,
+    "unresolvedBlockers": 0,
+    "limitations": [
+      "IndexedDB persistence was replaced by an in-memory QA shim only for the opaque in-memory browser document; persistence/storage/offline contracts are covered separately by CI.",
+      "The available web reader could not open the public Pages URL, so rendered evidence came from the exact Pages artifact rather than HTTP navigation to the deployed URL."
+    ]
   },
   "requiredLiveMatrix": {
     "surfaces": [
@@ -58,6 +72,23 @@
       "touch"
     ]
   },
+  "liveMatrixResult": {
+    "homeArcade": "passed",
+    "coreTools": "passed",
+    "allBuiltinTools": "25/25 passed",
+    "longLabelWheel": "passed at 390px",
+    "higherContrast": "passed",
+    "forcedColors": "passed",
+    "reducedMotion": "passed",
+    "largeControls": "passed",
+    "textZoom320": "passed",
+    "keyboardFocus": "passed — visible 3px solid outline",
+    "touch": "passed",
+    "accents": "8/8 across both themes",
+    "consoleAndPageErrors": 0,
+    "horizontalOverflowFailures": 0,
+    "visibleNullUndefinedFailures": 0
+  },
   "auditedLegacyFiles": [
     "phase1.css",
     "phase3.css",
@@ -69,16 +100,18 @@
     "cssBytes": 173924,
     "cssProductionLimit": 175000,
     "cssHeadroom": 1076,
-    "appBytes": 422181,
-    "productionJsBytes": 757042,
+    "appBytes": 422958,
+    "productionJsBytes": 757819,
     "heroArtBytes": 16192,
     "motionSystemBytes": 11287
   },
   "releaseRequirements": [
-    "exact-head CI success",
-    "exact-head Pages deployment success",
-    "live browser/device visual matrix complete",
-    "no unresolved R8 release blocker"
+    "live browser/device visual matrix complete — satisfied",
+    "visual payload CI success — satisfied",
+    "visual payload Pages deployment success — satisfied",
+    "evidence-recording exact-head CI success — pending",
+    "evidence-recording exact-head Pages deployment success — pending",
+    "no unresolved R8 release blocker — satisfied"
   ],
   "versionPolicy": {
     "stableVersionDuringR8": "1.1.0",

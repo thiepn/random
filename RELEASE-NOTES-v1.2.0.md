@@ -1,6 +1,6 @@
 # Randomizer Arcade v1.2.0
 
-**Status: Release candidate — not yet published**
+**Status: Release candidate — live visual QA verified; final version metadata pending**
 
 v1.2.0 is the **Tactile Chance Arcade** overhaul. It is backward-compatible with the v1.1.0 randomness, local data, portability, privacy, and offline contracts.
 
@@ -43,8 +43,8 @@ v1.2.0 must **not** be tagged until all of the following are complete:
 
 1. exact-head full CI succeeds;
 2. exact-head GitHub Pages deployment succeeds;
-3. live browser/device screenshot smoke matrix is completed for Home, Arcade, core tool families, Settings and workbench surfaces;
-4. Night/Day, 320px/mobile/tablet/desktop/ultrawide, Higher Contrast, Forced Colors, Reduced Motion, Large Controls, keyboard, mouse and touch states show no release blocker;
-5. the R8 release decision is changed from `hold` to `release`.
+3. the R8 release decision is changed from `hold` to `release`.
+
+The live Chromium matrix is complete and recorded in `docs/redesign/R8-LIVE-VISUAL-QA.md`: 39 rendered checkpoints, 25/25 built-in tool runs, Night/Day responsive states, all accents, accessibility/input states, and long-label/mobile stress.
 
 The version/cache/tag/release update belongs to **v1.2.0 — Release & Deployment Finalization**, not R8.

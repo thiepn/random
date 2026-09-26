@@ -13,6 +13,7 @@ const app=read("src/app.js");
 const sw=read("sw.js");
 const version=read("VERSION").trim();
 const notes=read("RELEASE-NOTES-v1.2.0.md");
+const liveQa=read("docs/redesign/R8-LIVE-VISUAL-QA.md");
 
 assert.equal(contract.phase,"R8");
 assert.equal(contract.targetRelease,"1.2.0");
@@ -107,9 +108,17 @@ assert.ok(notes.includes("Randomizer Arcade v1.2.0"));
 assert.ok(notes.includes("Release candidate"));
 assert.ok(notes.includes("Tactile Chance Arcade"));
 
+assert.equal(contract.liveVisualQA.status,"verified");
+assert.equal(contract.liveVisualQA.screenshotsCaptured,true);
+assert.equal(contract.liveVisualQA.unresolvedBlockers,0);
+assert.equal(contract.liveVisualQA.allToolRuns,25);
+assert.equal(contract.liveVisualQA.accentThemeStates,16);
+assert.ok(liveQa.includes("25 / 25"));
+assert.ok(liveQa.includes("39 rendered screenshot/checkpoint states"));
+assert.ok(liveQa.includes("Chromium 144.0.7559.96"));
+
 if(contract.releaseDecision==="hold"){
   assert.notEqual(version,"1.2.0","R8 hold may not publish v1.2.0.");
-  assert.notEqual(contract.liveVisualQA.status,"verified");
 }else{
   assert.equal(version,"1.2.0");
   assert.equal(contract.liveVisualQA.status,"verified");
@@ -118,8 +127,8 @@ if(contract.releaseDecision==="hold"){
 
 for(const marker of [
   "# R8 — Full Visual QA, Consolidation & v1.2 Release Readiness",
-  "SOURCE-READY / LIVE-VISUAL-QA HOLD",
-  "Live visual matrix still required",
+  "LIVE VISUAL QA VERIFIED / PRE-RELEASE CI HOLD",
+  "Live visual matrix — verified",
   "v1.2.0 — Release & Deployment Finalization"
 ]){
   assert.ok(doc.includes(marker),"Missing R8 documentation marker: "+marker);
