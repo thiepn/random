@@ -47,7 +47,10 @@ for(const marker of [
   assert.ok(audit.includes(marker),"Missing R1 audit contract: "+marker);
 }
 
-assert.ok(readme.includes("v1.2 experience redesign track"));
+assert.ok(
+  readme.includes("v1.2 experience redesign"),
+  "README must retain the v1.2 redesign section in either active or released lifecycle state."
+);
 assert.ok(readme.includes("R1 Visual Audit & Art Direction Lock"));
 assert.ok(ci.includes("R1 Visual Audit & Art Direction Lock certification"));
 
