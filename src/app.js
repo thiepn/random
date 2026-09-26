@@ -9609,6 +9609,12 @@ function buildStage(tool, ts) {
     );
   } else {
     const text = result?.summary || result || readyLabel(tool.id);
+    const subtitle =
+      result
+      && typeof result === "object"
+      && typeof result.sub === "string"
+        ? result.sub
+        : null;
     appendPresent(wrap, 
       node("div", {
         class: "stage-label",
@@ -9621,8 +9627,8 @@ function buildStage(tool, ts) {
           fontSize: String(text).length > 20 ? "42px" : ""
         }
       }),
-      result?.sub
-        ? node("div", { class: "stage-sub", text: result.sub })
+      subtitle
+        ? node("div", { class: "stage-sub", text: subtitle })
         : null
     );
   }

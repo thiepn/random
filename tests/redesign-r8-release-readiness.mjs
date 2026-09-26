@@ -79,6 +79,16 @@ assert.ok(app.includes("cancelPhysicalMotion(toolId)"));
 assert.ok(app.includes('document.addEventListener("visibilitychange"'));
 assert.ok(app.includes("finishPresentation(state.toolId, null, false)"));
 
+assert.ok(
+  app.includes('typeof result.sub === "string"'),
+  "Generic result subtitles must only read string sub fields from result objects."
+);
+assert.equal(
+  /result\?\.sub\s*\?\s*node\("div",\s*\{\s*class:\s*"stage-sub"/.test(app),
+  false,
+  "String results must not expose inherited String.prototype.sub as stage text."
+);
+
 assert.ok(sw.includes('"./src/hero-art.js"'));
 assert.ok(sw.includes('"./src/motion-system.js"'));
 
