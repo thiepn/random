@@ -1,6 +1,6 @@
 # R8 — Full Visual QA, Consolidation & v1.2 Release Readiness
 
-Status: **source QA + live visual QA verified — pre-release CI hold**  
+Status: **released — v1.2.0**  
 Direction: **Tactile Chance Arcade**  
 Target: **v1.2.0**
 
@@ -25,11 +25,11 @@ R8 does **not** bump `VERSION`, create a v1.2.0 tag, or publish a GitHub Release
 
 The repository is currently:
 
-**LIVE VISUAL QA VERIFIED / PRE-RELEASE CI HOLD**
+**RELEASE DECISION — APPROVED**
 
 The exact Pages artifact from visual payload head `215abff4b6db97a07cf8c7bdc0ab1536fbc8b334` was rendered in Chromium and the required visual/runtime matrix was completed.
 
-The remaining hold is procedural: this evidence-recording head must itself pass CI and Pages before the atomic v1.2.0 version/release commit.
+The evidence-recording head `7d7e8aae3787a8095128abed9e2c220e0bf3e6a4` then passed complete CI, Production release certification, and Pages deployment. All R8 release blockers are cleared.
 
 ## Source QA completed
 
@@ -164,16 +164,11 @@ R8 additionally enforces a release-candidate CSS ceiling below the absolute prod
 
 ## Versioning
 
-The stable release remains **v1.1.0** during R8.
+The stable release is **v1.2.0**.
 
-A draft `RELEASE-NOTES-v1.2.0.md` is prepared, but version/tag/release creation is deliberately deferred.
+`RELEASE-NOTES-v1.2.0.md` is finalized, the R8 release decision is `release`, and version/tag/publication are authorized after the successful evidence-head CI and Pages gates.
 
-The release-finalization step should change the R8 release decision after this evidence-recording head has:
-
-1. exact-head full CI success;
-2. exact-head Pages deployment success.
-
-The live browser/device visual matrix is already verified and no R8 blocker remains.
+The versioned release workflow must tag the exact final certified release commit.
 
 ## Exit criteria
 
@@ -188,10 +183,8 @@ R8 source QA is complete when:
 - draft v1.2.0 release notes exist;
 - CI includes the R8 gate;
 - release certification protects R8 artifacts;
-- live visual QA is verified; release decision remains HOLD only until this evidence-recording head passes CI and Pages.
+- live visual QA is verified and the evidence-recording head passed CI + Pages; the v1.2.0 release decision is approved.
 
-## Next
+## Release
 
-**v1.2.0 — Release & Deployment Finalization**
-
-That step should be mechanical: finish the live visual matrix, resolve any findings, obtain exact-head green CI + Pages deployment, flip the R8 release decision, bump version/cache/document metadata, finalize release notes/changelog/maintenance baseline, and publish the versioned GitHub Release.
+**v1.2.0 — Release & Deployment Finalization** is complete once the final version commit passes CI and the versioned release workflow publishes the exact certified commit.

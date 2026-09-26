@@ -1,4 +1,4 @@
-# Production Certification — Implementation Phase 16
+# Production Certification — v1.2.0
 
 This file defines the release gate for Randomizer Arcade after the feature, performance, accessibility, persistence, and security implementation phases.
 
@@ -32,11 +32,13 @@ The automated gate covers:
 - absence of production Math.random, eval/new Function, document.write, innerHTML assignment, outerHTML assignment, and insertAdjacentHTML.
 - absence of remote JavaScript module dependencies.
 - production JavaScript, CSS, service-worker, and manifest size budgets.
-- V1–V10 visual contracts: design tokens, iconography, adaptive shell, discovery, tool stages, motion, workbench surfaces, themes, first-paint preferences, responsive/safe-area resilience, and release headroom.
+- V1–V10 visual contracts plus R1–R8 Tactile Chance Arcade contracts: material system, cabinet shell/discovery, Tool Experience 3.0, authored object art, cancelable physical motion, adaptive accessibility art, live visual QA evidence, and release headroom.
 
 ## Operational release checks
 
-Before calling a specific deployment fully released, also verify the deployed GitHub Pages build:
+For v1.2.0, the live visual/browser matrix is recorded in `docs/redesign/R8-LIVE-VISUAL-QA.md` and was completed before release authorization.
+
+Before calling a future deployment fully released, also verify the deployed GitHub Pages build:
 
 - app loads with no fatal startup error.
 - a Coin/Dice/Picker action produces a result.

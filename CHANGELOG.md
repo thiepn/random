@@ -4,7 +4,7 @@ All notable production changes to Randomizer Arcade are recorded here.
 
 This project uses semantic versioning from the v1.0.0 production baseline onward.
 
-## [Unreleased] — v1.2.0 release candidate
+## [1.2.0] — 2026-09-26
 
 ### Tactile Chance Arcade
 
@@ -13,7 +13,7 @@ This project uses semantic versioning from the v1.0.0 production baseline onward
 - release-candidate source budgets remain within production limits and draft v1.2.0 release notes are prepared.
 - live visual QA verified from the exact Pages artifact in Chromium: 39 rendered checkpoints, 25/25 built-in tool runs, all accents across both themes, accessibility/input states, and long-label/mobile stress.
 - live QA found and fixed optional nullish DOM-child rendering and string-result subtitle inheritance defects, both now regression-tested.
-- **Release hold:** only the evidence-recording exact-head CI + Pages pass remains before the atomic version/tag/publication commit.
+- evidence-recording exact-head CI, Production release certification, and Pages deployment passed before the final version/tag/publication commit.
 
 ## [1.1.0] — 2026-09-25
 

@@ -3,9 +3,8 @@
   "phase": "R8",
   "direction": "Tactile Chance Arcade",
   "targetRelease": "1.2.0",
-  "status": "release-candidate",
-  "releaseDecision": "hold",
-  "releaseHoldReason": "Live visual QA is verified; waiting for this evidence-recording head to pass CI and Pages before the atomic v1.2.0 release commit.",
+  "status": "released",
+  "releaseDecision": "release",
   "sourceQA": {
     "r1ThroughR7": true,
     "builtinToolArtCoverage": 25,
@@ -109,14 +108,21 @@
     "live browser/device visual matrix complete — satisfied",
     "visual payload CI success — satisfied",
     "visual payload Pages deployment success — satisfied",
-    "evidence-recording exact-head CI success — pending",
-    "evidence-recording exact-head Pages deployment success — pending",
+    "evidence-recording exact-head CI success — satisfied",
+    "evidence-recording exact-head Pages deployment success — satisfied",
     "no unresolved R8 release blocker — satisfied"
   ],
   "versionPolicy": {
-    "stableVersionDuringR8": "1.1.0",
-    "versionBumpDeferred": true,
-    "tagDeferred": true,
-    "githubReleaseDeferred": true
+    "stableVersionDuringR8": "1.2.0",
+    "versionBumpDeferred": false,
+    "tagDeferred": false,
+    "githubReleaseDeferred": false
+  },
+  "preReleaseCertification": {
+    "evidenceHead": "7d7e8aae3787a8095128abed9e2c220e0bf3e6a4",
+    "ciRunId": 36260739686,
+    "ciConclusion": "success",
+    "pagesRunId": 36260739323,
+    "pagesConclusion": "success"
   }
 }

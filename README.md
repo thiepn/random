@@ -2,13 +2,13 @@
 
 A vibrant, local-first randomizer and decision toolbox built as an installable PWA.
 
-**Stable release: v1.1.0** — production-certified on 2026-09-25. See [CHANGELOG.md](./CHANGELOG.md), [RELEASE-NOTES-v1.1.0.md](./RELEASE-NOTES-v1.1.0.md), [PRODUCTION-CERTIFICATION.md](./PRODUCTION-CERTIFICATION.md), and [MAINTENANCE.md](./MAINTENANCE.md).
+**Stable release: v1.2.0** — production-certified on 2026-09-26. See [CHANGELOG.md](./CHANGELOG.md), [RELEASE-NOTES-v1.2.0.md](./RELEASE-NOTES-v1.2.0.md), [PRODUCTION-CERTIFICATION.md](./PRODUCTION-CERTIFICATION.md), and [MAINTENANCE.md](./MAINTENANCE.md).
 
-v1.0.0 remains the architectural production baseline. v1.1.0 completes the backward-compatible visual redesign; follow-up work returns to targeted maintenance and patch releases unless another minor release is deliberately scoped.
+v1.0.0 remains the architectural production baseline. v1.2.0 completes the backward-compatible **Tactile Chance Arcade** redesign; follow-up work returns to targeted maintenance and patch releases unless another minor release is deliberately scoped.
 
-## v1.2 experience redesign track
+## v1.2 experience redesign — released
 
-v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/experience overhaul** is now open because the released interface still does not meet the desired art and interaction quality.
+**v1.2.0** completes the R1–R8 visual/experience overhaul while preserving the product's randomization, persistence, privacy, portability, and offline contracts.
 
 - [R1 Visual Audit & Art Direction Lock](./docs/redesign/R1-VISUAL-AUDIT-ART-DIRECTION.md)
 - [R1 Machine-readable Baseline](./docs/redesign/r1-visual-baseline.json)
@@ -27,7 +27,7 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 - [R8 Full Visual QA & v1.2 Release Readiness](./docs/redesign/R8-FULL-VISUAL-QA-RELEASE-READINESS.md)
 - [R8 Release Readiness Contract](./docs/redesign/r8-release-readiness.json)
 - [R8 Live Visual QA](./docs/redesign/R8-LIVE-VISUAL-QA.md)
-- [v1.2.0 Release Candidate Notes](./RELEASE-NOTES-v1.2.0.md)
+- [v1.2.0 Release Notes](./RELEASE-NOTES-v1.2.0.md)
 
 **R1 direction:** **Tactile Chance Arcade** — the application becomes a quiet modern cabinet around authored physical chance objects, with stronger material identity, restrained color, tool-specific art, and motion that matches the randomization verb.
 
@@ -43,7 +43,7 @@ v1.1.0 remains the stable release, but a deliberately scoped **v1.2.0 visual/exp
 
 **R7 adaptive art:** Night Cabinet and Day Table now have theme-aware physical materials, Light mode keeps a genuinely light result chamber, authored art has explicit Higher Contrast/Forced Colors/Reduced Motion behavior, and the machine layouts are hardened for large controls, 320px/text zoom, touch, ultrawide and PWA launch surfaces.
 
-**R8 release candidate:** R1–R7 are source-audited together, remaining ordinary dark-only legacy surfaces are migrated to materials, and the live Chromium matrix is verified: 39 rendered checkpoints, 25/25 built-in tool runs, responsive Night/Day states, accessibility modes, touch/keyboard, long-label Wheel and all accent states. The release decision remains **HOLD** only until this evidence-recording head passes CI and Pages.
+**R8 release certification:** R1–R7 are source-audited together, remaining ordinary dark-only legacy surfaces are migrated to materials, and the live Chromium matrix is verified: 39 rendered checkpoints, 25/25 built-in tool runs, responsive Night/Day states, accessibility modes, touch/keyboard, long-label Wheel and all accent states. The evidence-recording head passed CI and Pages before v1.2.0 publication.
 
 ## v1.1 visual redesign — released
 

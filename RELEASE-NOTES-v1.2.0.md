@@ -1,6 +1,6 @@
 # Randomizer Arcade v1.2.0
 
-**Status: Release candidate — live visual QA verified; final version metadata pending**
+**Status: Production release**
 
 v1.2.0 is the **Tactile Chance Arcade** overhaul. It is backward-compatible with the v1.1.0 randomness, local data, portability, privacy, and offline contracts.
 
@@ -37,14 +37,10 @@ Current R8 source baseline:
 - 422,181-byte app controller;
 - 757,042 bytes total production JavaScript.
 
-## Required before publication
+## Certification
 
-v1.2.0 must **not** be tagged until all of the following are complete:
+v1.2.0 passed the complete source and production certification chain before publication.
 
-1. exact-head full CI succeeds;
-2. exact-head GitHub Pages deployment succeeds;
-3. the R8 release decision is changed from `hold` to `release`.
+The live Chromium matrix is recorded in `docs/redesign/R8-LIVE-VISUAL-QA.md`: 39 rendered checkpoints, 25/25 built-in tool runs, Night/Day responsive states, all accents, accessibility/input states, and long-label/mobile stress.
 
-The live Chromium matrix is complete and recorded in `docs/redesign/R8-LIVE-VISUAL-QA.md`: 39 rendered checkpoints, 25/25 built-in tool runs, Night/Day responsive states, all accents, accessibility/input states, and long-label/mobile stress.
-
-The version/cache/tag/release update belongs to **v1.2.0 — Release & Deployment Finalization**, not R8.
+The evidence-recording head passed complete CI, Production release certification, and GitHub Pages deployment before the final version commit was authorized.

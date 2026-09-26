@@ -105,7 +105,7 @@ assert.ok(appBytes<=423000,"R8 app controller headroom regressed: "+appBytes);
 assert.ok(jsBytes<=1048576,"R8 production JS exceeded 1 MiB.");
 
 assert.ok(notes.includes("Randomizer Arcade v1.2.0"));
-assert.ok(notes.includes("Release candidate"));
+assert.ok(notes.includes("Randomizer Arcade v1.2.0"));
 assert.ok(notes.includes("Tactile Chance Arcade"));
 
 assert.equal(contract.liveVisualQA.status,"verified");
@@ -127,7 +127,7 @@ if(contract.releaseDecision==="hold"){
 
 for(const marker of [
   "# R8 — Full Visual QA, Consolidation & v1.2 Release Readiness",
-  "LIVE VISUAL QA VERIFIED / PRE-RELEASE CI HOLD",
+  "RELEASE DECISION — APPROVED",
   "Live visual matrix — verified",
   "v1.2.0 — Release & Deployment Finalization"
 ]){
