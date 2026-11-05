@@ -1,3 +1,4 @@
+import { createHomeSearchBox } from "./home-search.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import {
@@ -3045,57 +3046,12 @@ function homeSectionHeader(
   ]);
 }
 
-function homeSearchBox({
-  className = "",
-  placeholder = "Search randomizers…"
-} = {}) {
-  const wrap = node("label", {
-    class: ("search-box home-search-box " + className).trim()
-  }, [
-    iconNode("search", { className: "search-icon" }),
-    node("span", { class: "sr-only", text: "Search randomizers" })
-  ]);
-
-  const updateResults = (input) => {
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const direction = input.selectionDirection;
-    state.search = input.value;
-    render();
-    const next = document.querySelector(
-      "." + className.split(" ").filter(Boolean)[0] + " input"
-    ) || document.querySelector(".home-search-box input");
-    if (next) {
-      next.focus({ preventScroll: true });
-      if (start != null && end != null) {
-        next.setSelectionRange(start, end, direction || "none");
-      }
-    }
-  };
-
-  let composing = false;
-  const search = node("input", {
-    type: "search",
-    value: state.search,
-    placeholder,
-    onInput: (event) => {
-      if (composing || event.isComposing) {
-        state.search = event.target.value;
-        return;
-      }
-      updateResults(event.target);
-    }
+function homeSearchBox(options = {}) {
+  return createHomeSearchBox({
+    ...options, node, iconNode, appendPresent, render,
+    getSearch: () => state.search,
+    setSearch: (value) => { state.search = value; }
   });
-  search.addEventListener("compositionstart", () => {
-    composing = true;
-  });
-  search.addEventListener("compositionend", () => {
-    composing = false;
-    updateResults(search);
-  });
-
-  appendPresent(wrap, search);
-  return wrap;
 }
 function recentHomeTools(limit = 6) {
   const seen = new Set();
@@ -5857,25 +5813,23 @@ function renderPlay() {
     ]));
   }
 
-  const shownIds = new Set([
+  const shown = new Set([
     "coin", "dice", "wheel", "number", "picker",
-    ...recent.map(({ tool }) => tool.id),
+    ...recent.map(({tool}) => tool.id),
     ...favorites.map((tool) => tool.id)
   ]);
   const explore = [
     "teams", "color", "elimination", "tournament", "cards",
     "sampler", "secret-santa", "shuffle", "pairs", "assignment", "ladder"
-  ].map(getTool)
-    .filter((tool) => tool && !shownIds.has(tool.id))
-    .slice(0, 6);
+  ].map(getTool).filter((tool) => tool && !shown.has(tool.id)).slice(0, 6);
 
   if (explore.length) {
     content.append(node("section", {
       class: "home-section explore-section"
     }, [
       homeSectionHeader(
-        "Discover more",
-        "Try a randomizer you haven't opened recently.",
+        "More machines",
+        "Find another way to decide.",
         "All " + TOOLS.length + " machines",
         () => setView("arcade")
       ),
@@ -11438,13 +11392,11 @@ function buildToolActionDock(tool, ts) {
     class: "secondary tool-setup-shortcut",
     type: "button",
     onClick: () => {
-      const setup = document.querySelector(".tool-screen .tool-controls");
-      if (!setup) return;
-      setup.open = true;
-      setup.scrollIntoView({
-        behavior: prefersReducedMotionNow() ? "auto" : "smooth",
-        block: "nearest"
-      });
+      const setup = document.querySelector(".tool-controls");
+      if (setup) {
+        setup.open = true;
+        setup.scrollIntoView({ block: "nearest" });
+      }
     }
   }, "Edit setup"));
 
