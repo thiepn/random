@@ -6,6 +6,7 @@ import {toolArtKind} from "../src/hero-art.js";
 const read=file=>fs.readFileSync(file,"utf8");
 const art=read("src/hero-art.js");
 const app=read("src/app.js");
+const discovery=read("src/tool-discovery.js");
 const css=read("tool-experience.css");
 const sw=read("sw.js");
 const ci=read(".github/workflows/ci.yml");
@@ -57,7 +58,10 @@ for(const marker of [
   'playingCardArtNode(card)',
   'colorArtNode(color)',
   'toolArtNode(tool.id, { variant: "stage", result })'
-]) assert.ok(app.includes(marker),"Missing R5 app integration: "+marker);
+]) assert.ok((marker === 'toolArtNode(tool.id, { variant: "thumbnail" })'
+  ? discovery : app).includes(marker),"Missing R5 app integration: "+marker);
+assert.ok(app.includes("buildToolCard("),
+  "The main app must still render discovery cards through their extracted art renderer.");
 
 for(const marker of [
   ".machine-art{",

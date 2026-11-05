@@ -54,7 +54,7 @@ const dockSource = app.slice(dockStart, dockEnd);
 for (const behavior of [
   'onClick: () => runTool(tool.id)',
   "shareCurrentResult",
-  '"use-result"',
+  'sourceKind: "result"',
   '"Reset deck"',
   '"Reset elimination"'
 ]) {
