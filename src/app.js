@@ -1,4 +1,5 @@
-import { createHomeSearchBox } from "./home-search.js";
+import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
+import { createListInputAssist } from "./list-input-assist.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import {
@@ -3025,25 +3026,8 @@ function toolCard(tool, {
   ]);
 }
 
-function homeSectionHeader(
-  title,
-  note = "",
-  actionLabel = "",
-  action = null
-) {
-  return node("div", { class: "home-section-head" }, [
-    node("div", {}, [
-      node("h2", { text: title }),
-      note ? node("p", { text: note }) : null
-    ]),
-    actionLabel && action
-      ? node("button", {
-          class: "home-section-action",
-          type: "button",
-          onClick: action
-        }, actionLabel)
-      : null
-  ]);
+function homeSectionHeader(title, note = "", actionLabel = "", action = null) {
+  return createHomeSectionHeader(node, title, note, actionLabel, action);
 }
 
 function homeSearchBox(options = {}) {
@@ -9900,6 +9884,17 @@ function listControls(tool, ts) {
     textarea
   ]);
 
+  runControl.append(createListInputAssist({
+    toolId: tool.id, node, textarea, announce,
+    onUpdate: (action, message) => {
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      render();
+      document.querySelector(
+        '.tool-controls [data-input-action="' + action + '"]'
+      )?.focus({ preventScroll: true });
+      announce(message);
+    }
+  }));
   appendPresent(wrap, sourceControl, runControl);
   return wrap;
 }
