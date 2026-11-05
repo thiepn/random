@@ -11344,10 +11344,10 @@ function buildToolActionDock(tool, ts) {
         type: "button",
         onClick: () => {
           state.modal = {
-            type: "use-result",
+            type: "input-handoff",
             sourceToolId: tool.id,
-            result: cloneData(ts.result),
-            error: null
+            sourceEntries: resultToItems(tool.id, cloneData(ts.result)),
+            sourceKind: "result", targetId: "", mode: "replace", error: null
           };
           render();
         }
@@ -13477,92 +13477,6 @@ function renderSaveRuleSetModal(modal, config) {
   ]));
 }
 
-function renderUseResultModal(modal, config) {
-  const items = resultToItems(config.sourceToolId, config.result);
-  const targets = [
-    ...TOOLS.map((tool) => tool.id),
-    ...state.customExperiences
-      .filter(
-        (experience) =>
-          experience.status === "published"
-          && customExperienceNeedsPromptInput(experience)
-      )
-      .map((experience) => customToolId(experience.id))
-  ]
-    .filter((id) => id !== config.sourceToolId)
-    .filter((id) => toolAcceptsListInput(id))
-    .map(resolveTool)
-    .filter(Boolean);
-
-  modal.classList.add("use-result-modal");
-  modal.append(
-    node("h2", { text: "Use Result In…" }),
-    node("p", {
-      text:
-        items.length
-        + " reusable item"
-        + (items.length === 1 ? "" : "s")
-        + " can be sent into another list-based tool."
-    })
-  );
-
-  if (config.error) modal.append(toolError(config.error));
-
-  if (items.length) {
-    modal.append(node("div", { class: "use-result-preview" },
-      items.slice(0, 10).map((item) =>
-        node("span", { text: item })
-      )
-    ));
-  }
-
-  modal.append(node("div", { class: "tool-grid modal-tool-grid" },
-    targets.map((tool) =>
-      node("button", {
-        class: "tool-card accent-" + tool.accent,
-        type: "button",
-        disabled: items.length ? null : "disabled",
-        onClick: async () => {
-          try {
-            const targetState = ensureToolState(tool.id);
-
-            if (
-              targetState.activeSessionId
-              && isStatefulTool(tool.id)
-            ) {
-              await endActiveSession(tool.id, "abandoned", true);
-            }
-
-            const next = ensureToolState(tool.id);
-            if (tool.custom) next.customInputText = items.join("\n");
-            else next.listText = items.join("\n");
-            next.workingSet = null;
-            next.workingSetDirty = false;
-            next.activePresetId = null;
-            next.templateSessionId = null;
-            next.templateStepIndex = null;
-            next.templateStepId = null;
-            invalidateTool(tool.id, next);
-            if (selectionTools.has(tool.id)) {
-              reconcileToolSelection(tool.id, next);
-            }
-
-            state.modal = null;
-            openTool(tool.id);
-          } catch (error) {
-            config.error = error?.message || "Could not reuse result.";
-            render();
-          }
-        }
-      }, [
-        visualToolIcon(tool, "tool-icon"),
-        node("strong", { text: tool.name }),
-        node("small", { text: tool.blurb })
-      ])
-    )
-  ));
-}
-
 function renderNewSessionTemplateModal(modal, config) {
   modal.classList.add("template-builder-modal");
   modal.append(
@@ -14019,11 +13933,6 @@ function renderModal(previousFocusIdentity = null) {
     && state.modal.type === "save-rule-set"
   ) {
     renderSaveRuleSetModal(modal, state.modal);
-  } else if (
-    typeof state.modal === "object"
-    && state.modal.type === "use-result"
-  ) {
-    renderUseResultModal(modal, state.modal);
   } else if (
     typeof state.modal === "object"
     && state.modal.type === "new-session-template"
