@@ -148,6 +148,8 @@ jobs:
 
       - name: UI-02 mobile usability certification
         run: node tests/ui02-mobile-usability.mjs
+      - name: UI-03 list workflow regression
+        run: node tests/ui03-list-input.mjs
 
       - name: Performance budget certification
         run: node tests/performance-budget.mjs
