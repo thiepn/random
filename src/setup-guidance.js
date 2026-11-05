@@ -207,3 +207,18 @@ export function attachSetupGuidance(controls, tool, ts, node, applyFix) {
   refresh();
   return panel;
 }
+
+export function setupFamilyLabel(family) {
+  return ({
+    coin: "Tactile classic",
+    dice: "Dice engine",
+    wheel: "Weighted spinner",
+    cards: "Deck",
+    color: "Color generator",
+    list: "List randomizer",
+    people: "People randomizer",
+    competition: "Game draw",
+    private: "Private assignment",
+    generator: "Generator"
+  })[family] || "Randomizer";
+}
