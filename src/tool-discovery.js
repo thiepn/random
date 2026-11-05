@@ -154,3 +154,12 @@ export function renderToolFinder(modal, {
   );
   draw();
 }
+
+export function categoryDescription(categoryId) {
+  return ({
+    classics:"Fast decisions and the randomizers you reach for first.",
+    people:"Fairly split, pair, order, and assign people.",
+    generators:"Generate numbers, dates, colors, directions, and more.",
+    games:"Draws, brackets, elimination, cards, and playful chance."
+  })[categoryId] || "Explore randomizers.";
+}
