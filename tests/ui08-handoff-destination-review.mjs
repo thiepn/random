@@ -43,6 +43,15 @@ for (const patch of [
 ]) assert.equal(handoffDestinationUnchanged(first,
   handoffDestinationSnapshot({ ...target, ...patch })), false,
   "A change to the destination's linked or unsaved data requires re-review");
+assert.equal(handoffDestinationUnchanged(first,
+  handoffDestinationSnapshot({
+    ...target, selectionEntries: [{ key: "Old", weight: 99 }]
+  })), false, "Changing selection weights after preview must block Replace");
+assert.equal(handoffDestinationUnchanged(first,
+  handoffDestinationSnapshot({
+    ...target, workingSet: { ...target.workingSet,
+      items: [{ id: "unsaved-change", label: "Old" }] }
+  })), false, "Edited unsaved working-set contents must not be discarded unseen");
 assert.equal(handoffDestinationSnapshot(null, { custom: true,
   fallback: "Option A\nOption B" }).text, "Option A\nOption B");
 assert.equal(handoffDestinationSnapshot({ customInputText: "Custom" },
