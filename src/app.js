@@ -3129,6 +3129,37 @@ function arcadeCategoryCopy(categoryId) {
   return categoryDescription(categoryId);
 }
 
+async function togglePresetFavorite(preset) {
+  const next = updatePreset(preset, { favorite: !preset.favorite });
+  await putWithRevision("presets", next, preset.revision);
+  state.presets = state.presets
+    .map((item) => item.id === next.id ? next : item)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+  render();
+}
+
+async function deletePreset(preset) {
+  const references = state.sessionTemplates.filter((template) =>
+    template.steps.some((step) => step.presetId === preset.id)
+  );
+
+  if (references.length) {
+    announce(
+      "This Preset is used by "
+      + references.length
+      + " Session Template"
+      + (references.length === 1 ? "." : "s.")
+    );
+    return false;
+  }
+
+  await remove("presets", preset.id);
+  state.presets = state.presets.filter((item) => item.id !== preset.id);
+  render();
+  return true;
+}
+
+
 function presetCard(preset) {
   const tool = resolveTool(preset.toolId);
   const binding = preset.inputBinding?.mode || "none";
