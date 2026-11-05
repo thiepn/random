@@ -13958,7 +13958,8 @@ function renderModal(previousFocusIdentity = null) {
     ], config.sourceToolId, (t) => toolAcceptsListInput(t.id));
     const activeReason = (t) => activeTargetReason(
       state.tool[t.id],
-      state.sessions.some((s) => s.toolId === t.id && s.status === "active"),
+      state.sessions.some((s) => s.toolId === t.id && s.status === "active")
+      || state.partySessions.some((s) => s.toolId === t.id && s.status === "active"),
       state.computeBusy
     );
     renderInputHandoffModal(modal, config, {
