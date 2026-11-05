@@ -65,7 +65,7 @@ assert.equal(destination.children.find(x => x.props.value === "teams").disabled,
   "An active session must not be offered as a destination");
 const confirm = dialog.walk(x => x.tag === "button" && x.props.class === "primary");
 assert.equal(confirm.disabled, false);
-assert.equal(confirm.textContent, "Replace entries");
+assert.ok(confirm.children.includes("Replace entries"));
 confirm.props.onClick();
 assert.equal(confirmCount, 1);
 assert.deepEqual(items, savedSource, "Result labels must remain intact");
@@ -74,7 +74,7 @@ config.mode = "append";
 const appendDialog = node("section");
 renderInputHandoffModal(appendDialog, config, args);
 assert.match(appendDialog.walk(x => x.tag === "button"
-  && x.props.class === "primary").textContent, /Append/);
+  && x.props.class === "primary").children.join(""), /Append/);
 appendDialog.walk(x => x.tag === "button" && x.props.class === "primary")
   .props.onClick();
 assert.equal(confirmCount, 2);
