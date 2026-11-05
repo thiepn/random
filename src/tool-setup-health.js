@@ -71,7 +71,7 @@ export function setupIssue(toolId, ts = {}, { customNeedsInput = false } = {}) {
         "Swap dates", {dateStart:ts.dateEnd,dateEnd:ts.dateStart}, 'input[type="date"]');
     }
     if (toolId === "time") {
-      const valid = (value) => /^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(value));
+      const valid = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value));
       if (!valid(ts.timeStart) || !valid(ts.timeEnd)) {
         return issue("time-invalid", "Choose two valid 24-hour times.",
           "Edit times", null, 'input[type="time"]');
