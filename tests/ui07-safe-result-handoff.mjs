@@ -115,7 +115,7 @@ assert.equal(app.includes("renderUseResultModal"), false,
   "The old unconfirmed result-replacement path must be removed");
 assert.equal(app.includes('type: "use-result"'), false);
 assert.ok(helper.includes('? "Use result in another tool" : "Copy current entries to another tool"'));
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g9";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g10";'));
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 assert.ok(fs.readdirSync(".").filter(x => x.endsWith(".css"))
   .reduce((size, x) => size + fs.statSync(x).size, 0) <= 174500);

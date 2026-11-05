@@ -32,10 +32,12 @@ export function mergeClipboardEntries(existing, pasted, mode = "replace") {
   if (incoming.length > 5000) throw new RangeError("Clipboard list exceeds 5,000 entries");
   const current = String(existing ?? "");
   const appended = current.trim() ? current.trimEnd() + "\n" : "";
-  return {
-    value: mode === "append" ? appended + incoming.join("\n") : incoming.join("\n"),
-    added: incoming.length
-  };
+  const next = mode === "append" ? appended + incoming.join("\n") : incoming.join("\n");
+  if (mode === "append" && entriesFromText(current).length + incoming.length > 5000) {
+    throw new RangeError("The combined list exceeds 5,000 entries");
+  }
+  if (next.length > 200000) throw new RangeError("The combined list exceeds 200,000 characters");
+  return { value: next, added: incoming.length };
 }
 
 export function createListInputAssist({ toolId, node, textarea, onUpdate, announce, clipboard } = {}) {
@@ -65,6 +67,7 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
   };
 
   const paste = (mode) => async () => {
+    const initialValue = textarea.value;
     const api = clipboard || globalThis.navigator?.clipboard;
     if (!api?.readText) {
       announce?.("Clipboard access is unavailable. Paste into the entries field instead.");
@@ -74,7 +77,11 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     try {
       const value = await api.readText();
       if (textarea.isConnected === false) return;
-      const result = mergeClipboardEntries(textarea.value, value, mode);
+      if (textarea.value !== initialValue) {
+        announce?.("Entries changed while reading the clipboard. Review them and try again.");
+        return;
+      }
+      const result = mergeClipboardEntries(initialValue, value, mode);
       if (!result.added) {
         announce?.("No entries found on the clipboard.");
         return;
@@ -83,9 +90,14 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
       refresh();
       onUpdate(mode, result.added + " entries " + (mode === "append" ? "appended" : "imported") + ".");
     } catch (error) {
+      if (textarea.isConnected === false) return;
+      if (textarea.value !== initialValue) {
+        announce?.("Entries changed while reading the clipboard. Review them and try again.");
+        return;
+      }
       announce?.(error instanceof RangeError ? error.message :
         "Clipboard could not be read. Paste into the entries field instead.");
-      manualPaste(mode);
+      if (!(error instanceof RangeError)) manualPaste(mode);
     }
   };
 
