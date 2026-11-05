@@ -66,8 +66,11 @@ export function suggestedTools(builtins = [], customs = [], recentIds = [], favo
   const ids = [...recentIds, ...favorites, "picker", "teams", "sampler", "shuffle",
     "wheel", "number", "dice", "assignment", ...all.map((tool) => tool.id)];
   const seen = new Set();
-  return ids.filter((id) => byId.has(id) && !seen.has(id) && (seen.add(id), true))
-    .slice(0, limit).map((id) => byId.get(id));
+  return ids.filter((id) => {
+    if (!byId.has(id) || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  }).slice(0, limit).map((id) => byId.get(id));
 }
 
 export function renderToolFinder(modal, {
@@ -87,7 +90,6 @@ export function renderToolFinder(modal, {
     class: "tool-grid modal-tool-grid",
     "aria-label": "Matching randomizers"
   });
-  const buttons = [];
   const draw = () => {
     const q = input.value.trim();
     const all = q
