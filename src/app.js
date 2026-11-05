@@ -3,6 +3,7 @@ import { createListInputAssist, defaultListEntries } from "./list-input-assist.j
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
 import { findToolsForTask, renderToolFinder } from "./tool-discovery.js";
+import { attachSetupGuidance, setupFamilyLabel } from "./setup-guidance.js";
 import {
   iconNode,
   toolIconId,
@@ -8119,18 +8120,7 @@ function toolVisualFamily(tool) {
 }
 
 function toolFamilyLabel(family) {
-  return ({
-    coin: "Tactile classic",
-    dice: "Dice engine",
-    wheel: "Weighted spinner",
-    cards: "Deck",
-    color: "Color generator",
-    list: "List randomizer",
-    people: "People randomizer",
-    competition: "Game draw",
-    private: "Private assignment",
-    generator: "Generator"
-  })[family] || "Randomizer";
+  return setupFamilyLabel(family);
 }
 
 function renderTool() {
@@ -11330,6 +11320,10 @@ function buildControls(tool, ts) {
   }));
 
   controls.append(fairnessPanel(tool, ts));
+  if (!tool.custom) attachSetupGuidance(controls, tool, ts, node, (fix, field) => {
+    configSetter(tool.id, ts, fix.key, fix.value, true);
+    document.querySelector(".tool-controls " + field)?.focus({ preventScroll: true });
+  });
 
   return controls;
 }
