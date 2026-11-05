@@ -58,11 +58,17 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     onClick: handler
   }, label);
 
+  const manualPaste = (mode) => {
+    textarea.focus();
+    if (mode === "replace") textarea.select?.();
+    else textarea.setSelectionRange?.(textarea.value.length, textarea.value.length);
+  };
+
   const paste = (mode) => async () => {
     const api = clipboard || globalThis.navigator?.clipboard;
     if (!api?.readText) {
       announce?.("Clipboard access is unavailable. Paste into the entries field instead.");
-      textarea.focus();
+      manualPaste(mode);
       return;
     }
     try {
@@ -79,7 +85,7 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     } catch (error) {
       announce?.(error instanceof RangeError ? error.message :
         "Clipboard could not be read. Paste into the entries field instead.");
-      textarea.focus();
+      manualPaste(mode);
     }
   };
 
