@@ -43,6 +43,8 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     throw new TypeError("List input assistant needs a node factory, textarea and update handler");
   }
   const guide = GUIDES[toolId] || "Enter one item per line. Separate multiple items with semicolons.";
+  const guideId = "list-guide-" + String(toolId).replace(/[^a-z0-9_-]/gi, "-");
+  textarea.setAttribute?.("aria-describedby", guideId);
   const count = node("span", { class: "control-hint", role: "status", "aria-live": "polite",
     text: entriesFromText(textarea.value).length + " entries" });
   const refresh = () => {
@@ -74,8 +76,9 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
       textarea.value = result.value;
       refresh();
       onUpdate(mode, result.added + " entries " + (mode === "append" ? "appended" : "imported") + ".");
-    } catch {
-      announce?.("Clipboard could not be read. Paste into the entries field instead.");
+    } catch (error) {
+      announce?.(error instanceof RangeError ? error.message :
+        "Clipboard could not be read. Paste into the entries field instead.");
       textarea.focus();
     }
   };
@@ -92,7 +95,7 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
   };
 
   return node("div", { class: "control list-input-assist" }, [
-    node("p", { class: "control-hint", text: guide }),
+    node("p", { id: guideId, class: "control-hint", text: guide }),
     node("div", { class: "control-label-row" }, [
       count,
       node("div", { class: "working-set-actions" }, [
