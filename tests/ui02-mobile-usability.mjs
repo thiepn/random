@@ -22,8 +22,25 @@ const compact =
   "@media(max-width:759px){.tool-screen-v2:is("
   + ".tool-family-wheel,.tool-family-list,.tool-family-people,"
   + ".tool-family-competition,.tool-family-private"
-  + "):has(.tool-controls[open]) .tool-stage-v2{--tool-stage-min:14rem}}";
+  + "):has(.tool-controls[open]) .tool-stage-v2{--tool-stage-min:14rem}";
 assert.ok(tool.includes(compact), "Input-oriented tools need compact mobile setup state.");
+const compactWheel =
+  ".tool-family-wheel:has(.tool-controls[open]) .wheel-wrap"
+  + "{width:min(40vw,10rem);margin-bottom:var(--space-3)}";
+assert.ok(tool.includes(compactWheel),
+  "Wheel artwork itself must shrink while mobile Setup is expanded.");
+for (const viewport of [320, 360, 390]) {
+  // At the default 16px root size, the original artwork alone exceeds
+  // the 14rem minimum, making the earlier min-height-only rule ineffective.
+  const originalWidth = viewport <= 380
+    ? Math.min(viewport * .78, 18 * 16)
+    : Math.min(viewport * .72, 21 * 16);
+  const compactWidth = Math.min(viewport * .4, 10 * 16);
+  assert.ok(originalWidth > 14 * 16);
+  assert.ok(compactWidth < originalWidth);
+  assert.ok(compactWidth < 14 * 16);
+}
+
 assert.match(app, /const setupOpen\s*=\s*Boolean\(ts\.error\)\s*\|\| !ts\.result/);
 assert.match(
   app,
