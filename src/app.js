@@ -1,5 +1,5 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
-import { createListInputAssist } from "./list-input-assist.js";
+import { createListInputAssist, defaultListEntries } from "./list-input-assist.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import {
@@ -676,21 +676,7 @@ function parseList(text) {
 }
 
 function defaultList(toolId) {
-  const lists = {
-    wheel: ["Pizza", "Sushi", "Korean", "Burgers", "Indian", "Tacos"],
-    picker: ["Anna", "Ben", "David", "Sarah"],
-    sampler: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    shuffle: ["Anna", "Ben", "David", "Sarah", "Luke"],
-    teams: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
-    groups: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
-    pairs: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    assignment: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    elimination: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    ladder: ["Anna", "Ben", "David", "Sarah"],
-    "secret-santa": ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    tournament: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"]
-  };
-  return (lists[toolId] || ["Option A", "Option B", "Option C"]).join("\n");
+  return defaultListEntries(toolId);
 }
 
 function ensureToolState(toolId) {
