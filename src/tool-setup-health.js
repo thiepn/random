@@ -210,3 +210,63 @@ export function createToolError(node, iconNode, message) {
     ])
   ]);
 }
+
+export function buildToolRuleStrip(tool, ts, {
+  node, selectionTools, currentSelectionModel, selectionRuleSummary,
+  constraintTools, customExperienceFromToolId
+}) {
+  let rules = [];
+
+  if (selectionTools.has(tool.id)) {
+    const model = currentSelectionModel(tool.id, ts);
+    if (!model) return null;
+    rules = selectionRuleSummary(model, {
+      allowRepeats: ts.allowRepeats,
+      multi: tool.id === "sampler"
+    });
+  } else if (tool.id === "dice" && ts.diceMode === "expression") {
+    const expression = String(ts.diceExpression || "")
+      .replace(/\s+/g, "")
+      .toLowerCase();
+    rules.push("Expression");
+    if (/(kh|kl|dh|dl)\d+/.test(expression)) rules.push("Keep/drop");
+    if (/r(?:<=|>=|!=|=|<|>)?\d+/.test(expression)) rules.push("Reroll");
+    if (/!/.test(expression)) rules.push("Explode");
+    if (expression === "2d20kh1") rules.unshift("Advantage");
+    if (expression === "2d20kl1") rules.unshift("Disadvantage");
+  } else if (tool.id === "number") {
+    if (ts.numberMode === "decimal") {
+      rules.push(ts.numberPrecision + " decimals");
+    }
+    if (ts.numberCount > 1) rules.push(ts.numberCount + " values");
+    if (ts.numberUnique && ts.numberCount > 1) rules.push("Unique");
+  } else if (constraintTools.has(tool.id)) {
+    const active = (ts.rules || []).filter((rule) => rule.enabled !== false);
+    const required = active.filter((rule) => rule.strength !== "soft").length;
+    const preferred = active.filter((rule) => rule.strength === "soft").length;
+    if (required) rules.push(required + " required");
+    if (preferred) rules.push(preferred + " prefer");
+    if (active.length) {
+      const effort = ts.solverEffort || "automatic";
+      rules.push(effort[0].toUpperCase() + effort.slice(1));
+    }
+  } else if (tool.custom) {
+    const experience = customExperienceFromToolId(tool.id);
+    if (experience) {
+      rules.push("Custom");
+      rules.push(experience.primitive);
+    }
+  }
+
+  if (!rules.length) return null;
+
+  return node("div", {
+    class: "tool-rule-strip",
+    "aria-label": "Active rules"
+  }, [
+    node("span", { class: "tool-rule-label", text: "Rules" }),
+    ...rules.map((rule) =>
+      node("span", { class: "rule-chip", text: rule })
+    )
+  ]);
+}
