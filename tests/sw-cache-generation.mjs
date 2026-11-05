@@ -4,7 +4,7 @@ import vm from "node:vm";
 
 const source = fs.readFileSync("sw.js", "utf8");
 const scope = "https://example.test/random/";
-const oldName = "randomizer-shell-v1.2.0-g5";
+const oldName = "randomizer-shell-v1.2.0-g6";
 const oldEntries = new Map([
   [new URL("./index.html", scope).href, "old index"],
   [new URL("./src/app.js", scope).href, "old app"]
@@ -58,7 +58,7 @@ await lifecycle("install");
 const generations = [...cacheData.keys()];
 assert.equal(generations.length, 2);
 const activeName = generations.find((name) => name !== oldName);
-assert.equal(activeName, "randomizer-shell-v1.2.0-g6");
+assert.equal(activeName, "randomizer-shell-v1.2.0-g7");
 assert.equal(cacheData.get(oldName).get(new URL("./src/app.js", scope).href), "old app");
 assert.equal(
   cacheData.get(activeName).get(new URL("./src/home-search.js", scope).href),
@@ -70,6 +70,8 @@ assert.equal(cacheData.get(activeName).get(new URL("./src/tool-discovery.js", sc
   "new ./src/tool-discovery.js");
 assert.equal(cacheData.get(activeName).get(new URL("./src/tool-setup-health.js", scope).href),
   "new ./src/tool-setup-health.js");
+assert.equal(cacheData.get(activeName).get(new URL("./src/tool-input-handoff.js", scope).href),
+  "new ./src/tool-input-handoff.js");
 
 await lifecycle("activate");
 assert.equal(claimed, true);
