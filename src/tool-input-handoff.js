@@ -41,11 +41,13 @@ export function renderInputHandoffModal(modal, config, {
   node, sourceName, targets, getInput, activeReason, onConfirm, onCancel, rerender
 }) {
   const sourceEntries = config.sourceEntries;
+  const fromResult = config.sourceKind === "result";
   const target = targets.find((tool) => tool.id === config.targetId) || null;
   const prior = target ? getInput(target) : "";
   const blocked = target ? activeReason(target) : null;
   let plan = null;
-  let issue = config.error || blocked;
+  let issue = config.error || blocked || (!sourceEntries.length
+    ? "There are no reusable entries to transfer." : null);
   if (target && !issue) {
     try { plan = planInputHandoff(sourceEntries, prior, config.mode); }
     catch (error) { issue = error.message; }
@@ -83,13 +85,16 @@ export function renderInputHandoffModal(modal, config, {
   mode.value = config.mode;
 
   modal.append(
-    node("h2", { text: "Copy current entries to another tool" }),
+    node("h2", { text: fromResult
+      ? "Use result in another tool" : "Copy current entries to another tool" }),
     node("p", {
-      text: sourceEntries.length + " entries from " + sourceName
-        + ". This copies labels, not results, weights, exclusions, rules or Pool links."
+      text: sourceEntries.length + (fromResult ? " result items" : " entries")
+        + " from " + sourceName
+        + ". Only labels transfer, not weights, exclusions, rules or Pool links."
     }),
     node("p", {
-      text: "Source preview: " + sourceEntries.slice(0, 5).join(" · ")
+      text: (fromResult ? "Result preview: " : "Source preview: ")
+        + sourceEntries.slice(0, 5).join(" · ")
         + (sourceEntries.length > 5 ? " · …" : "")
     }),
     node("div", { class: "control" }, [
