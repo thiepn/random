@@ -156,6 +156,8 @@ jobs:
         run: node tests/ui05-setup-coach.mjs
       - name: UI-06 safe input handoff
         run: node tests/ui06-input-handoff.mjs
+      - name: UI-07 safe committed-result handoff
+        run: node tests/ui07-safe-result-handoff.mjs
 
       - name: Performance budget certification
         run: node tests/performance-budget.mjs
