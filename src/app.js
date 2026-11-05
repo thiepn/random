@@ -1,6 +1,6 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
-import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff } from "./tool-input-handoff.js";
+import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff, handoffDestinationSnapshot, handoffDestinationUnchanged } from "./tool-input-handoff.js";
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
@@ -13876,16 +13876,23 @@ function renderModal(previousFocusIdentity = null) {
       || state.partySessions.some((s) => s.toolId === t.id && s.status === "active"),
       state.computeBusy
     );
+    const targetSnapshot = (t) => handoffDestinationSnapshot(state.tool[t.id], {
+      custom:t.custom, fallback:t.custom ? "Option A\nOption B\nOption C" : defaultList(t.id)
+    });
     renderInputHandoffModal(modal, config, {
       node, sourceName:resolveTool(config.sourceToolId)?.name || "this tool",
       targets, activeReason, rerender:render,
-      getInput:(t) => t.custom
-        ? state.tool[t.id]?.customInputText ?? "Option A\nOption B\nOption C"
-        : state.tool[t.id]?.listText ?? defaultList(t.id),
+      getInput:(t) => targetSnapshot(t).text,
+      getDestinationSnapshot:targetSnapshot,
       onCancel:() => { state.modal = null; render(); },
       onConfirm:(t,plan) => {
         if (activeReason(t)) {
           config.error = activeReason(t); render(); return;
+        }
+        if (!handoffDestinationUnchanged(plan.destinationSnapshot,targetSnapshot(t))) {
+          config.error = "Destination changed. Review its current input and Pool/Preset links first.";
+          config.needsReview = true;
+          render(); return;
         }
         const ts = ensureToolState(t.id);
         const field = t.custom ? "customInputText" : "listText";
@@ -13893,6 +13900,7 @@ function renderModal(previousFocusIdentity = null) {
           const next = planInputHandoff(config.sourceEntries,ts[field],config.mode);
           if (next.text !== plan.text || next.previous !== plan.previous) {
             config.error = "Destination changed. Review the current entries first.";
+            config.needsReview = true;
             render(); return;
           }
           applyInputHandoff(ts, next, {
