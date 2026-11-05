@@ -29,6 +29,17 @@ const compactWheel =
   + "{width:min(40vw,10rem);margin-bottom:var(--space-3)}";
 assert.ok(tool.includes(compactWheel),
   "Wheel artwork itself must shrink while mobile Setup is expanded.");
+assert.ok(tool.includes(".wheel-wrap{position:relative;width:min(100%,72vw,21rem)"),
+  "Desktop Wheel must respect available stage-content width.");
+assert.ok(tool.includes(".wheel-wrap{width:min(100%,78vw,18rem)}"),
+  "Very narrow Wheel must respect available stage-content width.");
+// At 760px, the 78px navigation rail, 28px side gutters, 12px
+// workspace gap and 288px Setup sidebar leave only 326px for the
+// play column, before its borders and the stage's own padding.
+// A fixed 21rem / 336px Wheel therefore cannot fit.
+const desktopPlayColumn = 760 - 78 - 2 * 28 - 12 - 288;
+assert.ok(desktopPlayColumn < 21 * 16);
+
 for (const viewport of [320, 360, 390]) {
   // At the default 16px root size, the original artwork alone exceeds
   // the 14rem minimum, making the earlier min-height-only rule ineffective.
