@@ -55,6 +55,7 @@ assert.match(activeTargetReason({},false,true),/still running/);
 function node(tag,props={},children=[]) {
   const o={tag,props,children:Array.isArray(children)?children:[children],
     value:props.value??"",textContent:props.text??"",disabled:!!props.disabled};
+  o.append=(...items)=>o.children.push(...items);
   o.walk=(matcher)=>{
     if(matcher(o))return o;
     for(const child of o.children) {
