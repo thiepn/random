@@ -1,3 +1,4 @@
+import { createHomeSearchBox } from "./home-search.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import {
@@ -3045,38 +3046,13 @@ function homeSectionHeader(
   ]);
 }
 
-function homeSearchBox({
-  className = "",
-  placeholder = "Search randomizers…"
-} = {}) {
-  const wrap = node("label", {
-    class: ("search-box home-search-box " + className).trim()
-  }, [
-    iconNode("search", { className: "search-icon" }),
-    node("span", { class: "sr-only", text: "Search randomizers" })
-  ]);
-
-  const search = node("input", {
-    type: "search",
-    value: state.search,
-    placeholder,
-    onInput: (event) => {
-      state.search = event.target.value;
-      render();
-      const next = document.querySelector(
-        "." + className.split(" ").filter(Boolean)[0] + " input"
-      ) || document.querySelector(".home-search-box input");
-      if (next) {
-        next.focus();
-        next.setSelectionRange(state.search.length, state.search.length);
-      }
-    }
+function homeSearchBox(options = {}) {
+  return createHomeSearchBox({
+    ...options, node, iconNode, appendPresent, render,
+    getSearch: () => state.search,
+    setSearch: (value) => { state.search = value; }
   });
-
-  appendPresent(wrap, search);
-  return wrap;
 }
-
 function recentHomeTools(limit = 6) {
   const seen = new Set();
   const recent = [];
@@ -5837,32 +5813,35 @@ function renderPlay() {
     ]));
   }
 
+  const shown = new Set([
+    "coin", "dice", "wheel", "number", "picker",
+    ...recent.map(({tool}) => tool.id),
+    ...favorites.map((tool) => tool.id)
+  ]);
   const explore = [
-    "picker",
-    "teams",
-    "dice",
-    "color",
-    "elimination",
-    "tournament"
-  ].map(getTool).filter(Boolean);
+    "teams", "color", "elimination", "tournament", "cards",
+    "sampler", "secret-santa", "shuffle", "pairs", "assignment", "ladder"
+  ].map(getTool).filter((tool) => tool && !shown.has(tool.id)).slice(0, 6);
 
-  content.append(node("section", {
-    class: "home-section explore-section"
-  }, [
-    homeSectionHeader(
-      "More machines",
-      "Open a cabinet and make the call.",
-      "All " + TOOLS.length + " machines",
-      () => setView("arcade")
-    ),
-    node("div", { class: "home-tool-grid explore-tool-grid" },
-      explore.map((tool, index) =>
-        toolCard(tool, {
-          variant: index < 2 ? "wide" : "standard"
-        })
+  if (explore.length) {
+    content.append(node("section", {
+      class: "home-section explore-section"
+    }, [
+      homeSectionHeader(
+        "More machines",
+        "Find another way to decide.",
+        "All " + TOOLS.length + " machines",
+        () => setView("arcade")
+      ),
+      node("div", { class: "home-tool-grid explore-tool-grid" },
+        explore.map((tool, index) =>
+          toolCard(tool, {
+            variant: index < 2 ? "wide" : "standard"
+          })
+        )
       )
-    )
-  ]));
+    ]));
+  }
 
   return content;
 }
@@ -11409,6 +11388,17 @@ function buildToolActionDock(tool, ts) {
   }
 
   dock.append(primary);
+  dock.append(node("button", {
+    class: "secondary tool-setup-shortcut",
+    type: "button",
+    onClick: () => {
+      const setup = document.querySelector(".tool-controls");
+      if (setup) {
+        setup.open = true;
+        setup.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, "Edit setup"));
 
   const secondary = node("div", {
     class: "tool-action-secondary"

@@ -1,4 +1,6 @@
 const CACHE = "randomizer-shell-v1.2.0";
+// A new cache generation must not overwrite assets used by an older controller.
+const CACHE_GENERATION = CACHE + "-g2";
 const SHELL = [
   "./",
   "./index.html",
@@ -25,6 +27,7 @@ const SHELL = [
   "./icon.svg",
   "./assets/brand/random-spark-mark.svg",
   "./src/app.js",
+  "./src/home-search.js",
   "./src/icon-system.js",
   "./src/hero-art.js",
   "./src/motion-system.js",
@@ -99,7 +102,7 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL))
+    caches.open(CACHE_GENERATION).then((cache) => cache.addAll(SHELL))
   );
 });
 
@@ -108,7 +111,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((key) => key.startsWith("randomizer-") && key !== CACHE)
+          .filter((key) => key.startsWith("randomizer-") && key !== CACHE_GENERATION)
           .map((key) => caches.delete(key))
       )
     ).then(() => self.clients.claim())
@@ -124,7 +127,8 @@ self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match(INDEX_URL))
+        .catch(() => caches.open(CACHE_GENERATION)
+          .then((cache) => cache.match(INDEX_URL)))
     );
     return;
   }
@@ -132,8 +136,10 @@ self.addEventListener("fetch", (event) => {
   if (!SHELL_URLS.has(requestUrl.href)) return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) =>
-      cached || fetch(event.request)
+    caches.open(CACHE_GENERATION).then((cache) =>
+      cache.match(event.request).then((cached) =>
+        cached || fetch(event.request)
+      )
     )
   );
 });
