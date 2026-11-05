@@ -4,6 +4,7 @@ import {TOOLS} from "../src/registry.js";
 
 const read=file=>fs.readFileSync(file,"utf8");
 const app=read("src/app.js");
+const setup=read("src/tool-setup-health.js");
 const css=read("tool-experience.css");
 const rules=read("phase2.css");
 const a11y=read("phase14.css");
@@ -28,7 +29,10 @@ for(const marker of [
   '"aria-label": "Machine action console"',
   'class: "tool-play-column"',
   'class: "tool-rule-label", text: "Rules"'
-]) assert.ok(app.includes(marker),"Missing R4 runtime contract: "+marker);
+]) assert.ok((marker === 'class: "tool-rule-label", text: "Rules"' ? setup : app)
+  .includes(marker),"Missing R4 runtime contract: "+marker);
+assert.ok(app.includes("buildToolRuleStrip("),
+  "The extracted Rules strip must remain wired to the tool screen.");
 
 for(const marker of [
   ".tool-play-column{",
