@@ -59,13 +59,25 @@ export function setupIssue(toolId, ts = {}, { customNeedsInput = false } = {}) {
       return issue("lottery-count", "Cannot draw more unique numbers than the maximum.",
         "Reduce numbers", {lotteryCount:Number(ts.lotteryMax)}, "#lottery-count");
     }
-    if (toolId === "date" && (Date.parse(String(ts.dateStart)+"T00:00:00Z")
-      > Date.parse(String(ts.dateEnd)+"T00:00:00Z"))) {
-      return issue("date-range", "The end date is before the start date.",
+    if (toolId === "date") {
+      const start = Date.parse(String(ts.dateStart)+"T00:00:00Z");
+      const end = Date.parse(String(ts.dateEnd)+"T00:00:00Z");
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        return issue("date-invalid", "Choose two valid dates.",
+          "Edit dates", null, 'input[type="date"]');
+      }
+      if (start > end) return issue("date-range",
+        "The end date is before the start date.",
         "Swap dates", {dateStart:ts.dateEnd,dateEnd:ts.dateStart}, 'input[type="date"]');
     }
-    if (toolId === "time" && ts.timeStart && ts.timeEnd && ts.timeStart > ts.timeEnd) {
-      return issue("time-range", "The end time is before the start time.",
+    if (toolId === "time") {
+      const valid = (value) => /^([01]\\d|2[0-3]):[0-5]\\d$/.test(String(value));
+      if (!valid(ts.timeStart) || !valid(ts.timeEnd)) {
+        return issue("time-invalid", "Choose two valid 24-hour times.",
+          "Edit times", null, 'input[type="time"]');
+      }
+      if (ts.timeStart > ts.timeEnd) return issue("time-range",
+        "The end time is before the start time.",
         "Swap times", {timeStart:ts.timeEnd,timeEnd:ts.timeStart}, 'input[type="time"]');
     }
     if (toolId === "coordinate") {
@@ -155,6 +167,7 @@ export function buildSetupCoach({
   const refresh = () => {
     const current = setupIssue(toolId,toolState,{customNeedsInput});
     status.hidden = !current;
+    panel.hidden = !current && !help;
     if (current) {
       message.textContent = current.message;
       fix.textContent = current.action;
