@@ -187,3 +187,13 @@ export function toolFamilyLabel(family) {
     private:"Private assignment", generator:"Generator"
   })[family] || "Randomizer";
 }
+
+export function createToolError(node, iconNode, message) {
+  return node("div", { class:"tool-error",role:"alert" }, [
+    node("div", {class:"tool-error-mark","aria-hidden":"true"},iconNode("warning")),
+    node("div", {class:"tool-error-copy"}, [
+      node("strong",{text:"Could not randomize"}),
+      node("span",{text:message})
+    ])
+  ]);
+}
