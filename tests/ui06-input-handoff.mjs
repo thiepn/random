@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { TOOLS } from "../src/registry.js";
 import { entriesFromText } from "../src/list-input-assist.js";
 import {
-  planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal
+  planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff
 } from "../src/tool-input-handoff.js";
 
 assert.equal(TOOLS.length, 25);
@@ -34,6 +34,28 @@ assert.deepEqual(append,{text:"Old\nKeep\nAnna\nAnna\nBen",copied:3,previous:2,t
 assert.deepEqual(source,beforeSource,"Handoff is a copy; source entries must remain unchanged");
 assert.equal(previous,"Old; Keep","Destination must not change before confirmation");
 assert.equal(entriesFromText(append.text).length,5,"Deliberate duplicates remain separate draws");
+const targetDraft={
+  listText:previous, workingSet:{source:{poolId:"saved-pool"}},
+  workingSetDirty:true, activePresetId:"preset-1", activeSessionId:"completed-1",
+  selectionEntries:[{key:"Old\u001f1",weight:3}]
+};
+const savedPool={id:"saved-pool",items:["Old","Keep"]};
+applyInputHandoff(targetDraft,append,{selection:true,mode:"append"});
+assert.equal(targetDraft.listText,append.text);
+assert.equal(targetDraft.selectionEntries[0].weight,3,
+  "Appending must preserve existing target selection weights");
+assert.equal(targetDraft.workingSet,null,"Transferred input must be detached from the saved Pool");
+assert.equal(targetDraft.activePresetId,null);
+assert.equal(targetDraft.activeSessionId,null);
+assert.deepEqual(savedPool.items,["Old","Keep"],"Saved Pool must never be modified");
+const replaced={...targetDraft,selectionEntries:[{key:"Anna",weight:7}]};
+applyInputHandoff(replaced,replace,{selection:true,mode:"replace"});
+assert.deepEqual(replaced.selectionEntries,[],
+  "Replace must not silently inherit weights from the target's old entries");
+const customDraft={customInputText:"Unchanged", workingSet:null};
+applyInputHandoff(customDraft,replace,{custom:true,mode:"replace"});
+assert.equal(customDraft.customInputText,"Anna\nAnna\nBen");
+assert.throws(()=>applyInputHandoff(null,replace),TypeError);
 assert.throws(()=>planInputHandoff([],previous),/valid individual entries/);
 assert.throws(()=>planInputHandoff(["a\nb"],previous),/valid individual entries/);
 assert.throws(()=>planInputHandoff(["a;b"],previous),/valid individual entries/);
