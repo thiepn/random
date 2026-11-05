@@ -139,6 +139,7 @@ const sw=fs.readFileSync("sw.js","utf8");
 assert.ok(app.includes('state.modal?.type === "input-handoff"'));
 assert.ok(app.includes('sourceEntries:parseList(tool.custom ? ts.customInputText : ts.listText)'));
 assert.ok(app.includes("state.sessions.some((s) => s.toolId === t.id && s.status === \"active\")"));
+assert.ok(app.includes('state.partySessions.some((s) => s.toolId === t.id && s.status === "active")'));
 assert.ok(app.includes("ts.workingSet = null"));
 assert.ok(app.includes("ts.activePresetId = null"));
 assert.ok(app.includes("reconcileToolSelection(t.id,ts)"));
