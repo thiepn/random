@@ -131,6 +131,9 @@ jobs:
       - name: Optional DOM child regression certification
         run: node tests/dom-optional-children.mjs
 
+      - name: Search interaction regression certification
+        run: node tests/home-search-ux.mjs
+
       - name: Background compute equivalence certification
         run: node tests/compute-tasks.mjs
 
