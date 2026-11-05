@@ -163,3 +163,55 @@ export function categoryDescription(categoryId) {
     games:"Draws, brackets, elimination, cards, and playful chance."
   })[categoryId] || "Explore randomizers.";
 }
+
+export function buildToolCard(tool, {
+  variant = "standard",
+  eyebrow = "",
+  note = ""
+} = {}, {
+  node, state, customExperienceFromToolId,
+  toolArtNode, visualToolIcon, iconNode, openTool
+}) {
+  const favorite = Boolean(
+    state.favorites.includes(tool.id)
+    || (
+      tool.custom
+      && customExperienceFromToolId(tool.id)?.favorite
+    )
+  );
+
+  return node("button", {
+    class:
+      "tool-card tool-card-v2 tool-card-"
+      + variant
+      + " accent-"
+      + tool.accent,
+    type: "button",
+    onClick: () => openTool(tool.id)
+  }, [
+    node("div", {
+      class: "tool-card-visual",
+      "aria-hidden": "true"
+    }, [
+      toolArtNode(tool.id, { variant: "thumbnail" })
+        || visualToolIcon(tool, "tool-icon")
+    ]),
+    node("div", { class: "tool-card-copy" }, [
+      eyebrow
+        ? node("span", { class: "tool-card-eyebrow", text: eyebrow })
+        : null,
+      node("strong", { text: tool.name }),
+      node("small", { text: tool.blurb }),
+      note
+        ? node("span", { class: "tool-card-note", text: note })
+        : null
+    ]),
+    favorite
+      ? node("span", {
+          class: "tool-card-favorite",
+          "aria-label": "Favorite"
+        }, iconNode("star-filled"))
+      : null
+  ]);
+}
+
