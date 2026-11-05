@@ -35,7 +35,9 @@ export function handoffDestinationSnapshot(toolState, { custom = false, fallback
     poolAttached: Boolean(workingSet),
     poolId: workingSet?.source?.poolId ?? null,
     poolRevision: workingSet?.source?.revision ?? null,
+    workingSetContent: workingSet ? JSON.stringify(workingSet) : null,
     workingSetDirty: Boolean(toolState?.workingSetDirty),
+    selectionContent: JSON.stringify(toolState?.selectionEntries ?? []),
     presetId: toolState?.activePresetId ?? null
   };
 }
@@ -46,7 +48,9 @@ export function handoffDestinationUnchanged(before, after) {
     && before.poolAttached === after.poolAttached
     && before.poolId === after.poolId
     && before.poolRevision === after.poolRevision
+    && before.workingSetContent === after.workingSetContent
     && before.workingSetDirty === after.workingSetDirty
+    && before.selectionContent === after.selectionContent
     && before.presetId === after.presetId);
 }
 
