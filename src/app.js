@@ -3056,27 +3056,47 @@ function homeSearchBox({
     node("span", { class: "sr-only", text: "Search randomizers" })
   ]);
 
+  const updateResults = (input) => {
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const direction = input.selectionDirection;
+    state.search = input.value;
+    render();
+    const next = document.querySelector(
+      "." + className.split(" ").filter(Boolean)[0] + " input"
+    ) || document.querySelector(".home-search-box input");
+    if (next) {
+      next.focus({ preventScroll: true });
+      if (start != null && end != null) {
+        next.setSelectionRange(start, end, direction || "none");
+      }
+    }
+  };
+
+  let composing = false;
   const search = node("input", {
     type: "search",
     value: state.search,
     placeholder,
     onInput: (event) => {
-      state.search = event.target.value;
-      render();
-      const next = document.querySelector(
-        "." + className.split(" ").filter(Boolean)[0] + " input"
-      ) || document.querySelector(".home-search-box input");
-      if (next) {
-        next.focus();
-        next.setSelectionRange(state.search.length, state.search.length);
+      if (composing || event.isComposing) {
+        state.search = event.target.value;
+        return;
       }
+      updateResults(event.target);
     }
+  });
+  search.addEventListener("compositionstart", () => {
+    composing = true;
+  });
+  search.addEventListener("compositionend", () => {
+    composing = false;
+    updateResults(search);
   });
 
   appendPresent(wrap, search);
   return wrap;
 }
-
 function recentHomeTools(limit = 6) {
   const seen = new Set();
   const recent = [];
@@ -5837,32 +5857,37 @@ function renderPlay() {
     ]));
   }
 
+  const shownIds = new Set([
+    "coin", "dice", "wheel", "number", "picker",
+    ...recent.map(({ tool }) => tool.id),
+    ...favorites.map((tool) => tool.id)
+  ]);
   const explore = [
-    "picker",
-    "teams",
-    "dice",
-    "color",
-    "elimination",
-    "tournament"
-  ].map(getTool).filter(Boolean);
+    "teams", "color", "elimination", "tournament", "cards",
+    "sampler", "secret-santa", "shuffle", "pairs", "assignment", "ladder"
+  ].map(getTool)
+    .filter((tool) => tool && !shownIds.has(tool.id))
+    .slice(0, 6);
 
-  content.append(node("section", {
-    class: "home-section explore-section"
-  }, [
-    homeSectionHeader(
-      "More machines",
-      "Open a cabinet and make the call.",
-      "All " + TOOLS.length + " machines",
-      () => setView("arcade")
-    ),
-    node("div", { class: "home-tool-grid explore-tool-grid" },
-      explore.map((tool, index) =>
-        toolCard(tool, {
-          variant: index < 2 ? "wide" : "standard"
-        })
+  if (explore.length) {
+    content.append(node("section", {
+      class: "home-section explore-section"
+    }, [
+      homeSectionHeader(
+        "Discover more",
+        "Try a randomizer you haven't opened recently.",
+        "All " + TOOLS.length + " machines",
+        () => setView("arcade")
+      ),
+      node("div", { class: "home-tool-grid explore-tool-grid" },
+        explore.map((tool, index) =>
+          toolCard(tool, {
+            variant: index < 2 ? "wide" : "standard"
+          })
+        )
       )
-    )
-  ]));
+    ]));
+  }
 
   return content;
 }
@@ -11409,6 +11434,19 @@ function buildToolActionDock(tool, ts) {
   }
 
   dock.append(primary);
+  dock.append(node("button", {
+    class: "secondary tool-setup-shortcut",
+    type: "button",
+    onClick: () => {
+      const setup = document.querySelector(".tool-screen .tool-controls");
+      if (!setup) return;
+      setup.open = true;
+      setup.scrollIntoView({
+        behavior: prefersReducedMotionNow() ? "auto" : "smooth",
+        block: "nearest"
+      });
+    }
+  }, "Edit setup"));
 
   const secondary = node("div", {
     class: "tool-action-secondary"
