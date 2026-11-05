@@ -13891,6 +13891,7 @@ function renderModal(previousFocusIdentity = null) {
         }
         if (!handoffDestinationUnchanged(plan.destinationSnapshot,targetSnapshot(t))) {
           config.error = "Destination changed. Review its current input and Pool/Preset links first.";
+          config.needsReview = true;
           render(); return;
         }
         const ts = ensureToolState(t.id);
@@ -13899,6 +13900,7 @@ function renderModal(previousFocusIdentity = null) {
           const next = planInputHandoff(config.sourceEntries,ts[field],config.mode);
           if (next.text !== plan.text || next.previous !== plan.previous) {
             config.error = "Destination changed. Review the current entries first.";
+            config.needsReview = true;
             render(); return;
           }
           applyInputHandoff(ts, next, {
