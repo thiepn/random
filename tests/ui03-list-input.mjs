@@ -80,7 +80,7 @@ const sw=fs.readFileSync("sw.js","utf8");
 assert.ok(app.includes('runControl.append(createListInputAssist({'));
 assert.ok(app.includes('new Event("input", { bubbles: true })'));
 assert.ok(app.includes('function defaultList(toolId)'));
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g9";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g10";'));
 assert.ok(sw.includes('"./src/list-input-assist.js"'));
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 console.log("UI-03 list workflow passed",JSON.stringify({
