@@ -3,7 +3,7 @@ import { createListInputAssist, defaultListEntries, entriesFromText } from "./li
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
-import { findToolsForTask, renderToolFinder, categoryDescription } from "./tool-discovery.js";
+import { findToolsForTask, renderToolFinder, categoryDescription, buildToolCard } from "./tool-discovery.js";
 import {
   iconNode,
   toolIconId,
@@ -2963,52 +2963,11 @@ async function toggleFavorite(id) {
   render();
 }
 
-function toolCard(tool, {
-  variant = "standard",
-  eyebrow = "",
-  note = ""
-} = {}) {
-  const favorite = Boolean(
-    state.favorites.includes(tool.id)
-    || (
-      tool.custom
-      && customExperienceFromToolId(tool.id)?.favorite
-    )
-  );
-
-  return node("button", {
-    class:
-      "tool-card tool-card-v2 tool-card-"
-      + variant
-      + " accent-"
-      + tool.accent,
-    type: "button",
-    onClick: () => openTool(tool.id)
-  }, [
-    node("div", {
-      class: "tool-card-visual",
-      "aria-hidden": "true"
-    }, [
-      toolArtNode(tool.id, { variant: "thumbnail" })
-        || visualToolIcon(tool, "tool-icon")
-    ]),
-    node("div", { class: "tool-card-copy" }, [
-      eyebrow
-        ? node("span", { class: "tool-card-eyebrow", text: eyebrow })
-        : null,
-      node("strong", { text: tool.name }),
-      node("small", { text: tool.blurb }),
-      note
-        ? node("span", { class: "tool-card-note", text: note })
-        : null
-    ]),
-    favorite
-      ? node("span", {
-          class: "tool-card-favorite",
-          "aria-label": "Favorite"
-        }, iconNode("star-filled"))
-      : null
-  ]);
+function toolCard(tool, options = {}) {
+  return buildToolCard(tool, options, {
+    node, state, customExperienceFromToolId,
+    toolArtNode, visualToolIcon, iconNode, openTool
+  });
 }
 
 function homeSectionHeader(title, note = "", actionLabel = "", action = null) {
