@@ -25,6 +25,7 @@ const SHELL = [
   "./icon.svg",
   "./assets/brand/random-spark-mark.svg",
   "./src/app.js",
+  "./src/home-search.js",
   "./src/icon-system.js",
   "./src/hero-art.js",
   "./src/motion-system.js",
