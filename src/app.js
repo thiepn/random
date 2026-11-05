@@ -1,9 +1,10 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
-import { setupIssue, stopInvalidRun, buildSetupCoach, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
+import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff } from "./tool-input-handoff.js";
+import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
-import { findToolsForTask, renderToolFinder, categoryDescription } from "./tool-discovery.js";
+import { findToolsForTask, renderToolFinder, categoryDescription, buildToolCard } from "./tool-discovery.js";
 import {
   iconNode,
   toolIconId,
@@ -2963,52 +2964,11 @@ async function toggleFavorite(id) {
   render();
 }
 
-function toolCard(tool, {
-  variant = "standard",
-  eyebrow = "",
-  note = ""
-} = {}) {
-  const favorite = Boolean(
-    state.favorites.includes(tool.id)
-    || (
-      tool.custom
-      && customExperienceFromToolId(tool.id)?.favorite
-    )
-  );
-
-  return node("button", {
-    class:
-      "tool-card tool-card-v2 tool-card-"
-      + variant
-      + " accent-"
-      + tool.accent,
-    type: "button",
-    onClick: () => openTool(tool.id)
-  }, [
-    node("div", {
-      class: "tool-card-visual",
-      "aria-hidden": "true"
-    }, [
-      toolArtNode(tool.id, { variant: "thumbnail" })
-        || visualToolIcon(tool, "tool-icon")
-    ]),
-    node("div", { class: "tool-card-copy" }, [
-      eyebrow
-        ? node("span", { class: "tool-card-eyebrow", text: eyebrow })
-        : null,
-      node("strong", { text: tool.name }),
-      node("small", { text: tool.blurb }),
-      note
-        ? node("span", { class: "tool-card-note", text: note })
-        : null
-    ]),
-    favorite
-      ? node("span", {
-          class: "tool-card-favorite",
-          "aria-label": "Favorite"
-        }, iconNode("star-filled"))
-      : null
-  ]);
+function toolCard(tool, options = {}) {
+  return buildToolCard(tool, options, {
+    node, state, customExperienceFromToolId,
+    toolArtNode, visualToolIcon, iconNode, openTool
+  });
 }
 
 function homeSectionHeader(title, note = "", actionLabel = "", action = null) {
@@ -8663,61 +8623,12 @@ function constraintValidation(tool, ts) {
 }
 
 function renderRuleStrip(tool, ts) {
-  let rules = [];
-
-  if (selectionTools.has(tool.id)) {
-    const model = currentSelectionModel(tool.id, ts);
-    if (!model) return null;
-    rules = selectionRuleSummary(model, {
-      allowRepeats: ts.allowRepeats,
-      multi: tool.id === "sampler"
-    });
-  } else if (tool.id === "dice" && ts.diceMode === "expression") {
-    const expression = String(ts.diceExpression || "")
-      .replace(/\s+/g, "")
-      .toLowerCase();
-    rules.push("Expression");
-    if (/(kh|kl|dh|dl)\d+/.test(expression)) rules.push("Keep/drop");
-    if (/r(?:<=|>=|!=|=|<|>)?\d+/.test(expression)) rules.push("Reroll");
-    if (/!/.test(expression)) rules.push("Explode");
-    if (expression === "2d20kh1") rules.unshift("Advantage");
-    if (expression === "2d20kl1") rules.unshift("Disadvantage");
-  } else if (tool.id === "number") {
-    if (ts.numberMode === "decimal") {
-      rules.push(ts.numberPrecision + " decimals");
-    }
-    if (ts.numberCount > 1) rules.push(ts.numberCount + " values");
-    if (ts.numberUnique && ts.numberCount > 1) rules.push("Unique");
-  } else if (constraintTools.has(tool.id)) {
-    const active = (ts.rules || []).filter((rule) => rule.enabled !== false);
-    const required = active.filter((rule) => rule.strength !== "soft").length;
-    const preferred = active.filter((rule) => rule.strength === "soft").length;
-    if (required) rules.push(required + " required");
-    if (preferred) rules.push(preferred + " prefer");
-    if (active.length) {
-      const effort = ts.solverEffort || "automatic";
-      rules.push(effort[0].toUpperCase() + effort.slice(1));
-    }
-  } else if (tool.custom) {
-    const experience = customExperienceFromToolId(tool.id);
-    if (experience) {
-      rules.push("Custom");
-      rules.push(experience.primitive);
-    }
-  }
-
-  if (!rules.length) return null;
-
-  return node("div", {
-    class: "tool-rule-strip",
-    "aria-label": "Active rules"
-  }, [
-    node("span", { class: "tool-rule-label", text: "Rules" }),
-    ...rules.map((rule) =>
-      node("span", { class: "rule-chip", text: rule })
-    )
-  ]);
+  return buildToolRuleStrip(tool, ts, {
+    node, selectionTools, currentSelectionModel, selectionRuleSummary,
+    constraintTools, customExperienceFromToolId
+  });
 }
+
 function dieTrace(die) {
   const parts = die.chain.map((part) => {
     if (part.attempts.length <= 1) return String(part.value);
@@ -11406,6 +11317,20 @@ function buildToolActionDock(tool, ts) {
     }, "Reset elimination"));
   }
 
+  if (toolAcceptsListInput(tool.id) && !ts.replayRunId) {
+    secondary.append(node("button", {
+      class: "secondary", type: "button", disabled: ts.computing,
+      onClick: () => {
+        state.modal = {
+          type: "input-handoff", sourceToolId:tool.id,
+          sourceEntries:parseList(tool.custom ? ts.customInputText : ts.listText),
+          targetId:"", mode:"replace", error:null
+        };
+        render();
+      }
+    }, "Use entries in…"));
+  }
+
   if (ts.result) {
     secondary.append(node("button", {
       class: "secondary",
@@ -14024,6 +13949,50 @@ function renderModal(previousFocusIdentity = null) {
       recentIds: recentHomeTools(8).map(({ tool }) => tool.id),
       favorites: state.favorites,
       openTool
+    });
+  } else if (state.modal?.type === "input-handoff") {
+    const config = state.modal;
+    const targets = eligibleHandoffTargets([
+      ...TOOLS, ...state.customExperiences
+        .filter((e) => e.status === "published").map(experienceAsTool)
+    ], config.sourceToolId, (t) => toolAcceptsListInput(t.id));
+    const activeReason = (t) => activeTargetReason(
+      state.tool[t.id],
+      state.sessions.some((s) => s.toolId === t.id && s.status === "active")
+      || state.partySessions.some((s) => s.toolId === t.id && s.status === "active"),
+      state.computeBusy
+    );
+    renderInputHandoffModal(modal, config, {
+      node, sourceName:resolveTool(config.sourceToolId)?.name || "this tool",
+      targets, activeReason, rerender:render,
+      getInput:(t) => t.custom
+        ? state.tool[t.id]?.customInputText ?? "Option A\nOption B\nOption C"
+        : state.tool[t.id]?.listText ?? defaultList(t.id),
+      onCancel:() => { state.modal = null; render(); },
+      onConfirm:(t,plan) => {
+        if (activeReason(t)) {
+          config.error = activeReason(t); render(); return;
+        }
+        const ts = ensureToolState(t.id);
+        const field = t.custom ? "customInputText" : "listText";
+        try {
+          const next = planInputHandoff(config.sourceEntries,ts[field],config.mode);
+          if (next.text !== plan.text || next.previous !== plan.previous) {
+            config.error = "Destination changed. Review the current entries first.";
+            render(); return;
+          }
+          applyInputHandoff(ts, next, {
+            custom:t.custom, selection:selectionTools.has(t.id), mode:config.mode
+          });
+          invalidateTool(t.id,ts);
+          if (selectionTools.has(t.id)) reconcileToolSelection(t.id,ts);
+          state.modal = null;
+          openTool(t.id);
+          window.requestAnimationFrame(() =>
+            document.getElementById("main-content")?.focus({preventScroll:true}));
+          announce("Copied " + next.copied + " entries to " + t.name + ".");
+        } catch (error) { config.error = error.message; render(); }
+      }
     });
   } else if (
     typeof state.modal === "object"
