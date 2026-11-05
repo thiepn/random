@@ -14,6 +14,7 @@ import {
 
 const app = fs.readFileSync("src/app.js", "utf8");
 const homeSearch = fs.readFileSync("src/home-search.js", "utf8");
+const toolSetup = fs.readFileSync("src/tool-setup-health.js", "utf8");
 const css = fs.readFileSync("brand-icons.css", "utf8");
 const index = fs.readFileSync("index.html", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
@@ -204,10 +205,14 @@ for (const marker of [
   'class: "empty-state-mark"'
 ]) {
   assert.ok(
-    (marker === 'iconNode("search"' ? homeSearch : app).includes(marker),
+    (marker === 'iconNode("search"' ? homeSearch
+      : marker === 'iconNode("warning")' ? toolSetup : app).includes(marker),
     "Primary rendering path missing SVG usage: " + marker
   );
 }
+
+assert.ok(app.includes("createToolError(node, iconNode, message)"),
+  "The main controller must still call the extracted SVG warning renderer.");
 
 assert.equal(
   app.includes('class: "tool-icon", text: tool.icon'),
