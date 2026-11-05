@@ -49,8 +49,12 @@ class FakeNode {
     }
     this.append(...(Array.isArray(children)?children:[children]));
   }
-  append(...children){this.children.push(...children.filter(x=>x!=null));}
-  replaceChildren(...children){this.children=children;}
+  append(...children){
+    const items=children.filter(x=>x!=null);
+    this.children.push(...items);
+    this.textContent+=items.map(x=>typeof x==="string"?x:x.textContent||"").join("");
+  }
+  replaceChildren(...children){this.children=[];this.textContent="";this.append(...children);}
   addEventListener(name,callback){this.events[name]=callback;}
   querySelectorAll(selector){
     const found=[];
