@@ -143,6 +143,9 @@ jobs:
       - name: Offline shell certification
         run: node tests/offline-shell.mjs
 
+      - name: Service-worker cache-generation regression certification
+        run: node tests/sw-cache-generation.mjs
+
       - name: Performance budget certification
         run: node tests/performance-budget.mjs
 
