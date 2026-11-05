@@ -13982,8 +13982,8 @@ function renderModal(previousFocusIdentity = null) {
           }
           ts[field] = next.text;
           ts.workingSet = null; ts.workingSetDirty = false;
-          ts.activePresetId = null;
-          if (selectionTools.has(t.id)) ts.selectionEntries = [];
+          ts.activePresetId = null; ts.activeSessionId = null;
+          if (selectionTools.has(t.id) && config.mode === "replace") ts.selectionEntries = [];
           invalidateTool(t.id,ts);
           if (selectionTools.has(t.id)) reconcileToolSelection(t.id,ts);
           state.modal = null;
