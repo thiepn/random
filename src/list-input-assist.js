@@ -103,3 +103,22 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     ])
   ]);
 }
+
+export function defaultListEntries(toolId) {
+  const lists = {
+    wheel: ["Pizza", "Sushi", "Korean", "Burgers", "Indian", "Tacos"],
+    picker: ["Anna", "Ben", "David", "Sarah"],
+    sampler: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    shuffle: ["Anna", "Ben", "David", "Sarah", "Luke"],
+    teams: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
+    groups: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
+    pairs: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    assignment: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    elimination: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    ladder: ["Anna", "Ben", "David", "Sarah"],
+    "secret-santa": ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
+    tournament: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"]
+  };
+  return (lists[toolId] || ["Option A", "Option B", "Option C"]).join("\n");
+}
+
