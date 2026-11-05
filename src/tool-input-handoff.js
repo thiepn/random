@@ -119,3 +119,19 @@ export function renderInputHandoffModal(modal, config, {
     ])
   );
 }
+
+export function applyInputHandoff(target, plan, {
+  custom = false, selection = false, mode = "replace"
+} = {}) {
+  if (!target || !plan || !["replace","append"].includes(mode)
+    || typeof plan.text !== "string") {
+    throw new TypeError("Valid confirmed input handoff required.");
+  }
+  target[custom ? "customInputText" : "listText"] = plan.text;
+  target.workingSet = null;
+  target.workingSetDirty = false;
+  target.activePresetId = null;
+  target.activeSessionId = null;
+  if (selection && mode === "replace") target.selectionEntries = [];
+  return target;
+}
