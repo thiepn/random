@@ -23,6 +23,41 @@ export function planInputHandoff(sourceEntries, targetText, mode = "replace") {
   };
 }
 
+
+/**
+ * Capture the exact temporary destination input and its Pool/Preset linkage.
+ * Preview and confirmation must agree even when two inputs parse to the same items.
+ */
+export function handoffDestinationSnapshot(toolState, { custom = false, fallback = "" } = {}) {
+  const workingSet = toolState?.workingSet || null;
+  return {
+    text: String(toolState?.[custom ? "customInputText" : "listText"] ?? fallback),
+    poolAttached: Boolean(workingSet),
+    poolId: workingSet?.source?.poolId ?? null,
+    poolRevision: workingSet?.source?.revision ?? null,
+    workingSetDirty: Boolean(toolState?.workingSetDirty),
+    presetId: toolState?.activePresetId ?? null
+  };
+}
+
+export function handoffDestinationUnchanged(before, after) {
+  return Boolean(before && after
+    && before.text === after.text
+    && before.poolAttached === after.poolAttached
+    && before.poolId === after.poolId
+    && before.poolRevision === after.poolRevision
+    && before.workingSetDirty === after.workingSetDirty
+    && before.presetId === after.presetId);
+}
+
+export function handoffEntryPreview(entries, limit = 5) {
+  const items = entries.slice(0, limit).map((entry) => {
+    const text = String(entry);
+    return text.length > 60 ? text.slice(0, 57) + "…" : text;
+  });
+  return items.join(" · ") + (entries.length > limit ? " · …" : "");
+}
+
 export function eligibleHandoffTargets(tools, sourceToolId, isCompatible) {
   return tools.filter((tool) =>
     tool && tool.id !== sourceToolId && isCompatible(tool)
@@ -38,19 +73,24 @@ export function activeTargetReason(toolState, activeSession = false, busy = fals
 }
 
 export function renderInputHandoffModal(modal, config, {
-  node, sourceName, targets, getInput, activeReason, onConfirm, onCancel, rerender
+  node, sourceName, targets, getInput, getDestinationSnapshot,
+  activeReason, onConfirm, onCancel, rerender
 }) {
   const sourceEntries = config.sourceEntries;
   const fromResult = config.sourceKind === "result";
   const target = targets.find((tool) => tool.id === config.targetId) || null;
-  const prior = target ? getInput(target) : "";
+  const destinationSnapshot = target && getDestinationSnapshot
+    ? getDestinationSnapshot(target) : null;
+  const prior = target ? destinationSnapshot?.text ?? getInput(target) : "";
   const blocked = target ? activeReason(target) : null;
   let plan = null;
   let issue = config.error || blocked || (!sourceEntries.length
     ? "There are no reusable entries to transfer." : null);
   if (target && !issue) {
-    try { plan = planInputHandoff(sourceEntries, prior, config.mode); }
-    catch (error) { issue = error.message; }
+    try {
+      plan = planInputHandoff(sourceEntries, prior, config.mode);
+      if (destinationSnapshot) plan.destinationSnapshot = destinationSnapshot;
+    } catch (error) { issue = error.message; }
   }
 
   const choose = node("select", {
@@ -94,8 +134,7 @@ export function renderInputHandoffModal(modal, config, {
     }),
     node("p", {
       text: (fromResult ? "Result preview: " : "Source preview: ")
-        + sourceEntries.slice(0, 5).join(" · ")
-        + (sourceEntries.length > 5 ? " · …" : "")
+        + handoffEntryPreview(sourceEntries)
     }),
     node("div", { class: "control" }, [
       node("label", { text: "Destination" }), choose
@@ -103,6 +142,18 @@ export function renderInputHandoffModal(modal, config, {
     node("div", { class: "control" }, [
       node("label", { text: "Transfer method" }), mode
     ]),
+    target ? node("p", {
+      text: "Destination preview: "
+        + (prior ? handoffEntryPreview(entriesFromText(prior)) || "(no entries)" : "(no entries)")
+    }) : null,
+    target && destinationSnapshot?.poolAttached ? node("p", {
+      text: "The destination's temporary Pool working set will be detached."
+        + (destinationSnapshot.workingSetDirty
+          ? " Its unsaved working-set changes will be lost." : "")
+    }) : null,
+    target && destinationSnapshot?.presetId ? node("p", {
+      text: "The destination's active Preset association will be cleared; saved Presets stay unchanged."
+    }) : null,
     target
       ? node("p", { role: "status", "aria-live": "polite",
         text: blocked || (
