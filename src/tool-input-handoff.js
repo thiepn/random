@@ -31,7 +31,7 @@ export function eligibleHandoffTargets(tools, sourceToolId, isCompatible) {
 
 export function activeTargetReason(toolState, activeSession = false, busy = false) {
   if (busy || toolState?.computing) return "A randomization is still running.";
-  if (activeSession || toolState?.activeSessionId || toolState?.templateSessionId
+  if (activeSession || toolState?.templateSessionId
     || toolState?.workflowSessionId) return "Finish the destination's active session first.";
   if (toolState?.replayRunId) return "Exit replay mode before changing this tool's input.";
   return null;
@@ -88,6 +88,10 @@ export function renderInputHandoffModal(modal, config, {
       text: sourceEntries.length + " entries from " + sourceName
         + ". This copies labels, not results, weights, exclusions, rules or Pool links."
     }),
+    node("p", {
+      text: "Source preview: " + sourceEntries.slice(0, 5).join(" · ")
+        + (sourceEntries.length > 5 ? " · …" : "")
+    }),
     node("div", { class: "control" }, [
       node("label", { text: "Destination" }), choose
     ]),
@@ -100,7 +104,7 @@ export function renderInputHandoffModal(modal, config, {
           plan
             ? target.name + " currently has " + plan.previous
               + " entries. After copying: " + plan.total
-              + ". Saved Pools and Presets remain unchanged."
+              + ". Saved Pools and Presets remain unchanged; target rules may need review."
             : "This setup cannot be copied to the selected tool."
         )
       })
