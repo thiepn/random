@@ -1,8 +1,9 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
-import { createListInputAssist, defaultListEntries } from "./list-input-assist.js";
+import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
+import { setupIssue, stopInvalidRun, buildSetupCoach, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
-import { findToolsForTask, renderToolFinder } from "./tool-discovery.js";
+import { findToolsForTask, renderToolFinder, categoryDescription } from "./tool-discovery.js";
 import {
   iconNode,
   toolIconId,
@@ -670,10 +671,7 @@ async function updateAccessibilitySetting(key, value) {
 
 
 function parseList(text) {
-  return String(text || "")
-    .split(/\r?\n|;/)
-    .map((value) => value.trim())
-    .filter(Boolean);
+  return entriesFromText(text);
 }
 
 function defaultList(toolId) {
@@ -3128,42 +3126,7 @@ function continuationCard(item) {
 }
 
 function arcadeCategoryCopy(categoryId) {
-  return ({
-    classics: "Fast decisions and the randomizers you reach for first.",
-    people: "Fairly split, pair, order, and assign people.",
-    generators: "Generate numbers, dates, colors, directions, and more.",
-    games: "Draws, brackets, elimination, cards, and playful chance."
-  })[categoryId] || "Explore randomizers.";
-}
-
-async function togglePresetFavorite(preset) {
-  const next = updatePreset(preset, { favorite: !preset.favorite });
-  await putWithRevision("presets", next, preset.revision);
-  state.presets = state.presets
-    .map((item) => item.id === next.id ? next : item)
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-  render();
-}
-
-async function deletePreset(preset) {
-  const references = state.sessionTemplates.filter((template) =>
-    template.steps.some((step) => step.presetId === preset.id)
-  );
-
-  if (references.length) {
-    announce(
-      "This Preset is used by "
-      + references.length
-      + " Session Template"
-      + (references.length === 1 ? "." : "s.")
-    );
-    return false;
-  }
-
-  await remove("presets", preset.id);
-  state.presets = state.presets.filter((item) => item.id !== preset.id);
-  render();
-  return true;
+  return categoryDescription(categoryId);
 }
 
 function presetCard(preset) {
@@ -8119,18 +8082,7 @@ function toolVisualFamily(tool) {
 }
 
 function toolFamilyLabel(family) {
-  return ({
-    coin: "Tactile classic",
-    dice: "Dice engine",
-    wheel: "Weighted spinner",
-    cards: "Deck",
-    color: "Color generator",
-    list: "List randomizer",
-    people: "People randomizer",
-    competition: "Game draw",
-    private: "Private assignment",
-    generator: "Generator"
-  })[family] || "Randomizer";
+  return setupFamilyLabel(family);
 }
 
 function renderTool() {
@@ -9580,18 +9532,7 @@ function buildStage(tool, ts) {
 }
 
 function toolError(message) {
-  return node("div", {
-    class: "tool-error",
-    role: "alert"
-  }, [
-    node("div", { class: "tool-error-mark", "aria-hidden": "true" },
-      iconNode("warning")
-    ),
-    node("div", { class: "tool-error-copy" }, [
-      node("strong", { text: "Could not randomize" }),
-      node("span", { text: message })
-    ])
-  ]);
+  return createToolError(node, iconNode, message);
 }
 
 function textareaControl(label, value, onChange) {
@@ -11049,6 +10990,20 @@ function buildControls(tool, ts) {
     })
   ]));
 
+  const coach = buildSetupCoach({
+    toolId:tool.id, toolState:ts, node, root:controls,
+    customNeedsInput:tool.custom &&
+      customExperienceNeedsPromptInput(customExperienceFromToolId(tool.id)),
+    onApply:(patch) => {
+      Object.assign(ts,patch);
+      invalidateTool(tool.id,ts);
+      render();
+    }
+  });
+  controls.append(coach.panel);
+  controls.addEventListener("input",coach.refresh);
+  controls.addEventListener("change",coach.refresh);
+
   const templateBar = templateContextBar(tool, ts);
   if (templateBar) controls.append(templateBar);
 
@@ -11602,6 +11557,13 @@ async function runTool(id) {
   if (selectionTools.has(id)) {
     reconcileToolSelection(id, ts);
   }
+
+  if (state.view === "tool" && !ts.workflowSilent &&
+      stopInvalidRun(id, ts, {
+        render, announce,
+        customNeedsInput:tool.custom &&
+          customExperienceNeedsPromptInput(customExperienceFromToolId(id))
+      })) return;
 
   const prepared = prepareRandomSource();
   const beforeState = snapshotToolState(id, ts);
