@@ -8,4 +8,4 @@
 .tool-setup-shortcut{display:none}
 @media(max-width:759px){.tool-setup-shortcut{display:flex;align-items:center;justify-content:center;width:100%}}
 
-@media(max-width:759px){.tool-screen-v2:is(.tool-family-wheel,.tool-family-list,.tool-family-people,.tool-family-competition,.tool-family-private):has(.tool-controls[open]) .tool-stage-v2{--tool-stage-min:14rem}}
+@media(max-width:759px){.tool-screen-v2:is(.tool-family-wheel,.tool-family-list,.tool-family-people,.tool-family-competition,.tool-family-private):has(.tool-controls[open]) .tool-stage-v2{--tool-stage-min:14rem}.tool-family-wheel:has(.tool-controls[open]) .wheel-wrap{width:min(40vw,10rem);margin-bottom:var(--space-3)}}
