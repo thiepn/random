@@ -1,7 +1,8 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries } from "./list-input-assist.js";
 import { createRng, pick, sample } from "./random-core.js";
-import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
+import { CATEGORIES, TOOLS, getTool } from "./registry.js";
+import { findToolsForTask, renderToolFinder } from "./tool-discovery.js";
 import {
   iconNode,
   toolIconId,
@@ -5349,6 +5350,12 @@ function brandLockup(className = "") {
   ]);
 }
 
+function openToolFinder() {
+  if (state.modal) return;
+  state.modal = { type: "tool-finder" };
+  render();
+}
+
 function topBar() {
   const seeded = state.settings.randomness.mode === "seeded";
   const context = shellViewContext();
@@ -5368,6 +5375,12 @@ function topBar() {
       ])
     ]),
     node("div", { class: "top-actions" }, [
+      node("button", {
+        class: "icon-button", type: "button",
+        "aria-label": "Find a randomizer",
+        title: "Find a randomizer (Ctrl/Command K)",
+        onClick: openToolFinder
+      }, iconNode("search")),
       node("button", {
         class: "pill-button topbar-randomness",
         type: "button",
@@ -5571,22 +5584,12 @@ function renderPlay() {
   ]);
 
   if (state.search.trim()) {
-    const q = state.search.trim().toLowerCase();
-    const customResults = state.customExperiences
-      .filter((experience) => experience.status === "published")
-      .filter((experience) =>
-        [
-          experience.name,
-          experience.description,
-          experience.primitive,
-          ...(experience.tags || [])
-        ].join(" ").toLowerCase().includes(q)
-      )
-      .map(experienceAsTool);
-    const results = [
-      ...searchTools(state.search),
-      ...customResults
-    ];
+    const results = findToolsForTask(
+      state.search, TOOLS,
+      state.customExperiences
+        .filter((experience) => experience.status === "published")
+        .map(experienceAsTool)
+    );
 
     content.append(hero);
     content.append(node("section", {
@@ -5864,21 +5867,9 @@ function renderArcade() {
   ]));
 
   if (state.search.trim()) {
-    const q = state.search.trim().toLowerCase();
-    const customResults = publishedCustom
-      .filter((experience) =>
-        [
-          experience.name,
-          experience.description,
-          experience.primitive,
-          ...(experience.tags || [])
-        ].join(" ").toLowerCase().includes(q)
-      )
-      .map(experienceAsTool);
-    const results = [
-      ...searchTools(state.search),
-      ...customResults
-    ];
+    const results = findToolsForTask(
+      state.search, TOOLS, publishedCustom.map(experienceAsTool)
+    );
 
     content.append(node("section", {
       class: "arcade-section arcade-search-section"
@@ -14031,7 +14022,17 @@ function renderModal(previousFocusIdentity = null) {
     "aria-modal": "true"
   });
 
-  if (
+  if (state.modal?.type === "tool-finder") {
+    renderToolFinder(modal, {
+      node, builtins: TOOLS,
+      customs: state.customExperiences
+        .filter((item) => item.status === "published")
+        .map(experienceAsTool),
+      recentIds: recentHomeTools(8).map(({ tool }) => tool.id),
+      favorites: state.favorites,
+      openTool
+    });
+  } else if (
     typeof state.modal === "object"
     && state.modal.type === "portable-import"
   ) {
@@ -14922,6 +14923,15 @@ async function init() {
   registerAppServiceWorker();
 
   document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && !event.altKey
+      && !event.isComposing && event.key.toLowerCase() === "k"
+      && state.view !== "party" && state.view !== "audience"
+      && (!state.modal || state.modal.type === "tool-finder")) {
+      event.preventDefault();
+      if (state.modal) document.querySelector('.modal input[type="search"]')?.focus();
+      else openToolFinder();
+      return;
+    }
     if (event.key === "Escape" && state.modal) {
       if (
         typeof state.modal === "object"

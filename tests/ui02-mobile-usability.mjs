@@ -85,7 +85,7 @@ for (const [css,selector,size] of [
     selector + " must use readable text");
 }
 
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g4";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g5";'));
 assert.ok(sw.includes('"./tool-experience.css"'));
 assert.ok(sw.includes('"./home-arcade.css"'));
 assert.ok(sw.includes('"./app-shell.css"'));
