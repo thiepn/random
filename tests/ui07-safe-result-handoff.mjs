@@ -46,7 +46,7 @@ const args = {
     confirmCount++;
     assert.equal(tool.id, "picker");
     assert.equal(plan.text, config.mode === "replace"
-      ? "Ada\\nAda\\nBea" : "Old\\nKeep\\nAda\\nAda\\nBea");
+      ? "Ada\nAda\nBea" : "Old\nKeep\nAda\nAda\nBea");
   },
   onCancel: () => {}, rerender: () => {}
 };
