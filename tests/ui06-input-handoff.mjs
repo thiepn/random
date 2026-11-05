@@ -78,7 +78,7 @@ renderInputHandoffModal(modal,cfg,{
   rerender:()=>{rendered=true;}
 });
 assert.match(modal.walk(x=>x.tag==="h2").textContent,/Copy current entries/);
-assert.match(modal.walk(x=>x.props.text?.startsWith("Source preview"))?.textContent||"",""); // use props text below
+assert.match(modal.walk(x=>x.props.text?.startsWith("Source preview"))?.textContent||"",/Anna · Anna · Ben/);
 assert.equal(opened,false,"Opening a confirmation dialog must be non-mutating");
 const selectors=[];
 function walk(n){if(n.tag==="select")selectors.push(n);for(const c of n.children){if(c?.tag)walk(c);}}
@@ -103,7 +103,6 @@ renderInputHandoffModal(nextModal,cfg,{
   onConfirm:(tool,plan)=>{opened=true;assert.equal(tool.id,"picker");assert.equal(plan.mode,"replace");},
   onCancel:()=>{cancelled=true;},rerender:()=>{}
 });
-const buttons2=[];buttons(nextModal); // unused, calculate from traversal below
 const confirm=nextModal.walk(x=>x.tag==="button" && x.props.class==="primary");
 assert.equal(confirm.disabled,false);
 confirm.props.onClick();
