@@ -99,6 +99,7 @@ export function renderInputHandoffModal(modal, config, {
     onChange: (event) => {
       config.targetId = event.target.value;
       config.error = null;
+      config.needsReview = false;
       rerender();
     }
   }, [
@@ -116,6 +117,7 @@ export function renderInputHandoffModal(modal, config, {
     onChange: (event) => {
       config.mode = event.target.value;
       config.error = null;
+      config.needsReview = false;
       rerender();
     }
   }, [
@@ -168,6 +170,13 @@ export function renderInputHandoffModal(modal, config, {
     issue ? node("div", { class: "tool-error", role: "alert", text: issue }) : null,
     node("div", { class: "modal-actions" }, [
       node("button", { class: "secondary", type: "button", onClick: onCancel }, "Cancel"),
+      config.needsReview ? node("button", {
+        class: "secondary", type: "button", onClick: () => {
+          config.error = null;
+          config.needsReview = false;
+          rerender();
+        }
+      }, "Review updated destination") : null,
       node("button", {
         class: "primary", type: "button", disabled: !target || !plan || !!issue,
         onClick: () => onConfirm(target, plan)
