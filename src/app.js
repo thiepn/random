@@ -1,4 +1,5 @@
-import { createHomeSearchBox } from "./home-search.js";
+import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
+import { createListInputAssist, defaultListEntries } from "./list-input-assist.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool, searchTools } from "./registry.js";
 import {
@@ -675,21 +676,7 @@ function parseList(text) {
 }
 
 function defaultList(toolId) {
-  const lists = {
-    wheel: ["Pizza", "Sushi", "Korean", "Burgers", "Indian", "Tacos"],
-    picker: ["Anna", "Ben", "David", "Sarah"],
-    sampler: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    shuffle: ["Anna", "Ben", "David", "Sarah", "Luke"],
-    teams: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
-    groups: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"],
-    pairs: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    assignment: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    elimination: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    ladder: ["Anna", "Ben", "David", "Sarah"],
-    "secret-santa": ["Anna", "Ben", "David", "Sarah", "Luke", "Maria"],
-    tournament: ["Anna", "Ben", "David", "Sarah", "Luke", "Maria", "Peter", "Nina"]
-  };
-  return (lists[toolId] || ["Option A", "Option B", "Option C"]).join("\n");
+  return defaultListEntries(toolId);
 }
 
 function ensureToolState(toolId) {
@@ -3025,25 +3012,8 @@ function toolCard(tool, {
   ]);
 }
 
-function homeSectionHeader(
-  title,
-  note = "",
-  actionLabel = "",
-  action = null
-) {
-  return node("div", { class: "home-section-head" }, [
-    node("div", {}, [
-      node("h2", { text: title }),
-      note ? node("p", { text: note }) : null
-    ]),
-    actionLabel && action
-      ? node("button", {
-          class: "home-section-action",
-          type: "button",
-          onClick: action
-        }, actionLabel)
-      : null
-  ]);
+function homeSectionHeader(title, note = "", actionLabel = "", action = null) {
+  return createHomeSectionHeader(node, title, note, actionLabel, action);
 }
 
 function homeSearchBox(options = {}) {
@@ -9900,6 +9870,17 @@ function listControls(tool, ts) {
     textarea
   ]);
 
+  runControl.append(createListInputAssist({
+    toolId: tool.id, node, textarea, announce,
+    onUpdate: (action, message) => {
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      render();
+      document.querySelector(
+        '.tool-controls [data-input-action="' + action + '"]'
+      )?.focus({ preventScroll: true });
+      announce(message);
+    }
+  }));
   appendPresent(wrap, sourceControl, runControl);
   return wrap;
 }

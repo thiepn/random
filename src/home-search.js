@@ -58,3 +58,25 @@ export function createHomeSearchBox({
   appendPresent(wrap, search);
   return wrap;
 }
+
+export function createHomeSectionHeader(node, 
+  title,
+  note = "",
+  actionLabel = "",
+  action = null
+) {
+  return node("div", { class: "home-section-head" }, [
+    node("div", {}, [
+      node("h2", { text: title }),
+      note ? node("p", { text: note }) : null
+    ]),
+    actionLabel && action
+      ? node("button", {
+          class: "home-section-action",
+          type: "button",
+          onClick: action
+        }, actionLabel)
+      : null
+  ]);
+}
+
