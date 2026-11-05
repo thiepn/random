@@ -25,7 +25,7 @@ assert.equal(first.presetId, "preset-a");
 assert.ok(first.poolAttached);
 assert.ok(handoffDestinationUnchanged(first, snapshot()));
 assert.equal(handoffDestinationUnchanged(null, snapshot()), false);
-const rest = { ...target, listText: "Old\\nKeep" };
+const rest = { ...target, listText: "Old\nKeep" };
 assert.deepEqual(entriesFromText(target.listText), entriesFromText(rest.listText));
 assert.equal(planInputHandoff(sourceEntries, target.listText).text,
   planInputHandoff(sourceEntries, rest.listText).text,
@@ -44,7 +44,7 @@ for (const patch of [
   handoffDestinationSnapshot({ ...target, ...patch })), false,
   "A change to the destination's linked or unsaved data requires re-review");
 assert.equal(handoffDestinationSnapshot(null, { custom: true,
-  fallback: "Option A\\nOption B" }).text, "Option A\\nOption B");
+  fallback: "Option A\nOption B" }).text, "Option A\nOption B");
 assert.equal(handoffDestinationSnapshot({ customInputText: "Custom" },
   { custom: true }).text, "Custom");
 assert.match(handoffEntryPreview(["x".repeat(150)]), /…/);
@@ -105,7 +105,7 @@ const firstButton = initialDialog.walk(x => x.tag === "button" && x.props.class 
 assert.equal(firstButton.disabled, false);
 
 // The destination is edited while the modal is open, without changing parsed items.
-target.listText = "Old\\nKeep";
+target.listText = "Old\nKeep";
 firstButton.props.onClick();
 assert.equal(confirmations, 0, "Stale preview must fail closed");
 assert.equal(target.activePresetId, "preset-a");
@@ -130,7 +130,7 @@ assert.match(refreshed.walk(x => x.props.text?.startsWith("Destination preview:"
   /Old · Keep/);
 refreshed.walk(x => x.tag === "button" && x.props.class === "primary").props.onClick();
 assert.equal(confirmations, 1);
-assert.equal(target.listText, "Anna\\nAnna\\nBen");
+assert.equal(target.listText, "Anna\nAnna\nBen");
 assert.equal(target.workingSet, null);
 assert.equal(target.activePresetId, null);
 assert.deepEqual(target.selectionEntries, []);
