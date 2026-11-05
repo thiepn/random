@@ -1,5 +1,6 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
+import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal } from "./tool-input-handoff.js";
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
@@ -11316,6 +11317,20 @@ function buildToolActionDock(tool, ts) {
     }, "Reset elimination"));
   }
 
+  if (toolAcceptsListInput(tool.id) && !ts.replayRunId) {
+    secondary.append(node("button", {
+      class: "secondary", type: "button", disabled: ts.computing,
+      onClick: () => {
+        state.modal = {
+          type: "input-handoff", sourceToolId:tool.id,
+          sourceEntries:parseList(tool.custom ? ts.customInputText : ts.listText),
+          targetId:"", mode:"replace", error:null
+        };
+        render();
+      }
+    }, "Use entries in…"));
+  }
+
   if (ts.result) {
     secondary.append(node("button", {
       class: "secondary",
@@ -13934,6 +13949,50 @@ function renderModal(previousFocusIdentity = null) {
       recentIds: recentHomeTools(8).map(({ tool }) => tool.id),
       favorites: state.favorites,
       openTool
+    });
+  } else if (state.modal?.type === "input-handoff") {
+    const config = state.modal;
+    const targets = eligibleHandoffTargets([
+      ...TOOLS, ...state.customExperiences
+        .filter((e) => e.status === "published").map(experienceAsTool)
+    ], config.sourceToolId, (t) => toolAcceptsListInput(t.id));
+    const activeReason = (t) => activeTargetReason(
+      state.tool[t.id],
+      state.sessions.some((s) => s.toolId === t.id && s.status === "active"),
+      state.computeBusy
+    );
+    renderInputHandoffModal(modal, config, {
+      node, sourceName:resolveTool(config.sourceToolId)?.name || "this tool",
+      targets, activeReason, rerender:render,
+      getInput:(t) => t.custom
+        ? state.tool[t.id]?.customInputText ?? "Option A\nOption B\nOption C"
+        : state.tool[t.id]?.listText ?? defaultList(t.id),
+      onCancel:() => { state.modal = null; render(); },
+      onConfirm:(t,plan) => {
+        if (activeReason(t)) {
+          config.error = activeReason(t); render(); return;
+        }
+        const ts = ensureToolState(t.id);
+        const field = t.custom ? "customInputText" : "listText";
+        try {
+          const next = planInputHandoff(config.sourceEntries,ts[field],config.mode);
+          if (next.text !== plan.text || next.previous !== plan.previous) {
+            config.error = "Destination changed. Review the current entries first.";
+            render(); return;
+          }
+          ts[field] = next.text;
+          ts.workingSet = null; ts.workingSetDirty = false;
+          ts.activePresetId = null;
+          if (selectionTools.has(t.id)) ts.selectionEntries = [];
+          invalidateTool(t.id,ts);
+          if (selectionTools.has(t.id)) reconcileToolSelection(t.id,ts);
+          state.modal = null;
+          openTool(t.id);
+          window.requestAnimationFrame(() =>
+            document.getElementById("main-content")?.focus({preventScroll:true}));
+          announce("Copied " + next.copied + " entries to " + t.name + ".");
+        } catch (error) { config.error = error.message; render(); }
+      }
     });
   } else if (
     typeof state.modal === "object"
