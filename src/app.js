@@ -1,6 +1,6 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
-import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal } from "./tool-input-handoff.js";
+import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff } from "./tool-input-handoff.js";
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
@@ -13980,10 +13980,9 @@ function renderModal(previousFocusIdentity = null) {
             config.error = "Destination changed. Review the current entries first.";
             render(); return;
           }
-          ts[field] = next.text;
-          ts.workingSet = null; ts.workingSetDirty = false;
-          ts.activePresetId = null; ts.activeSessionId = null;
-          if (selectionTools.has(t.id) && config.mode === "replace") ts.selectionEntries = [];
+          applyInputHandoff(ts, next, {
+            custom:t.custom, selection:selectionTools.has(t.id), mode:config.mode
+          });
           invalidateTool(t.id,ts);
           if (selectionTools.has(t.id)) reconcileToolSelection(t.id,ts);
           state.modal = null;
