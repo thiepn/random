@@ -13,6 +13,7 @@ import {
 } from "../src/icon-system.js";
 
 const app = fs.readFileSync("src/app.js", "utf8");
+const homeSearch = fs.readFileSync("src/home-search.js", "utf8");
 const css = fs.readFileSync("brand-icons.css", "utf8");
 const index = fs.readFileSync("index.html", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
@@ -180,6 +181,8 @@ assert.ok(
 );
 assert.ok(sw.includes('"./brand-icons.css"'));
 assert.ok(sw.includes('"./src/icon-system.js"'));
+assert.ok(sw.includes('"./src/home-search.js"'));
+assert.ok(app.includes("createHomeSearchBox("));
 assert.ok(sw.includes('"./assets/brand/random-spark-mark.svg"'));
 assert.ok(index.includes("./assets/brand/random-spark-mark.svg"));
 assert.equal(
@@ -201,7 +204,7 @@ for (const marker of [
   'class: "empty-state-mark"'
 ]) {
   assert.ok(
-    app.includes(marker),
+    (marker === 'iconNode("search"' ? homeSearch : app).includes(marker),
     "Primary rendering path missing SVG usage: " + marker
   );
 }
