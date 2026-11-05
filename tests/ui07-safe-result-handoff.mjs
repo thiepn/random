@@ -114,7 +114,7 @@ assert.ok(app.includes("reconcileToolSelection(t.id,ts)"));
 assert.equal(app.includes("renderUseResultModal"), false,
   "The old unconfirmed result-replacement path must be removed");
 assert.equal(app.includes('type: "use-result"'), false);
-assert.ok(helper.includes('fromResult ? "Use result in another tool"'));
+assert.ok(helper.includes('? "Use result in another tool" : "Copy current entries to another tool"'));
 assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g8";'));
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 assert.ok(fs.readdirSync(".").filter(x => x.endsWith(".css"))
