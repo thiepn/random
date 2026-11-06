@@ -31,17 +31,21 @@ try{
     try{execFileSync("which",[cmd],{stdio:"ignore"});return true;}catch{return false;}
   });
   assert.ok(binary,"Chrome/Chromium not available: no browser evidence");
+  let chromeErrors="";
   chrome=spawn(binary,["--headless=new","--no-sandbox","--disable-dev-shm-usage",
     "--disable-gpu","--no-first-run","--disable-background-networking",
-    "--remote-debugging-port=0","--user-data-dir="+profile,"--window-size=900,800","about:blank"],{stdio:"ignore"});
+    "--remote-debugging-port=0","--user-data-dir="+profile,"--window-size=900,800","about:blank"],
+    {stdio:["ignore","ignore","pipe"]});
+  chrome.stderr.on("data",data=>{chromeErrors+=String(data).slice(0,600);});
   let port;
-  for(let i=0;i<100;i++){
+  for(let i=0;i<250;i++){
     if(existsSync(join(profile,"DevToolsActivePort"))){
       port=Number(readFileSync(join(profile,"DevToolsActivePort"),"utf8").split("\n")[0]);break;
     }
     await delay(100);
   }
-  assert.ok(port,"Actual Chrome DevTools connection timed out");
+  assert.ok(port,"Actual Chrome DevTools connection timed out; process="+chrome.exitCode+
+    "; stderr="+chromeErrors.slice(-1500));
   const tabs=await(await fetch("http://127.0.0.1:"+port+"/json/list")).json();
   const tab=tabs.find(p=>p.type==="page");
   assert.ok(tab?.webSocketDebuggerUrl,"No Chromium page");
