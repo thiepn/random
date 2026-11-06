@@ -129,7 +129,7 @@ try {
   assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g15";'));
   assert.equal(TOOLS.length, 25);
   assert.ok(fs.statSync("src/app.js").size <= 423000);
-  assert.equal(fs.readdirSync(".").filter(x => x.endsWith(".css"))
+  assert.ok(fs.readdirSync(".").filter(x => x.endsWith(".css"))
     .reduce((total, x) => total + fs.statSync(x).size, 0) <= 174500);
   console.log("UI-14 clipboard focus ownership: success, denial, ABA focus and data retention PASS");
 } finally {
