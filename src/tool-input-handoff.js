@@ -68,6 +68,11 @@ export function eligibleHandoffTargets(tools, sourceToolId, isCompatible) {
   );
 }
 
+export function linkedSessionBlocksHandoff(session) {
+  // Unloaded links fail closed: only confirmed terminal sessions are reusable.
+  return !session || !["completed", "abandoned", "error"].includes(session.status);
+}
+
 export function activeTargetReason(
   toolState, activeSession = false, busy = false, isLinkedSessionActive = null
 ) {
