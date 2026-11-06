@@ -147,7 +147,7 @@ assert.ok(helper.includes("requestId !== clipboardRequest"));
 assert.ok(helper.includes("textarea.value !== initialValue || editRevision !== initialRevision"));
 assert.ok(helper.includes("clipboardRequest += 1;"), "Format invalidates queued requests");
 const sw = fs.readFileSync("sw.js", "utf8");
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g12";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g13";'));
 assert.equal(TOOLS.length, 25);
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 assert.equal(fs.readdirSync(".").filter(name => name.endsWith(".css")).length, 19);
