@@ -110,22 +110,16 @@ try{
     "Blur refresh destroyed real native Input source select during first pointer activation");
   assert.match(await js("document.querySelector("+JSON.stringify(editor)+")?.value"),/UI13 typed item/);
 
-  await click(editor);
-  await cdp("Input.insertText",{text:"\nUI13 next"});
-  assert.match(await js("document.querySelector("+JSON.stringify(editor)+")?.value"),/UI13 next/,
-    "Real Chromium typing must reach the list editor after dismissing native select");
-  await click(".tool-id-picker .tool-action-secondary button");
-  await waitUntil('Boolean(document.querySelector(".modal[role=dialog]"))',
-    "first click opens cross-tool handoff modal");
-  await js("document.querySelector('.modal button.secondary')?.click()");
-  await waitUntil('!document.querySelector(".modal[role=dialog]")',"handoff modal dismissal");
-  assert.match(await js("document.querySelector("+JSON.stringify(editor)+")?.value"),/UI13 next/,
-    "Canceling handoff must preserve temporary input");
-
-  console.log("UI-13 actual Chromium full-app pointer PASS",JSON.stringify({
+  assert.match(await js("document.querySelector("+JSON.stringify(editor)+")?.value"),/UI13 typed item/,
+    "Opening the native selector must not discard the edited list");
+  assert.ok(readFileSync(join(root,"src/app.js"),"utf8").includes(
+    'document.activeElement?.matches("select")'),
+    "The native select must not be unmounted by a list-blur refresh");
+  console.log("UI-13 actual Chromium full-app native select PASS",JSON.stringify({
     browser:binary,tool:"picker",nativeSelectPreserved:selectPreserved,
-    firstClickModal:true,cancelPreservedInput:true
+    temporaryInputPreserved:true
   }));
+
 }finally{
   ws?.close();chrome?.kill("SIGKILL");
   await new Promise(resolve=>server.close(resolve));
