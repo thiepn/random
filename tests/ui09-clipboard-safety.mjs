@@ -120,7 +120,7 @@ assert.equal(limitedChanges, 1);
 const app = fs.readFileSync("src/app.js", "utf8");
 const sw = fs.readFileSync("sw.js", "utf8");
 assert.ok(app.includes("createListInputAssist({"), "All built-in list tools keep input-assist integration");
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g13";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g14";'));
 assert.equal(fs.readdirSync(".").filter(name => name.endsWith(".css")).length, 19);
 assert.ok(fs.readdirSync(".").filter(name => name.endsWith(".css"))
   .reduce((n, file) => n + fs.statSync(file).size, 0) <= 174500);
