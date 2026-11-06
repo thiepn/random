@@ -1,6 +1,6 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
-import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff, handoffDestinationSnapshot, handoffDestinationUnchanged } from "./tool-input-handoff.js";
+import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, linkedSessionBlocksHandoff, renderInputHandoffModal, applyInputHandoff, handoffDestinationSnapshot, handoffDestinationUnchanged } from "./tool-input-handoff.js";
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
@@ -13873,8 +13873,7 @@ function renderModal(previousFocusIdentity = null) {
     const linkedSessionActive = (kind, id) => {
       const session = kind === "template"
         ? templateSessionById(id) : workflowSessionById(id);
-      // Never permit overwrite if the link cannot be verified.
-      return !session || !["completed", "abandoned", "error"].includes(session.status);
+      return linkedSessionBlocksHandoff(session);
     };
     const activeReason = (t) => activeTargetReason(
       state.tool[t.id],
