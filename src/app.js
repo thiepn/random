@@ -13870,11 +13870,18 @@ function renderModal(previousFocusIdentity = null) {
       ...TOOLS, ...state.customExperiences
         .filter((e) => e.status === "published").map(experienceAsTool)
     ], config.sourceToolId, (t) => toolAcceptsListInput(t.id));
+    const linkedSessionActive = (kind, id) => {
+      const session = kind === "template"
+        ? templateSessionById(id) : workflowSessionById(id);
+      // Never permit overwrite if the link cannot be verified.
+      return !session || !["completed", "abandoned", "error"].includes(session.status);
+    };
     const activeReason = (t) => activeTargetReason(
       state.tool[t.id],
       state.sessions.some((s) => s.toolId === t.id && s.status === "active")
       || state.partySessions.some((s) => s.toolId === t.id && s.status === "active"),
-      state.computeBusy
+      state.computeBusy,
+      linkedSessionActive
     );
     const targetSnapshot = (t) => handoffDestinationSnapshot(state.tool[t.id], {
       custom:t.custom, fallback:t.custom ? "Option A\nOption B\nOption C" : defaultList(t.id)
