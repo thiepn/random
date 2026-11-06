@@ -140,6 +140,39 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
   ]);
 }
 
+// A textarea's native "change" event runs during focus transfer, often
+// between pointerdown and click. Rendering synchronously destroys the clicked
+// control before its click handler fires. Commit after that activation instead.
+export function scheduleListChangeRender(textarea, {
+  pointerDown = false, doc, requestFrame, refresh
+} = {}) {
+  if (!textarea || typeof refresh !== "function"
+    || typeof requestFrame !== "function") {
+    throw new TypeError("List-change refresh requires a textarea and scheduler.");
+  }
+  const commit = () => {
+    if (textarea.isConnected === false) return;
+    refresh();
+  };
+  if (!pointerDown) {
+    requestFrame(commit);
+    return;
+  }
+  if (!doc?.addEventListener || !doc?.removeEventListener) {
+    throw new TypeError("Pointer-driven list changes require a document.");
+  }
+  const onClick = () => {
+    doc.removeEventListener("pointercancel", onCancel);
+    commit();
+  };
+  const onCancel = () => {
+    doc.removeEventListener("click", onClick);
+    requestFrame(commit);
+  };
+  doc.addEventListener("click", onClick, { once: true });
+  doc.addEventListener("pointercancel", onCancel, { once: true });
+}
+
 export function defaultListEntries(toolId) {
   const lists = {
     wheel: ["Pizza", "Sushi", "Korean", "Burgers", "Indian", "Tacos"],
