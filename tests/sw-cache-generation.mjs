@@ -4,7 +4,7 @@ import vm from "node:vm";
 
 const source = fs.readFileSync("sw.js", "utf8");
 const scope = "https://example.test/random/";
-const oldName = "randomizer-shell-v1.2.0-g13";
+const oldName = "randomizer-shell-v1.2.0-g14";
 const oldEntries = new Map([
   [new URL("./index.html", scope).href, "old index"],
   [new URL("./src/app.js", scope).href, "old app"]
@@ -58,7 +58,7 @@ await lifecycle("install");
 const generations = [...cacheData.keys()];
 assert.equal(generations.length, 2);
 const activeName = generations.find((name) => name !== oldName);
-assert.equal(activeName, "randomizer-shell-v1.2.0-g14");
+assert.equal(activeName, "randomizer-shell-v1.2.0-g15");
 assert.equal(cacheData.get(oldName).get(new URL("./src/app.js", scope).href), "old app");
 assert.equal(
   cacheData.get(activeName).get(new URL("./src/home-search.js", scope).href),
