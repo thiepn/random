@@ -126,7 +126,7 @@ try {
   const app = fs.readFileSync("src/app.js", "utf8");
   assert.ok(app.includes('runControl.append(createListInputAssist({'));
   const sw = fs.readFileSync("sw.js", "utf8");
-  assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g15";'));
+  assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g16";'));
   assert.equal(TOOLS.length, 25);
   assert.ok(fs.statSync("src/app.js").size <= 423000);
   assert.ok(fs.readdirSync(".").filter(x => x.endsWith(".css"))
