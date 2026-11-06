@@ -166,7 +166,7 @@ assert.ok(app.includes("handoffDestinationUnchanged(plan.destinationSnapshot,tar
 assert.ok(app.indexOf("handoffDestinationUnchanged(plan.destinationSnapshot,targetSnapshot(t))")
   < app.indexOf("applyInputHandoff(ts, next"), "Verify before touching destination");
 assert.ok(helper.includes("Review updated destination"));
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g15";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g16";'));
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 assert.equal(fs.readdirSync(".").filter(x => x.endsWith(".css")).length, 19);
 assert.ok(fs.readdirSync(".").filter(x => x.endsWith(".css"))

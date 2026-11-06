@@ -167,7 +167,7 @@ assert.ok(app.includes("state.sessions.some((s) => s.toolId === t.id && s.status
 assert.ok(app.includes('state.partySessions.some((s) => s.toolId === t.id && s.status === "active")'));
 assert.ok(app.includes("state.computeBusy,\n      linkedSessionActive"));
 assert.ok(app.includes("if (activeReason(t))"), "Confirmation must recheck status");
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g15";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g16";'));
 assert.equal(TOOLS.length, 25);
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 const sheets = fs.readdirSync(".").filter(name => name.endsWith(".css"));

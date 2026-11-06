@@ -395,6 +395,8 @@ function node(tag, options, children) {
       element.addEventListener(key.slice(2).toLowerCase(), value);
     } else if (key === "checked") {
       element.checked = Boolean(value);
+    } else if (key === "disabled") {
+      element.disabled = Boolean(value);
     } else if (key === "value") {
       element.value = value;
     } else {
