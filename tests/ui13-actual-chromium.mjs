@@ -141,7 +141,7 @@ try{
   // UI-15 red/green: complete a cross-tool handoff with real pointer and
   // native select keyboard operations in the checked-out mobile-width app.
   await click(editor);
-  await cdp("Input.insertText",{text:"\\nUI15 transfer token"});
+  await cdp("Input.insertText",{text:"\nUI15 transfer token"});
   const sourceBefore=await js("document.querySelector("+JSON.stringify(editor)+")?.value");
   assert.match(sourceBefore,/UI15 transfer token/);
   const handoffButton='.tool-id-picker .tool-action-secondary button';
@@ -151,7 +151,45 @@ try{
   const opened=await js('Boolean(document.querySelector(".modal[role=dialog]"))');
   if(!opened)console.log("UI-15 modal missing",JSON.stringify(await js("({focus:document.activeElement?.outerHTML?.slice(0,300),body:document.body.innerText.slice(0,700),hit:document.elementFromPoint(180,400)?.outerHTML?.slice(0,300)})")));
   assert.ok(opened,"First real pointer click should open Use entries in… handoff modal");
-
+  assert.equal(hitProbe.disabled,false,
+    "Use entries in… must not carry a disabled=false HTML boolean attribute");
+  const destinationSelect='.modal select[aria-label="Destination randomizer"]';
+  const options=await js("Array.from(document.querySelector("+JSON.stringify(destinationSelect)+").options).map(o=>({value:o.value,disabled:o.disabled}))");
+  assert.equal(options[1]?.value,"wheel","Wheel should be the first compatible tool");
+  assert.equal(options[1]?.disabled,false);
+  await js("document.querySelector("+JSON.stringify(destinationSelect)+").focus()");
+  const press=async (key,code,vkey)=>{
+    await cdp("Input.dispatchKeyEvent",{type:"rawKeyDown",key,code,windowsVirtualKeyCode:vkey});
+    await cdp("Input.dispatchKeyEvent",{type:"keyUp",key,code,windowsVirtualKeyCode:vkey});
+    await delay(120);
+  };
+  await press("Home","Home",36);
+  await press("ArrowDown","ArrowDown",40);
+  await press("Tab","Tab",9);
+  const destination=await js("document.querySelector("+JSON.stringify(destinationSelect)+")?.value");
+  assert.equal(destination,"wheel",
+    "Real keyboard selection must select the compatible Wheel handoff destination");
+  const preview=await js("document.querySelector('.modal')?.innerText");
+  assert.match(preview,/After copying:/,"Destination preview must precede confirmation");
+  assert.match(preview,/UI15 transfer token/,"Source preview should include edited entries");
+  const confirmSelector='.modal .modal-actions button.primary';
+  assert.equal(await js("document.querySelector("+JSON.stringify(confirmSelector)+")?.disabled"),false,
+    "Valid handoff confirmation must be enabled, never disabled=false");
+  await click(confirmSelector);
+  await waitUntil('location.search === "?tool=wheel" && !document.querySelector(".modal")',
+    "confirmed handoff navigates to Wheel tool");
+  const copied=await js('document.querySelector(".tool-id-wheel .tool-controls textarea")?.value');
+  assert.match(copied,/UI15 transfer token/);
+  assert.equal(copied,sourceBefore,
+    "Replace mode must copy exactly the reviewed source entries");
+  const focusResult=await js("document.activeElement?.id");
+  assert.equal(focusResult,"main-content",
+    "Destination workspace should receive keyboard focus after handoff");
+  console.log("UI-15 actual Chromium mobile handoff PASS",JSON.stringify({
+    viewport:390,source:"picker",destination:"wheel",mode:"replace",
+    sourceEntries:sourceBefore.split("\n").length,firstPointer:true,
+    destinationByKeyboard:true,confirmed:true,focusReturnedToMain:true
+  }));
 
 
   console.log("UI-13 actual Chromium full-app native select PASS",JSON.stringify({
