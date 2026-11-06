@@ -138,6 +138,22 @@ try{
     "Late clipboard read must not overwrite the list after focus moves to Source");
   console.log("UI-14 real Chromium 390px clipboard focus-race PASS");
 
+  // UI-15 red/green: complete a cross-tool handoff with real pointer and
+  // native select keyboard operations in the checked-out mobile-width app.
+  await click(editor);
+  await cdp("Input.insertText",{text:"\\nUI15 transfer token"});
+  const sourceBefore=await js("document.querySelector("+JSON.stringify(editor)+")?.value");
+  assert.match(sourceBefore,/UI15 transfer token/);
+  const handoffButton='.tool-id-picker .tool-action-secondary button';
+  const hitProbe=await js("(()=>{const e=document.querySelector("+JSON.stringify(handoffButton)+");if(!e)return {missing:true};e.scrollIntoView({block:'center'});const r=e.getBoundingClientRect();return {text:e.textContent,disabled:e.disabled,rect:{x:r.x,y:r.y,w:r.width,h:r.height},top:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML?.slice(0,250)};})()");
+  console.log("UI-15 pointer hit",JSON.stringify(hitProbe));
+  await click(handoffButton);
+  const opened=await js('Boolean(document.querySelector(".modal[role=dialog]"))');
+  if(!opened)console.log("UI-15 modal missing",JSON.stringify(await js("({focus:document.activeElement?.outerHTML?.slice(0,300),body:document.body.innerText.slice(0,700),hit:document.elementFromPoint(180,400)?.outerHTML?.slice(0,300)})")));
+  assert.ok(opened,"First real pointer click should open Use entries in… handoff modal");
+
+
+
   console.log("UI-13 actual Chromium full-app native select PASS",JSON.stringify({
     browser:binary,tool:"picker",nativeSelectPreserved:selectPreserved,
     temporaryInputPreserved:true
