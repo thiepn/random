@@ -126,7 +126,7 @@ assert.ok(app.includes('onClick: openToolFinder'));
 assert.ok(app.includes('event.ctrlKey || event.metaKey'));
 assert.ok(app.includes('state.modal.type === "tool-finder"'));
 assert.ok(sw.includes('"./src/tool-discovery.js"'));
-assert.ok(sw.includes('CACHE + "-g10"'));
+assert.ok(sw.includes('CACHE + "-g11"'));
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 const styles=fs.readdirSync(".").filter(x=>x.endsWith(".css"));
 assert.equal(styles.length,19);
