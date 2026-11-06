@@ -1,5 +1,5 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
-import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
+import { createListInputAssist, defaultListEntries, entriesFromText, scheduleListChangeRender } from "./list-input-assist.js";
 import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, linkedSessionBlocksHandoff, renderInputHandoffModal, applyInputHandoff, handoffDestinationSnapshot, handoffDestinationUnchanged } from "./tool-input-handoff.js";
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
@@ -373,6 +373,13 @@ let audienceChannel = null;
 let modalReturnFocus = null;
 let modalFocusSignature = null;
 let modalA11yCounter = 0;
+
+// Track pointer press so a list blur never tears down the clicked control
+// before its click handler runs. Keyboard focus transitions use the next frame.
+let listEditPointerDown = false;
+document.addEventListener("pointerdown", () => { listEditPointerDown = true; }, true);
+document.addEventListener("pointerup", () => { listEditPointerDown = false; }, true);
+document.addEventListener("pointercancel", () => { listEditPointerDown = false; }, true);
 
 function node(tag, options, children) {
   const element = document.createElement(tag);
@@ -9649,7 +9656,18 @@ function listControls(tool, ts) {
     if (selectionTools.has(tool.id)) reconcileToolSelection(tool.id, ts);
     invalidateTool(tool.id, ts);
   });
-  textarea.addEventListener("change", render);
+  textarea.addEventListener("change", () => {
+    scheduleListChangeRender(textarea, {
+      pointerDown: listEditPointerDown, doc: document,
+      requestFrame: (callback) => window.requestAnimationFrame(callback),
+      refresh: () => {
+        if (state.view !== "tool" || state.toolId !== tool.id || state.modal) return;
+        const focus = focusIdentity(document.activeElement);
+        render();
+        matchingFocusable(document, focus)?.focus({ preventScroll: true });
+      }
+    });
+  });
 
   const sourceControl = node("div", {
     class: "control",
