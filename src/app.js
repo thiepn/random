@@ -9662,6 +9662,9 @@ function listControls(tool, ts) {
       requestFrame: (callback) => window.requestAnimationFrame(callback),
       refresh: () => {
         if (state.view !== "tool" || state.toolId !== tool.id || state.modal) return;
+        // A native select must stay mounted while its OS/browser picker is open.
+        // Its own change handler will render if the user changes the source.
+        if (document.activeElement?.matches("select")) return;
         const focus = focusIdentity(document.activeElement);
         render();
         matchingFocusable(document, focus)?.focus({ preventScroll: true });
