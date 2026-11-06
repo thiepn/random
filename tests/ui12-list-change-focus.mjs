@@ -106,7 +106,7 @@ assert.equal(app.includes('textarea.addEventListener("change", render);'), false
 assert.ok(helper.includes('doc.addEventListener("click", onClick, { once: true })'));
 assert.ok(app.includes('if (activeReason(t))'),
   "Previously verified active-session handoff guard is preserved");
-assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g13";'));
+assert.ok(sw.includes('const CACHE_GENERATION = CACHE + "-g14";'));
 assert.ok(fs.statSync("src/app.js").size <= 423000);
 const styles = fs.readdirSync(".").filter(name => name.endsWith(".css"));
 assert.equal(styles.length, 19);
