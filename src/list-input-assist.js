@@ -53,7 +53,14 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     const n = entriesFromText(textarea.value).length;
     count.textContent = n + (n === 1 ? " entry" : " entries");
   };
-  textarea.addEventListener("input", refresh);
+  // A pending Clipboard API read must not win over a later user action, even
+  // if the entries are edited and restored to exactly their previous text.
+  let editRevision = 0;
+  let clipboardRequest = 0;
+  textarea.addEventListener("input", () => {
+    editRevision += 1;
+    refresh();
+  });
 
   const action = (label, key, handler) => node("button", {
     class: "small-action", type: "button", dataset: { inputAction: key },
@@ -67,7 +74,11 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
   };
 
   const paste = (mode) => async () => {
+    const requestId = ++clipboardRequest;
     const initialValue = textarea.value;
+    const initialRevision = editRevision;
+    const changed = () => textarea.value !== initialValue || editRevision !== initialRevision;
+    const superseded = () => requestId !== clipboardRequest;
     const api = clipboard || globalThis.navigator?.clipboard;
     if (!api?.readText) {
       announce?.("Clipboard access is unavailable. Paste into the entries field instead.");
@@ -76,8 +87,8 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     }
     try {
       const value = await api.readText();
-      if (textarea.isConnected === false) return;
-      if (textarea.value !== initialValue) {
+      if (textarea.isConnected === false || superseded()) return;
+      if (changed()) {
         announce?.("Entries changed while reading the clipboard. Review them and try again.");
         return;
       }
@@ -87,11 +98,12 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
         return;
       }
       textarea.value = result.value;
+      editRevision += 1;
       refresh();
       onUpdate(mode, result.added + " entries " + (mode === "append" ? "appended" : "imported") + ".");
     } catch (error) {
-      if (textarea.isConnected === false) return;
-      if (textarea.value !== initialValue) {
+      if (textarea.isConnected === false || superseded()) return;
+      if (changed()) {
         announce?.("Entries changed while reading the clipboard. Review them and try again.");
         return;
       }
@@ -102,12 +114,15 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
   };
 
   const format = () => {
+    // A deliberate Format click also supersedes an outstanding clipboard read.
+    clipboardRequest += 1;
     const next = formatEntryText(textarea.value);
     if (next === textarea.value) {
       announce?.("Entries are already formatted.");
       return;
     }
     textarea.value = next;
+    editRevision += 1;
     refresh();
     onUpdate("format", "Blank lines removed and separators normalized. Duplicate entries kept.");
   };
