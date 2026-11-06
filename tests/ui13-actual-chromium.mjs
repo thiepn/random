@@ -115,6 +115,25 @@ try{
   assert.ok(readFileSync(join(root,"src/app.js"),"utf8").includes(
     'document.activeElement?.matches("select")'),
     "The native select must not be unmounted by a list-blur refresh");
+
+  // UI-14: A pending read must not overwrite entries after the user starts
+  // working with the Input Source selector without changing the list text.
+  await cdp("Page.navigate",{url:origin+"/?tool=picker"});
+  await waitUntil("Boolean(document.querySelector("+JSON.stringify(editor)+"))","fresh Pick One UI14 setup");
+  const baseline=await js("document.querySelector("+JSON.stringify(editor)+").value");
+  const stub=await js('(()=>{try{Object.defineProperty(navigator,"clipboard",{configurable:true,value:{readText:()=>new Promise(resolve=>{window.__ui14Resolve=resolve;})}});return true;}catch(e){return String(e);}})()');
+  assert.equal(stub,true,"Clipboard mock could not be installed into real Chromium page");
+  await click('.list-input-assist [data-input-action="replace"]');
+  await waitUntil("typeof window.__ui14Resolve === 'function'","pending Clipboard API read");
+  await click(sourceSelect);
+  assert.equal(await js('document.activeElement?.getAttribute("aria-label")'),"Input source",
+    "Source selector must own focus before the old clipboard read completes");
+  await js('window.__ui14Resolve("UNEXPECTED OVERWRITE")');
+  await delay(200);
+  assert.equal(await js("document.querySelector("+JSON.stringify(editor)+").value"),baseline,
+    "Late clipboard read must not overwrite the list after focus moves to Source");
+  console.log("UI-14 real Chromium clipboard focus-race PASS");
+
   console.log("UI-13 actual Chromium full-app native select PASS",JSON.stringify({
     browser:binary,tool:"picker",nativeSelectPreserved:selectPreserved,
     temporaryInputPreserved:true
