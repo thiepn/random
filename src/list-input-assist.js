@@ -77,8 +77,14 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     const requestId = ++clipboardRequest;
     const initialValue = textarea.value;
     const initialRevision = editRevision;
+    const focusOwner = globalThis.document?.activeElement;
     const changed = () => textarea.value !== initialValue || editRevision !== initialRevision;
     const superseded = () => requestId !== clipboardRequest;
+    // An asynchronous permission/read result cannot hijack a different control.
+    // The editor itself is still a legitimate destination for the pending paste.
+    const focusMoved = () => Boolean(focusOwner && globalThis.document?.activeElement
+      && globalThis.document.activeElement !== focusOwner
+      && globalThis.document.activeElement !== textarea);
     const api = clipboard || globalThis.navigator?.clipboard;
     if (!api?.readText) {
       announce?.("Clipboard access is unavailable. Paste into the entries field instead.");
@@ -87,7 +93,7 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     }
     try {
       const value = await api.readText();
-      if (textarea.isConnected === false || superseded()) return;
+      if (textarea.isConnected === false || superseded() || focusMoved()) return;
       if (changed()) {
         announce?.("Entries changed while reading the clipboard. Review them and try again.");
         return;
@@ -102,7 +108,7 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
       refresh();
       onUpdate(mode, result.added + " entries " + (mode === "append" ? "appended" : "imported") + ".");
     } catch (error) {
-      if (textarea.isConnected === false || superseded()) return;
+      if (textarea.isConnected === false || superseded() || focusMoved()) return;
       if (changed()) {
         announce?.("Entries changed while reading the clipboard. Review them and try again.");
         return;
