@@ -164,6 +164,8 @@ jobs:
         run: node tests/ui09-clipboard-safety.mjs
       - name: UI-10 latest clipboard intent and ABA-edit protection
         run: node tests/ui10-clipboard-arbitration.mjs
+      - name: UI-11 completed Session Template and Workflow handoff recovery
+        run: node tests/ui11-closed-session-handoff.mjs
 
       - name: Performance budget certification
         run: node tests/performance-budget.mjs
