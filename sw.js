@@ -1,6 +1,6 @@
 const CACHE = "randomizer-shell-v1.2.0";
 // A new cache generation must not overwrite assets used by an older controller.
-const CACHE_GENERATION = CACHE + "-g14";
+const CACHE_GENERATION = CACHE + "-g15";
 const SHELL = [
   "./",
   "./index.html",

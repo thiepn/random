@@ -170,6 +170,8 @@ jobs:
         run: node tests/ui12-list-change-focus.mjs
       - name: UI-13 real Chromium full-app list and native-selector interaction
         run: node tests/ui13-actual-chromium.mjs
+      - name: UI-14 clipboard ownership and focus-return regressions
+        run: node tests/ui14-clipboard-focus.mjs
 
       - name: Performance budget certification
         run: node tests/performance-budget.mjs
