@@ -68,10 +68,24 @@ export function eligibleHandoffTargets(tools, sourceToolId, isCompatible) {
   );
 }
 
-export function activeTargetReason(toolState, activeSession = false, busy = false) {
+export function linkedSessionBlocksHandoff(session) {
+  // Unloaded links fail closed: only confirmed terminal sessions are reusable.
+  return !session || !["completed", "abandoned", "error"].includes(session.status);
+}
+
+export function activeTargetReason(
+  toolState, activeSession = false, busy = false, isLinkedSessionActive = null
+) {
   if (busy || toolState?.computing) return "A randomization is still running.";
-  if (activeSession || toolState?.templateSessionId
-    || toolState?.workflowSessionId) return "Finish the destination's active session first.";
+  // Without verified status, conservatively protect existing session links.
+  const linkedActive = (kind, id) => Boolean(id) && (
+    !isLinkedSessionActive || isLinkedSessionActive(kind, id)
+  );
+  if (activeSession
+    || linkedActive("template", toolState?.templateSessionId)
+    || linkedActive("workflow", toolState?.workflowSessionId)) {
+    return "Finish the destination's active session first.";
+  }
   if (toolState?.replayRunId) return "Exit replay mode before changing this tool's input.";
   return null;
 }
@@ -201,6 +215,14 @@ export function applyInputHandoff(target, plan, {
   target.workingSetDirty = false;
   target.activePresetId = null;
   target.activeSessionId = null;
+  // Closed Template/Workflow IDs must not attach the next ordinary run to a
+  // completed or abandoned session after this explicitly confirmed transfer.
+  target.templateSessionId = null;
+  target.templateStepIndex = null;
+  target.templateStepId = null;
+  target.workflowSessionId = null;
+  target.workflowNodeId = null;
+  target.workflowSilent = false;
   if (selection && mode === "replace") target.selectionEntries = [];
   return target;
 }

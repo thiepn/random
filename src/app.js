@@ -1,6 +1,6 @@
 import { createHomeSearchBox, createHomeSectionHeader } from "./home-search.js";
 import { createListInputAssist, defaultListEntries, entriesFromText } from "./list-input-assist.js";
-import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, renderInputHandoffModal, applyInputHandoff, handoffDestinationSnapshot, handoffDestinationUnchanged } from "./tool-input-handoff.js";
+import { planInputHandoff, eligibleHandoffTargets, activeTargetReason, linkedSessionBlocksHandoff, renderInputHandoffModal, applyInputHandoff, handoffDestinationSnapshot, handoffDestinationUnchanged } from "./tool-input-handoff.js";
 import { setupIssue, stopInvalidRun, buildSetupCoach, buildToolRuleStrip, toolFamilyLabel as setupFamilyLabel, createToolError } from "./tool-setup-health.js";
 import { createRng, pick, sample } from "./random-core.js";
 import { CATEGORIES, TOOLS, getTool } from "./registry.js";
@@ -13870,11 +13870,17 @@ function renderModal(previousFocusIdentity = null) {
       ...TOOLS, ...state.customExperiences
         .filter((e) => e.status === "published").map(experienceAsTool)
     ], config.sourceToolId, (t) => toolAcceptsListInput(t.id));
+    const linkedSessionActive = (kind, id) => {
+      const session = kind === "template"
+        ? templateSessionById(id) : workflowSessionById(id);
+      return linkedSessionBlocksHandoff(session);
+    };
     const activeReason = (t) => activeTargetReason(
       state.tool[t.id],
       state.sessions.some((s) => s.toolId === t.id && s.status === "active")
       || state.partySessions.some((s) => s.toolId === t.id && s.status === "active"),
-      state.computeBusy
+      state.computeBusy,
+      linkedSessionActive
     );
     const targetSnapshot = (t) => handoffDestinationSnapshot(state.tool[t.id], {
       custom:t.custom, fallback:t.custom ? "Option A\nOption B\nOption C" : defaultList(t.id)
