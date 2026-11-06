@@ -78,6 +78,9 @@ try{
     throw Error("Timeout: "+label+"; page="+await js("document.body.innerText.slice(0,400)"));
   }
   async function click(selector){
+    // CDP dispatch does not scroll off-screen elements automatically.
+    await js("document.querySelector("+JSON.stringify(selector)+")?.scrollIntoView({block:'center',inline:'center'})");
+    await delay(120);
     const point=await js("(()=>{const e=document.querySelector("+JSON.stringify(selector)+");"+
       "if(!e)return null;const b=e.getBoundingClientRect();"+
       "return{x:b.x+b.width/2,y:b.y+Math.min(b.height/2,14)};})()");
@@ -109,6 +112,8 @@ try{
 
   await click(editor);
   await cdp("Input.insertText",{text:"\nUI13 next"});
+  assert.match(await js("document.querySelector("+JSON.stringify(editor)+")?.value"),/UI13 next/,
+    "Real Chromium typing must reach the list editor after dismissing native select");
   await click(".tool-id-picker .tool-action-secondary button");
   await waitUntil('Boolean(document.querySelector(".modal[role=dialog]"))',
     "first click opens cross-tool handoff modal");
