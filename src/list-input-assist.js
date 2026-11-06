@@ -77,20 +77,25 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
     const requestId = ++clipboardRequest;
     const initialValue = textarea.value;
     const initialRevision = editRevision;
-    const focusOwner = globalThis.document?.activeElement;
+    const doc = globalThis.document;
+    const focusOwner = doc?.activeElement;
+    let focusLeft = false;
+    const onFocusIn = (event) => {
+      if (event.target !== focusOwner && event.target !== textarea) focusLeft = true;
+    };
     const changed = () => textarea.value !== initialValue || editRevision !== initialRevision;
     const superseded = () => requestId !== clipboardRequest;
-    // An asynchronous permission/read result cannot hijack a different control.
-    // The editor itself is still a legitimate destination for the pending paste.
-    const focusMoved = () => Boolean(focusOwner && globalThis.document?.activeElement
-      && globalThis.document.activeElement !== focusOwner
-      && globalThis.document.activeElement !== textarea);
+    // A delayed clipboard result must not steal focus or replace work after
+    // the user visits another control, even if they subsequently focus back.
+    const focusMoved = () => focusLeft || Boolean(focusOwner && doc?.activeElement
+      && doc.activeElement !== focusOwner && doc.activeElement !== textarea);
     const api = clipboard || globalThis.navigator?.clipboard;
     if (!api?.readText) {
       announce?.("Clipboard access is unavailable. Paste into the entries field instead.");
       manualPaste(mode);
       return;
     }
+    doc?.addEventListener?.("focusin", onFocusIn, true);
     try {
       const value = await api.readText();
       if (textarea.isConnected === false || superseded() || focusMoved()) return;
@@ -116,6 +121,8 @@ export function createListInputAssist({ toolId, node, textarea, onUpdate, announ
       announce?.(error instanceof RangeError ? error.message :
         "Clipboard could not be read. Paste into the entries field instead.");
       if (!(error instanceof RangeError)) manualPaste(mode);
+    } finally {
+      doc?.removeEventListener?.("focusin", onFocusIn, true);
     }
   };
 
